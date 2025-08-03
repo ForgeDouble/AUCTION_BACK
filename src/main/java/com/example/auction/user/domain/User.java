@@ -37,7 +37,7 @@ public class User extends BaseTimeEntity {
     private String birthday; // xxxx.xx.xx
 
     @Column(nullable = false, length = 11)
-    private String phone;
+    private String phone; // xxx-xxxx-xxxx
 
     @Column(nullable = false)
     private Long warning = 0L;
