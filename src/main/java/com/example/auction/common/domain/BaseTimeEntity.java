@@ -39,9 +39,5 @@ public abstract class BaseTimeEntity {
         this.deletedAt = LocalDateTime.now();
         this.delYn = DelYN.Y;
     }
-
-    public boolean isDeleted() {
-        return this.delYn == DelYN.Y;
-    }
 }
 
