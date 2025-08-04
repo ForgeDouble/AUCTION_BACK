@@ -2,6 +2,7 @@ package com.example.auction.user.domain;
 
 
 import com.example.auction.common.domain.BaseTimeEntity;
+import com.example.auction.user.dto.UserUpdateDto;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -47,4 +48,12 @@ public class User extends BaseTimeEntity {
     private Authority authority;
 
 //    private String profileImage;
+
+    public void update(UserUpdateDto dto) {
+        this.name = name;
+        this.gender = gender;
+        this.address = address;
+        this.birthday = birthday;
+        this.phone = phone;
+    }
 }

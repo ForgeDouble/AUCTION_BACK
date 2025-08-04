@@ -1,5 +1,6 @@
 package com.example.auction.user.service;
 
+import com.example.auction.common.auth.JwtTokenProvider;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
@@ -21,10 +22,11 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
     /* 회원가입 */
     @Transactional
-    public User registerUser(UserRegisterDto registerDto, MultipartFile profileImage) {
+    public User register(UserRegisterDto registerDto, MultipartFile profileImage) {
         if (userRepository.findByEmail(registerDto.getEmail()).isPresent()) {
             throw new RuntimeException("이미 존재하는 이메일입니다.");
         }
@@ -35,32 +37,51 @@ public class UserService {
         return userRepository.save(newUser);
     }
 
-    /* 회원정보 수정 */
-    @Transactional
-    public User updateUser(Long userId, UserUpdateDto updateDto, MultipartFile profileImage) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+    /* 로그인 */
+    @Transactional(readOnly = true)
+    public String login(UserLoginDto dto) {
+        User user = userRepository.findByEmail(dto.getEmail())
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 이메일입니다."));
 
-        if (updateDto.getPassword() != null && !updateDto.getPassword().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(updateDto.getPassword()));
+        if (user.getDelYn() == DelYN.Y) {
+            throw new RuntimeException("탈퇴된 계정입니다.");
         }
 
-        user.setName(updateDto.getName());
-        user.setGender(updateDto.getGender());
-        user.setBirthday(updateDto.getBirthday());
-        user.setPhone(updateDto.getPhone());
+        if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
+            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+        }
+        return jwtTokenProvider.createAccessToken(user);
+    }
+
+
+    /* 회원정보 수정 */
+    @Transactional
+    public User update(UserUpdateDto dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+
+        if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
+        user.update(dto);
+
 
         return userRepository.save(user);
     }
 
     /* 회원 탈퇴 */
     @Transactional
-    public void deleteUser(Long userId, String deletedBy) {
-        User user = userRepository.findById(userId)
+    public void delete(Long userId, String deletedBy) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+
         user.softDelete();
         userRepository.save(user);
     }
+
 
     /* 회원 상세 조회 */
     @Transactional(readOnly = true)
