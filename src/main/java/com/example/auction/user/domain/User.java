@@ -50,10 +50,10 @@ public class User extends BaseTimeEntity {
 //    private String profileImage;
 
     public void update(UserUpdateDto dto) {
-        this.name = name;
-        this.gender = gender;
-        this.address = address;
-        this.birthday = birthday;
-        this.phone = phone;
+        this.name = dto.getName();
+        this.gender = dto.getGender();
+        this.address = dto.getAddress();
+        this.birthday = dto.getBirthday();
+        this.phone = dto.getPhone();
     }
 }
