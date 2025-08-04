@@ -1,11 +1,10 @@
 package com.example.auction.user.service;
 
 import com.example.auction.common.domain.DelYN;
-import com.example.auction.user.domain.Manager;
+import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.repository.UserRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -86,7 +85,7 @@ public class UserService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
-        return user.getManager() == Manager.Y;
+        return user.getAuthority() == Authority.ADMIN;
     }
 }
 

@@ -43,8 +43,8 @@ public class User extends BaseTimeEntity {
     private Long warning = 0L;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 1)
-    private Manager manager;
+    @Column(nullable = false)
+    private Authority authority;
 
 //    private String profileImage;
 }
