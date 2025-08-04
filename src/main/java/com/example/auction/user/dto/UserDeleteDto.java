@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserDeleteDto {
-    private Long id;
+    private Long userId;
 
     private String email;
     private String name;

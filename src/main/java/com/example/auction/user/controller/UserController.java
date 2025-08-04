@@ -45,8 +45,8 @@ public class UserController {
     }
 
     /* 회원 상세 조회 */
-    @GetMapping("/{userId}")
-    public ResponseEntity<?> getUserDetail(@PathVariable Long userId) {
+    @GetMapping("/detail/{userId}")
+    public ResponseEntity<?> detail(@PathVariable Long userId) {
         try {
             UserDetailDto detail = userService.getUserDetail(userId);
             return ResponseEntity.ok(detail);

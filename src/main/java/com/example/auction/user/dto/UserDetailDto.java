@@ -11,7 +11,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class UserDetailDto {
-    private Long Id;
+    private Long userId;
     private String email;
     private String name;
     private Gender gender;
@@ -23,7 +23,7 @@ public class UserDetailDto {
 
     public static UserDetailDto fromEntity(User user) {
         return UserDetailDto.builder()
-                .Id(user.getId())
+                .userId(user.getUserId())
                 .email(user.getEmail())
                 .name(user.getName())
                 .gender(user.getGender())

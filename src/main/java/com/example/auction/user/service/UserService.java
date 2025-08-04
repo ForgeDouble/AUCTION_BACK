@@ -78,17 +78,19 @@ public class UserService {
     @Transactional
     public void delete(UserDeleteDto deleteDto, String deletedBy) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
-        User targetUser = userRepository.findById(deleteDto.getId())
+
+        User currentUser = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("현재 로그인한 유저 정보를 찾을 수 없습니다."));
+
+        User targetUser = userRepository.findById(deleteDto.getUserId())
                 .orElseThrow(() -> new RuntimeException("삭제하려는 유저가 존재하지 않습니다."));
 
-        if (!user.getId().equals(targetUser.getId()) && user.getAuthority() != Authority.ADMIN) {
+        if (!currentUser.getUserId().equals(targetUser.getUserId()) && currentUser.getAuthority() != Authority.ADMIN) {
             throw new RuntimeException("본인 또는 관리자만 탈퇴할 수 있습니다.");
         }
 
-        user.softDelete();
-        userRepository.save(user);
+        targetUser.softDelete();
+        userRepository.save(targetUser);
     }
 
 
@@ -99,7 +101,6 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
         return UserDetailDto.fromEntity(user);
     }
-
     /* 회원 목록 조회 */
     @Transactional(readOnly = true)
     public List<UserDto> getAllUsers() {

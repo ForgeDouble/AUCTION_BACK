@@ -9,14 +9,14 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class UserDto {
-    private Long Id;
+    private Long userId;
     private String name;
     private String email;
     private Long warning;
 
     public static UserDto fromEntity(User user) {
         return UserDto.builder()
-                .Id(user.getId())
+                .userId(user.getUserId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .warning(user.getWarning())
