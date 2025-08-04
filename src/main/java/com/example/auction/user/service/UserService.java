@@ -30,7 +30,7 @@ public class UserService {
 
     /* 회원가입 */
     @Transactional
-    public User register(UserRegisterDto registerDto, MultipartFile profileImage) {
+    public User register(UserRegisterDto registerDto) {
         if (userRepository.findByEmail(registerDto.getEmail()).isPresent()) {
             throw new RuntimeException("이미 존재하는 이메일입니다.");
         }
@@ -71,16 +71,21 @@ public class UserService {
 
         user.update(dto);
 
-
         return userRepository.save(user);
     }
 
     /* 회원 탈퇴 */
     @Transactional
-    public void delete(Long userId, String deletedBy) {
+    public void delete(UserDeleteDto deleteDto, String deletedBy) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+        User targetUser = userRepository.findById(deleteDto.getId())
+                .orElseThrow(() -> new RuntimeException("삭제하려는 유저가 존재하지 않습니다."));
+
+        if (!user.getId().equals(targetUser.getId()) && user.getAuthority() != Authority.ADMIN) {
+            throw new RuntimeException("본인 또는 관리자만 탈퇴할 수 있습니다.");
+        }
 
         user.softDelete();
         userRepository.save(user);
