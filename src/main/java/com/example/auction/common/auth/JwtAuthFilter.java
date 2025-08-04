@@ -40,7 +40,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
                 token = authorizationHeader.substring(7); // "Bearer " 제거 후 토큰 추출
-                username = jwtTokenProvider.getEmailFromToken(token); // token에서 email(UserNum 등) 파싱
+                username = jwtTokenProvider.getEmailFromToken(token); // 토큰에서 파싱
             }
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
