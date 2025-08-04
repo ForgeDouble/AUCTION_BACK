@@ -1,6 +1,9 @@
 package com.example.auction.common.config;
 
 import com.example.auction.common.auth.JwtAuthFilter;
+import com.example.auction.common.auth.JwtTokenProvider;
+import com.example.auction.user.service.CustomUserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,12 +18,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class securityConfig {
-    private final JwtAuthFilter jwtAuthFilter;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final CustomUserService customUserService;
 
-    public securityConfig(JwtAuthFilter jwtAuthFilter) {
-        this.jwtAuthFilter = jwtAuthFilter;
-    }
 
 
     @Bean
@@ -33,8 +35,10 @@ public class securityConfig {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
+
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 세션 비활성화
