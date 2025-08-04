@@ -86,7 +86,7 @@ public class UserController {
     }
 
     /* 회원 탈퇴 */
-    @DeleteMapping("/delete")
+    @PostMapping("/delete")
     public ResponseEntity<?> delete(@RequestBody UserDeleteDto deleteDto) {
         try {
             userService.delete(deleteDto, "SELF");
