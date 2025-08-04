@@ -12,12 +12,14 @@ public class UserDto {
     private Long Id;
     private String name;
     private String email;
+    private Long warning;
 
     public static UserDto fromEntity(User user) {
         return UserDto.builder()
                 .Id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
+                .warning(user.getWarning())
                 .build();
     }
 }

@@ -19,6 +19,7 @@ public class UserDetailDto {
     private String phone;
     private Authority authority;
     private Long warning;
+    private String address;
 
     public static UserDetailDto fromEntity(User user) {
         return UserDetailDto.builder()
@@ -30,6 +31,7 @@ public class UserDetailDto {
                 .phone(user.getPhone())
                 .authority(user.getAuthority())
                 .warning(user.getWarning())
+                .address(user.getAddress())
                 .build();
     }
 }

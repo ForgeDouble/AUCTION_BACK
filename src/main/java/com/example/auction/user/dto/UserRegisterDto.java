@@ -17,6 +17,7 @@ public class UserRegisterDto {
     private Gender gender;
     private String birthday;
     private String phone;
+    private String address;
 
     public User toEntity() {
         return User.builder()
@@ -26,6 +27,7 @@ public class UserRegisterDto {
                 .gender(gender)
                 .birthday(birthday)
                 .phone(phone)
+                .address(address)
                 .authority(Authority.USER)
                 .warning(0L)
                 .build();
