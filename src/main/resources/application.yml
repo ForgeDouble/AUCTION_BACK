@@ -1,1 +1,33 @@
-spring.application.name=auction
+server:
+  port: 8080
+
+spring:
+  data:
+#    redis:
+#      host: localhost
+#      port: 6379
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  datasource:
+    driver-class-name: org.mariadb.jdbc.Driver
+    url: jdbc:mariadb://localhost:3306/auction
+    username: root
+    password: 1234
+
+  jpa:
+#    open-in-view: false
+    database: mysql
+    database-platform: org.hibernate.dialect.MariaDBDialect
+    generate-ddl: true
+    hibernate:
+      format_sql: false
+      ddl-auto: create
+    show-sql: false
+
+jwt:
+  secretKeyRT: mySuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSecretKey
+  expirationRT: 3600000
