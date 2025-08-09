@@ -33,14 +33,8 @@ public class UserController {
     /* 회원가입 */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserRegisterDto registerDto) {
-        try {
-            userService.register(registerDto);
-            return ResponseEntity.ok("회원가입 성공");
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
-        }
+        userService.register(registerDto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원가입 성공", null));
     }
 
     /* 닉네임 생성 */
