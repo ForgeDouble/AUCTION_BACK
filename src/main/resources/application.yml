@@ -26,8 +26,13 @@ spring:
     hibernate:
       format_sql: false
       ddl-auto: create
-    show-sql: false
+    show-sql: true
 
 jwt:
   secretKeyRT: mySuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSecretKey
   expirationRT: 3600000
+
+logging:
+  level:
+    root: INFO
+    org.springframework: WARN
