@@ -48,6 +48,20 @@ public class UserController {
         }
     }
 
+    /* 닉네임 생성 */
+    /* 닉네임 변경 */
+    @PutMapping("/nickname")
+    public ResponseEntity<?> updateNickname(@RequestBody UserNicknameUpdateDto dto) {
+        try {
+            userService.updateNickname(dto);
+            return ResponseEntity.ok("닉네임 변경 완료");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
+        }
+    }
+
     /* 회원 상세 조회 */
     @GetMapping("/detail/{userId}")
     public ResponseEntity<?> detail(@PathVariable Long userId) {
