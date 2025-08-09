@@ -6,6 +6,8 @@ import com.example.auction.user.dto.UserUpdateDto;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Setter
 @Getter
 @NoArgsConstructor
@@ -47,6 +49,11 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Authority authority;
 
+    @Column(unique = true, length = 30)
+    private String nickname;
+
+    private LocalDateTime lastNicknameChangedAt;
+
 //    private String profileImage;
 
     public void update(UserUpdateDto dto) {
@@ -55,5 +62,11 @@ public class User extends BaseTimeEntity {
         this.address = dto.getAddress();
         this.birthday = dto.getBirthday();
         this.phone = dto.getPhone();
+    }
+
+    // 닉네임 변경 메서드
+    public void changeNickname(String newNickname) {
+        this.nickname = newNickname;
+        this.lastNicknameChangedAt = LocalDateTime.now();
     }
 }
