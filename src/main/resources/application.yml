@@ -30,3 +30,10 @@ spring:
 jwt:
   secretKeyRT: mySuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSecretKey
   expirationRT: 3600000
+
+logging:
+  level:
+    root: INFO
+    com.example.auction : DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %logger{36} - %msg %n"
