@@ -77,13 +77,13 @@ public class UserService {
     public void delete(UserDeleteDto deleteDto, String deletedBy) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        User currentUser = userRepository.findByEmailAndDelYn(email, DelYN.N)
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("현재 로그인한 유저 정보를 찾을 수 없습니다."));
 
         User targetUser = userRepository.findById(deleteDto.getUserId())
                 .orElseThrow(() -> new RuntimeException("삭제하려는 유저가 존재하지 않습니다."));
 
-        if (!currentUser.getUserId().equals(targetUser.getUserId()) && currentUser.getAuthority() != Authority.ADMIN) {
+        if (!user.getUserId().equals(targetUser.getUserId()) && user.getAuthority() != Authority.ADMIN) {
             throw new RuntimeException("본인 또는 관리자만 탈퇴할 수 있습니다.");
         }
 
@@ -92,13 +92,38 @@ public class UserService {
     }
 
 
-    /* 회원 상세 조회 */
+    /* 회원 상세 조회 (마이페이지용) */
     @Transactional(readOnly = true)
     public UserDetailDto getUserDetail(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
         return UserDetailDto.fromEntity(user);
     }
+    /* 타겟팅 조회 */
+    @Transactional(readOnly = true)
+    public Object getUserViewByTargetId(Long UserId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User requester = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("요청자 정보를 찾을 수 없습니다."));
+
+        // 타겟 (삭제되지 않은 유저만 조회)
+        User target = userRepository.findById(UserId)
+                .filter(u -> u.getDelYn() == DelYN.N)
+                .orElseThrow(() -> new RuntimeException("조회 대상 유저가 존재하지 않습니다."));
+
+        if (requester.getUserId().equals(target.getUserId())) {
+            return UserDto.fromEntity(target);
+        }
+
+        // 관리자의 유저 조회
+        if (requester.getAuthority() == Authority.ADMIN) {
+            return AdminUserListDto.fromEntityForAdmin(target);
+        }
+
+        // 유저의 유저간 조회
+        return PublicUserListDto.fromEntityForPublic(target);
+    }
+
     /* 회원 목록 조회 */
     @Transactional(readOnly = true)
     public List<UserDto> getAllUsers() {

@@ -44,11 +44,18 @@ public class UserController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "닉네임 변경 완료", null));
     }
 
-    /* 회원 상세 조회 */
+    /* 회원 마이페이지 조회 */
     @GetMapping("/detail/{userId}")
     public ResponseEntity<?> detail(@PathVariable Long userId) {
         UserDetailDto detail = userService.getUserDetail(userId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "조회 성공", detail));
+    }
+
+    /* 타겟팅 조회 */
+    @GetMapping("/view/{userId}")
+    public ResponseEntity<CommonResDto> viewUser(@PathVariable Long userId) {
+        Object view = userService.getUserViewByTargetId(userId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "유저 조회 성공", view));
     }
 
     /* 회원 목록 조회 */
