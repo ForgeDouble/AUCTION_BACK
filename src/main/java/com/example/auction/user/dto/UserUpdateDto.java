@@ -9,10 +9,7 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class UserUpdateDto {
-    private String password;
     private String name;
-    private Gender gender;
     private String address;
-    private String birthday;
     private String phone;
 }
