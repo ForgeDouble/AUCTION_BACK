@@ -37,67 +37,38 @@ public class UserController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원가입 성공", null));
     }
 
-    /* 닉네임 생성 */
     /* 닉네임 변경 */
     @PutMapping("/nickname")
     public ResponseEntity<?> updateNickname(@RequestBody UserNicknameUpdateDto dto) {
-        try {
-            userService.updateNickname(dto);
-            return ResponseEntity.ok("닉네임 변경 완료");
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
-        }
+        userService.updateNickname(dto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "닉네임 변경 완료", null));
     }
 
     /* 회원 상세 조회 */
     @GetMapping("/detail/{userId}")
     public ResponseEntity<?> detail(@PathVariable Long userId) {
-        try {
-            UserDetailDto detail = userService.getUserDetail(userId);
-            return ResponseEntity.ok(detail);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
-        }
+        UserDetailDto detail = userService.getUserDetail(userId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "조회 성공", detail));
     }
 
     /* 회원 목록 조회 */
     @GetMapping("/list")
     public ResponseEntity<?> getAllUsers() {
-        try {
-            List<UserDto> users = userService.getAllUsers();
-            return ResponseEntity.ok(users);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
-        }
+        List<UserDto> users = userService.getAllUsers();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "조회 성공", users));
     }
 
     /* 회원정보 수정 */
     @PutMapping("/update")
     public ResponseEntity<?> update(@RequestBody UserUpdateDto updateDto) {
-        try {
-            userService.update(updateDto);
-            return ResponseEntity.ok("회원정보 수정 완료");
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류");
-        }
+        userService.update(updateDto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원정보 수정 완료", null));
     }
 
     /* 회원 탈퇴 */
     @PostMapping("/delete")
     public ResponseEntity<?> delete(@RequestBody UserDeleteDto deleteDto) {
-        try {
-            userService.delete(deleteDto, "SELF");
-            return ResponseEntity.ok("회원 탈퇴 성공");
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
-        }
+        userService.delete(deleteDto, "SELF");
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원 탈퇴 성공", null));
     }
 }
