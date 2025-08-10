@@ -18,6 +18,7 @@ public class UserRegisterDto {
     private String birthday;
     private String phone;
     private String address;
+    private String nickname;
 
     public User toEntity() {
         return User.builder()
@@ -30,6 +31,7 @@ public class UserRegisterDto {
                 .address(address)
                 .authority(Authority.USER)
                 .warning(0L)
+                .nickname(nickname)
                 .build();
     }
 }

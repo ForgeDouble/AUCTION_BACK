@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -117,6 +119,51 @@ public class UserService {
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
         return user.getAuthority() == Authority.ADMIN;
+    }
+
+    /* 닉네임 생성 및 업데이트 */
+    @Transactional
+    public void updateNickname(UserNicknameUpdateDto dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+
+        String newNickname = dto.getNickname();
+        if (newNickname == null || newNickname.trim().isEmpty()) {
+            throw new RuntimeException("닉네임을 입력해 주세요.");
+        }
+
+        newNickname = newNickname.trim();
+
+        // 닉네임 2~8 , 제한문자 추가
+        if (newNickname.length() < 2 || newNickname.length() > 8) {
+            throw new RuntimeException("닉네임은 2~8자로 입력해 주세요.");
+        }
+        if (!newNickname.matches("^[A-Za-z0-9가-힣_]+$")) {
+            throw new RuntimeException("닉네임은 영문,숫자,한글,언더스코어 에서만 사용가능합니다.");
+        }
+
+        if (newNickname.equals(user.getNickname())) {
+            return;
+        }
+
+        //
+        if (user.getLastNicknameChangedAt() != null) {
+            long days = ChronoUnit.DAYS.between(user.getLastNicknameChangedAt(), LocalDateTime.now());
+            if (days < 7) {
+                long remain = 7 - days;
+                throw new RuntimeException("닉네임은 " + remain + "일 이후 변경 가능합니다.");
+            }
+        }
+
+        // 중복 체크 (탈퇴하지 않은 유저에 한정하려면 existsByNicknameAndDelYn 사용)
+        boolean exists = userRepository.existsByNicknameAndDelYn(newNickname, DelYN.N);
+        if (exists) {
+            throw new RuntimeException("이미 사용 중인 닉네임입니다.");
+        }
+
+        user.changeNickname(newNickname);
+        userRepository.save(user);
     }
 }
 

@@ -1,5 +1,6 @@
 package com.example.auction.user.controller;
 
+import com.example.auction.common.dto.CommonResDto;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -22,25 +23,27 @@ public class UserController {
 
     /* 로그인 */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody UserLoginDto loginDto) {
-        try {
-            String token = userService.login(loginDto);
-            Map<String, String> response = new HashMap<>();
-            response.put("token", token);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류");
-        }
+    public ResponseEntity<CommonResDto> login(@RequestBody UserLoginDto loginDto) {
+        String token = userService.login(loginDto); // 예외 발생 시 전역 핸들러로 위임
+        Map<String, String> result = new HashMap<>();
+        result.put("token", token);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "로그인 성공", result));
     }
 
     /* 회원가입 */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody UserRegisterDto registerDto) {
+        userService.register(registerDto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원가입 성공", null));
+    }
+
+    /* 닉네임 생성 */
+    /* 닉네임 변경 */
+    @PutMapping("/nickname")
+    public ResponseEntity<?> updateNickname(@RequestBody UserNicknameUpdateDto dto) {
         try {
-            userService.register(registerDto);
-            return ResponseEntity.ok("회원가입 성공");
+            userService.updateNickname(dto);
+            return ResponseEntity.ok("닉네임 변경 완료");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
