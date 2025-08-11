@@ -33,7 +33,7 @@ public class Tag {
     private Long tagId;
 	
 	@OneToMany(mappedBy = "tag")
-	@Builder.Default
+//	@Builder.Default
     private List<Product> products = new ArrayList<>();
 	
 	@Column(nullable = false)
@@ -48,6 +48,6 @@ public class Tag {
     // 자식 태그들
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
     @JsonManagedReference
-    @Builder.Default
+//    @Builder.Default
     private List<Tag> children = new ArrayList<>();
 }

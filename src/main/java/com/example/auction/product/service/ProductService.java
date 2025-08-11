@@ -21,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ProductService {
 	
-
 	private final TagRepository tagRepository;
 	private final ProductRepository productRepository;
 	
@@ -36,6 +35,7 @@ public class ProductService {
 		return productRepository.save(product);
 	}
 	
+	// DelYN.N 인것을 조회
 	// 아이템 조회
 	@Transactional(readOnly = true)
 	public ProductReadDto readProduct(Long productId) {
@@ -46,7 +46,7 @@ public class ProductService {
 	
 	// 전체 아이템 조회
 	@Transactional(readOnly = true)
-	public List<ProductReadAllDto> readAllProduct() {
+	public List<ProductReadAllDto> readAllProducts() {
 		return productRepository.findAll().stream()
 				.filter(product -> product.getDelYn() == DelYN.N)
 				.map(ProductReadAllDto::fromEntity)
