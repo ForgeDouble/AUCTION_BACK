@@ -1,6 +1,7 @@
 package com.example.auction.product.domain;
 
 import com.example.auction.common.domain.BaseTimeEntity;
+import com.example.auction.product.dto.ProductUpdateDto;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -45,6 +46,13 @@ public class Product extends BaseTimeEntity{
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SellYN sellYN;
+    
+    public void update(ProductUpdateDto dto, Tag tag) {
+    	this.tag = tag;
+    	this.productName = dto.getProductName();
+    	this.productContent = dto.getProductContent();
+    	this.price = dto.getPrice();
+    }
     
 
 }

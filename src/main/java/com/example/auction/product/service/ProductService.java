@@ -12,6 +12,7 @@ import com.example.auction.product.domain.Tag;
 import com.example.auction.product.dto.ProductCreateDto;
 import com.example.auction.product.dto.ProductReadAllDto;
 import com.example.auction.product.dto.ProductReadDto;
+import com.example.auction.product.dto.ProductUpdateDto;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.product.repository.TagRepository;
 
@@ -54,8 +55,19 @@ public class ProductService {
 	}
 	
 	// 아이템 수정
-
+	@Transactional
+	public void updateProduct(Long productId, ProductUpdateDto dto) {
+		Product product = productRepository.findById(productId)
+				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
+		
+	    Tag tag = tagRepository.findById(dto.getTagId())
+	        .orElseThrow(() -> new IllegalArgumentException("태그 없음"));
+	    
+		product.update(dto, tag);
+		productRepository.save(product);
+	}
 	
 	
 	// 아이템 삭제
+	
 }
