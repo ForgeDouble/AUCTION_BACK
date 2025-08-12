@@ -56,8 +56,8 @@ public class ProductService {
 	
 	// 아이템 수정
 	@Transactional
-	public void updateProduct(Long productId, ProductUpdateDto dto) {
-		Product product = productRepository.findById(productId)
+	public void updateProduct(ProductUpdateDto dto) {
+		Product product = productRepository.findById(dto.getProductId())
 				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
 		
 	    Tag tag = tagRepository.findById(dto.getTagId())

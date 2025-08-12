@@ -12,6 +12,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class ProductUpdateDto {
+	private Long productId;
 	private Long tagId;
 	private String productName;
     private String productContent;
