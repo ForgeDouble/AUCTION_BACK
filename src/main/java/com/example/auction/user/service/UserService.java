@@ -161,7 +161,7 @@ public class UserService {
             throw new RuntimeException("닉네임은 2~8자로 입력해 주세요.");
         }
         if (!newNickname.matches("^[A-Za-z0-9가-힣_]+$")) {
-            throw new RuntimeException("닉네임은 영문,숫자,한글,언더스코어 에서만 사용가능합니다.");
+            throw new RuntimeException("닉네임은 영문,숫자,한글,_ 만 사용가능합니다.");
         }
 
         if (newNickname.equals(user.getNickname())) {
@@ -177,7 +177,7 @@ public class UserService {
             }
         }
 
-        // 중복 체크 (탈퇴하지 않은 유저에 한정하려면 existsByNicknameAndDelYn 사용)
+        // 중복 체크
         boolean exists = userRepository.existsByNicknameAndDelYn(newNickname, DelYN.N);
         if (exists) {
             throw new RuntimeException("이미 사용 중인 닉네임입니다.");
