@@ -31,16 +31,22 @@ public class Report extends BaseTimeEntity {
     @JoinColumn(name = "reported_id", nullable = false)
     private User reported;
 
-    @Enumerated(EnumType.STRING) @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ReportCategory category;
 
+    // 신고 이유
     @Column(length = 500)
-    private String description; // 증빙/사유(선택, ETC면 필수 추천)
+    private String description;
 
-    @Enumerated(EnumType.STRING) @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ReportStatus status;
 
     // 조치 시간
     private LocalDateTime processedAt;
+
+    @Column(length = 500)
+    private String adminNote; // 정지/경고 이유
 
 }
