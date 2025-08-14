@@ -1,5 +1,7 @@
 package com.example.auction.product.dto;
 
+import com.example.auction.product.domain.SellYN;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,10 +13,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductUpdateDto {
+public class ProductDeleteDto {
 	private Long productId;
-	private Long tagId;
-	private String productName;
-    private String productContent;
-    private Long price;
+	
 }

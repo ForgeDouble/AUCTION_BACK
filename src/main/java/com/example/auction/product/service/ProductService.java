@@ -10,6 +10,7 @@ import com.example.auction.common.domain.DelYN;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.domain.Tag;
 import com.example.auction.product.dto.ProductCreateDto;
+import com.example.auction.product.dto.ProductDeleteDto;
 import com.example.auction.product.dto.ProductReadAllDto;
 import com.example.auction.product.dto.ProductReadDto;
 import com.example.auction.product.dto.ProductUpdateDto;
@@ -45,7 +46,7 @@ public class ProductService {
 		return ProductReadDto.fromEntity(product);
 	}
 	
-	// 전체 아이템 조회
+	// 아이템 목록 조회
 	@Transactional(readOnly = true)
 	public List<ProductReadAllDto> readAllProducts() {
 		return productRepository.findAll().stream()
@@ -56,8 +57,8 @@ public class ProductService {
 	
 	// 아이템 수정
 	@Transactional
-	public void updateProduct(Long productId, ProductUpdateDto dto) {
-		Product product = productRepository.findById(productId)
+	public void updateProduct(ProductUpdateDto dto) {
+		Product product = productRepository.findById(dto.getProductId())
 				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
 		
 	    Tag tag = tagRepository.findById(dto.getTagId())
@@ -69,5 +70,11 @@ public class ProductService {
 	
 	
 	// 아이템 삭제
-	
+	@Transactional
+	public void deleteProduct(ProductDeleteDto dto) {
+		Product product = productRepository.findById(dto.getProductId())
+				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
+		product.softDelete();
+		productRepository.save(product);
+	}
 }
