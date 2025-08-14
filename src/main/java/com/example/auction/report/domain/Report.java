@@ -37,7 +37,7 @@ public class Report extends BaseTimeEntity {
 
     // 신고 이유
     @Column(length = 500)
-    private String description;
+    private String content;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -49,14 +49,5 @@ public class Report extends BaseTimeEntity {
     @Column(length = 500)
     private String adminNote; // 정지/경고 이유
 
-    public static Report report(User reporter, User reported, ReportCategory category, String description) {
-        return Report.builder()
-                .reporter(reporter)
-                .reported(reported)
-                .category(category)
-                .description(description.trim())
-                .status(ReportStatus.PENDING)
-                .build();
-    }
 
 }
