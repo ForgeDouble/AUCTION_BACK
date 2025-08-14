@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auction.product.dto.ProductCreateDto;
+import com.example.auction.product.dto.ProductDeleteDto;
 import com.example.auction.product.dto.ProductReadAllDto;
 import com.example.auction.product.dto.ProductReadDto;
 import com.example.auction.product.dto.ProductUpdateDto;
@@ -75,7 +76,20 @@ public class ProductController {
     public ResponseEntity<?> updateProduct(@ModelAttribute ProductUpdateDto productUpdateDto) {
         try {
             productService.updateProduct(productUpdateDto);
-            return ResponseEntity.ok("회원정보 수정 완료");
+            return ResponseEntity.ok("상품정보 수정 완료");
+        } catch (RuntimeException e) {
+        	return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류");
+        }
+    }
+    
+    // 상품 삭제
+    @PutMapping("/delete")
+    public ResponseEntity<?> deleteProduct(@ModelAttribute ProductDeleteDto productDeleteDto) {
+        try {
+            productService.deleteProduct(productDeleteDto);
+            return ResponseEntity.ok("상품정보 삭제 완료");
         } catch (RuntimeException e) {
         	return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
