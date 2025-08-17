@@ -52,7 +52,16 @@ public class User extends BaseTimeEntity {
     @Column(unique = true, length = 30)
     private String nickname;
 
+    // 닉네임 변경 관련
     private LocalDateTime lastNicknameChangedAt;
+
+    // 잠금 시간
+    private LocalDateTime suspendedUntil;
+
+    // 활동잠금
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean activityLocked = false;
 
 //    private String profileImage;
 

@@ -41,7 +41,7 @@ public class Report extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ReportStatus status;
+    private ReportStatus status = ReportStatus.PENDING;
 
     // 조치 시간
     private LocalDateTime processedAt;
@@ -49,5 +49,15 @@ public class Report extends BaseTimeEntity {
     @Column(length = 500)
     private String adminNote; // 정지/경고 이유
 
+    public void accept(String adminNote) {
+        this.status = ReportStatus.ACCEPTED;
+        this.adminNote = adminNote;
+        this.processedAt = LocalDateTime.now();
+    }
 
+    public void reject(String adminNote) {
+        this.status = ReportStatus.REJECTED;
+        this.adminNote = adminNote;
+        this.processedAt = LocalDateTime.now();
+    }
 }

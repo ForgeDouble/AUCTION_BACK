@@ -5,12 +5,13 @@ import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportStatus;
 import com.example.auction.report.dto.ReportCreateDto;
+import com.example.auction.report.dto.ReportProcessDto;
 import com.example.auction.report.repository.ReportRepository;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
+import com.example.auction.user.service.UserService;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,6 +21,9 @@ import java.util.Map;
 public class ReportService {
     private final UserRepository userRepository;
     private final ReportRepository reportRepository;
+    private final UserService userService;
+
+    // 중복 신고 방지 일 수
     private static final int DUP_WINDOW_DAYS = 7;
 
     // 카테고리별 즉시 정지 일수
@@ -42,7 +46,7 @@ public class ReportService {
             ReportCategory.OTHER, 1L
     );
 
-    // 누적 경고 임계
+    // 자동 정지 리미트
     private static final long WARN_TIER_WEEK  = 10L;
     private static final long WARN_TIER_MONTH = 20L;
     private static final long WARN_TIER_YEAR  = 30L;
@@ -51,9 +55,10 @@ public class ReportService {
     // 탈퇴
     private static final long WARN_DELETE_THRESHOLD = 50L;
 
-    public ReportService(UserRepository userRepository, ReportRepository reportRepository) {
+    public ReportService(UserRepository userRepository, ReportRepository reportRepository, UserService userService) {
         this.userRepository = userRepository;
         this.reportRepository = reportRepository;
+        this.userService = userService;
     }
 
 
@@ -85,6 +90,27 @@ public class ReportService {
         if (dup) throw new RuntimeException("최근 동일 대상/카테고리 신고가 접수/승인 상태입니다.");
 
         reportRepository.save(dto.toEntity(reporter, reported));
+
+        userRepository.save(reported);
+    }
+
+    public void process(ReportProcessDto dto) {
+        userService.checkAdminAuthority();
+        Report report = reportRepository.findById(dto.getReportId())
+                .orElseThrow(() -> new RuntimeException("신고를 찾을 수 없습니다."));
+
+        if (report.getStatus() != ReportStatus.PENDING)
+            throw new RuntimeException("이미 처리된 신고입니다.");
+
+        User target = report.getReported();
+
+        if (dto.isAccept()) {
+
+        } else {
+
+        }
+
+        userRepository.save(target);
     }
 
 
