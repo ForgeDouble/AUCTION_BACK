@@ -17,7 +17,7 @@ import lombok.RequiredArgsConstructor;
 public class TagController {
 	private final TagService tagService;
 	
-	// 상품 생성
+	// 태그 생성
     @PostMapping("/")
     public ResponseEntity<?> createTag(@ModelAttribute TagCreateDto tagCreateDto) {
         try {
@@ -29,4 +29,6 @@ public class TagController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
         }
     }
+    
+    
 }
