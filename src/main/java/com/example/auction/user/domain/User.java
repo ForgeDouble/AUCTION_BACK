@@ -57,11 +57,15 @@ public class User extends BaseTimeEntity {
 //    private String profileImage;
 
     public void update(UserUpdateDto dto) {
-        this.name = dto.getName();
-        this.gender = dto.getGender();
-        this.address = dto.getAddress();
-        this.birthday = dto.getBirthday();
-        this.phone = dto.getPhone();
+        if (dto.getName() != null && !dto.getName().isBlank()) {
+            this.name = dto.getName().trim();
+        }
+        if (dto.getAddress() != null && !dto.getAddress().isBlank()) {
+            this.address = dto.getAddress().trim();
+        }
+        if (dto.getPhone() != null && !dto.getPhone().isBlank()) {
+            this.phone = dto.getPhone().trim();
+        }
     }
 
     // 닉네임 변경 메서드
