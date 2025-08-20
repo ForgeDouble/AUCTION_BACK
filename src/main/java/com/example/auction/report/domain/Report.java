@@ -3,15 +3,12 @@ package com.example.auction.report.domain;
 import com.example.auction.common.domain.BaseTimeEntity;
 import com.example.auction.user.domain.User;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Getter
+@Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -27,9 +24,8 @@ public class Report extends BaseTimeEntity {
     private User reporter;
 
     // 신고당한 사람
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reported_id", nullable = false)
-    private User reported;
+    @Column(nullable = false)
+    private Long targetId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -41,23 +37,15 @@ public class Report extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ReportStatus status = ReportStatus.PENDING;
+    private ReportStatus status;
 
-    // 조치 시간
     private LocalDateTime processedAt;
-
     @Column(length = 500)
-    private String adminNote; // 정지/경고 이유
+    private String adminContent; // 정지/경고 이유
 
-    public void accept(String adminNote) {
-        this.status = ReportStatus.ACCEPTED;
-        this.adminNote = adminNote;
-        this.processedAt = LocalDateTime.now();
-    }
 
-    public void reject(String adminNote) {
-        this.status = ReportStatus.REJECTED;
-        this.adminNote = adminNote;
-        this.processedAt = LocalDateTime.now();
+    @PrePersist
+    void prePersist() {
+        if (status == null) status = ReportStatus.PENDING;
     }
 }
