@@ -1,5 +1,7 @@
 package com.example.auction.product.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -52,6 +54,19 @@ public class TagController {
 		} catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
         }
+    }
+    
+    // 태그 목록 조회
+    @GetMapping("/")
+    public ResponseEntity<?> getAllTags() {
+    	try {
+    		List<TagReadDto> tagReadDtos = tagService.getAllTags();
+    		return ResponseEntity.ok(tagReadDtos);
+		} catch (RuntimeException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
+		}
     }
     
 }
