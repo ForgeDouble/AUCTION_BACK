@@ -8,16 +8,8 @@ import lombok.*;
 @Getter
 @Setter
 public class ReportCreateDto {
-    private Long reportedId;
+    private Long targetId;
     private ReportCategory category;
     private String content;
 
-    public Report toEntity(User reporter, User reported) {
-        return Report.builder()
-                .reporter(reporter)
-                .reported(reported)
-                .category(category)
-                .content(content)
-                .build();
-    }
 }
