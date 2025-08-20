@@ -1,12 +1,10 @@
 package com.example.auction.report.dto;
 
+import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportStatus;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.Getter;
-
 import java.time.LocalDateTime;
 
 @Data
@@ -20,4 +18,17 @@ public class ReportResponseDto {
     private String content;
     private ReportStatus status;
     private LocalDateTime createdAt;
+
+    public static ReportResponseDto fromEntity(Report report) {
+        return ReportResponseDto.builder()
+                .id(report.getId())
+                .reporterId(report.getReporter().getUserId())
+                .reporterName(report.getReporter().getName())
+                .targetId(report.getTargetId())
+                .category(report.getCategory())
+                .content(report.getContent())
+                .status(report.getStatus())
+                .createdAt(report.getCreatedAt())
+                .build();
+    }
 }

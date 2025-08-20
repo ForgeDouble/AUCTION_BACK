@@ -7,9 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 
 public interface ReportRepository extends JpaRepository<Report, Long> {
-    boolean existsByReporter_UserIdAndReported_UserIdAndCategoryAndStatusInAndCreatedAtAfter(
-            Long reporterId, Long reportedId, ReportCategory category, Collection<ReportStatus> statuses, LocalDateTime after
-    );
+    boolean existsByReporter_IdAndTargetIdAndCategory(Long reporterId, Long targetId, ReportCategory category);
+    List<Report> findByTargetIdAndStatus(Long targetId, ReportStatus status);
 }

@@ -2,128 +2,72 @@ package com.example.auction.report.service;
 
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.report.domain.Report;
-import com.example.auction.report.domain.ReportCategory;
-import com.example.auction.report.domain.ReportStatus;
 import com.example.auction.report.dto.ReportCreateDto;
-import com.example.auction.report.dto.ReportProcessDto;
+import com.example.auction.report.dto.ReportResponseDto;
 import com.example.auction.report.repository.ReportRepository;
 import com.example.auction.user.domain.User;
+import com.example.auction.user.domain.UserReportAggregate;
+import com.example.auction.user.repository.UserReportAggregateRepository;
 import com.example.auction.user.repository.UserRepository;
-import com.example.auction.user.service.UserService;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class ReportService {
-    private final UserRepository userRepository;
     private final ReportRepository reportRepository;
-    private final UserService userService;
+    private final UserRepository userRepository;
+    private final UserReportAggregateRepository aggRepository;
 
-    // 중복 신고 방지 일 수
-    private static final int DUP_WINDOW_DAYS = 7;
 
-    // 카테고리별 즉시 정지 일수
-    private static final Map<ReportCategory, Integer> CATEGORY_IMMEDIATE_SUSPEND_DAYS = Map.of(
-            ReportCategory.SPAM, 0,
-            ReportCategory.AD, 0,
-            ReportCategory.ABUSE, 3,
-            ReportCategory.HATE, 7,
-            ReportCategory.SCAM, 14,
-            ReportCategory.OTHER, 0
-    );
-
-    // 카테고리별 경고 가중치
-    private static final Map<ReportCategory, Long> CATEGORY_WARNING_WEIGHT = Map.of(
-            ReportCategory.SPAM, 1L,
-            ReportCategory.AD, 1L,
-            ReportCategory.ABUSE, 3L,
-            ReportCategory.HATE, 4L,
-            ReportCategory.SCAM, 5L,
-            ReportCategory.OTHER, 1L
-    );
-
-    // 자동 정지 리미트
-    private static final long WARN_TIER_WEEK  = 10L;
-    private static final long WARN_TIER_MONTH = 20L;
-    private static final long WARN_TIER_YEAR  = 30L;
-    private static final long WARN_TIER_PERM  = 40L;
-
-    // 탈퇴
-    private static final long WARN_DELETE_THRESHOLD = 50L;
-
-    // 활동 잠금 ( 같은 범위로 많은 신고 입력 시 관리자 "승인" "거절" 전까지
-    private static final Map<ReportCategory, Integer> CATEGORY_PENDING_LOCK_THRESHOLD = Map.of(
-            ReportCategory.SPAM,  3,
-            ReportCategory.AD,    3,
-            ReportCategory.ABUSE, 2,
-            ReportCategory.HATE,  2,
-            ReportCategory.SCAM,  2,
-            ReportCategory.OTHER, 3
-    );
-    private static final int CATEGORY_LOCK_WINDOW_DAYS = 30;
-
-    public ReportService(UserRepository userRepository, ReportRepository reportRepository, UserService userService) {
-        this.userRepository = userRepository;
+    public ReportService(ReportRepository reportRepository, UserRepository userRepository, UserReportAggregateRepository aggRepository) {
         this.reportRepository = reportRepository;
-        this.userService = userService;
+        this.userRepository = userRepository;
+        this.aggRepository = aggRepository;
     }
+
+    private static final long PENDING_THRESHOLD_PER_CATEGORY = 5L;
 
 
     /* 신고하기 */
-    public void create(ReportCreateDto dto) {
+    @Transactional
+    public ReportResponseDto create(ReportCreateDto dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User reporter = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
 
-        if (dto.getReportedId() == null) throw new RuntimeException("신고 대상이 없습니다.");
-
+        if (dto.getTargetId() == null) throw new RuntimeException("신고 대상이 없습니다.");
         if (dto.getCategory() == null) throw new RuntimeException("신고 카테고리를 선택해 주세요.");
+        if (dto.getTargetId().equals(reporter.getUserId()))
+            throw new RuntimeException("자기 자신을 신고할 수 없습니다.");
 
-        // 피신고자 확인
-        User reported = userRepository.findById(dto.getReportedId())
-                .filter(u -> u.getDelYn() == DelYN.N)
-                .orElseThrow(() -> new RuntimeException("신고 대상 유저가 존재하지 않거나 이미 탈퇴했습니다."));
+        User target = userRepository.findByIdAndDelYn(dto.getTargetId(), DelYN.N)
+                .orElseThrow(() -> new RuntimeException("대상 유저가 존재하지 않거나 비활성화 상태입니다."));
 
-        // 자기 자신 신고 금지
-        if (reporter.getUserId().equals(reported.getUserId())) {
-            throw new RuntimeException("본인을 신고할 수 없습니다.");
-        }
-        boolean dup = reportRepository
-                .existsByReporter_UserIdAndReported_UserIdAndCategoryAndStatusInAndCreatedAtAfter(
-                        reporter.getUserId(), reported.getUserId(), dto.getCategory(),
-                        List.of(ReportStatus.PENDING, ReportStatus.ACCEPTED),
-                        LocalDateTime.now().minusDays(DUP_WINDOW_DAYS)
-                );
-        if (dup) throw new RuntimeException("최근 동일 대상/카테고리 신고가 접수/승인 상태입니다.");
+        boolean dup = reportRepository.existsByReporter_IdAndTargetIdAndCategory(
+                reporter.getUserId(), dto.getTargetId(), dto.getCategory());
+        if (dup) throw new RuntimeException("이미 해당 카테고리로 신고하셨습니다.");
 
-        reportRepository.save(dto.toEntity(reporter, reported));
+        Report report = dto.toEntity(reporter);
+        reportRepository.save(report);
 
-        userRepository.save(reported);
-    }
+        UserReportAggregate agg = aggRepository
+                .findByTargetUserIdAndCategory(dto.getTargetId(), dto.getCategory())
+                .orElse(UserReportAggregate.init(dto.getTargetId(), dto.getCategory()));
+        agg.incPending();
+        aggRepository.save(agg);
 
-    public void process(ReportProcessDto dto) {
-        userService.checkAdminAuthority();
-        Report report = reportRepository.findById(dto.getReportId())
-                .orElseThrow(() -> new RuntimeException("신고를 찾을 수 없습니다."));
-
-        if (report.getStatus() != ReportStatus.PENDING)
-            throw new RuntimeException("이미 처리된 신고입니다.");
-
-        User target = report.getReported();
-
-        if (dto.isAccept()) {
-
-        } else {
-
+        // 임계치까지 신고 접수 시 조회만 가능하게 만드는 메서드
+        if (agg.getPendingCount() >= PENDING_THRESHOLD_PER_CATEGORY && !Boolean.TRUE.equals(target.getViewOnly())) {
+            target.makeViewOnly();
+            userRepository.save(target);
         }
 
-        userRepository.save(target);
+        return ReportResponseDto.fromEntity(report);
     }
-
 
 
 

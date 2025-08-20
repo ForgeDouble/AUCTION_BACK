@@ -48,4 +48,14 @@ public class Report extends BaseTimeEntity {
     void prePersist() {
         if (status == null) status = ReportStatus.PENDING;
     }
+
+    public static Report create(User reporter, Long targetId, ReportCategory category, String content) {
+        Report report = new Report();
+        report.reporter = reporter;
+        report.targetId = targetId;
+        report.category = category;
+        report.content  = content;
+        report.status   = ReportStatus.PENDING;
+        return report;
+    }
 }

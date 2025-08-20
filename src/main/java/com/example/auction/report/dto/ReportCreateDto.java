@@ -12,4 +12,14 @@ public class ReportCreateDto {
     private ReportCategory category;
     private String content;
 
+    public Report toEntity(User reporter) {
+        return Report.builder()
+                .reporter(reporter)
+                .targetId(targetId)
+                .category(category)
+                .content(content)
+                .build();
+    }
+
+
 }
