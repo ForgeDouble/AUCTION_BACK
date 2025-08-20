@@ -42,6 +42,7 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 11)
     private String phone; // xxx-xxxx-xxxx
 
+    @Builder.Default
     @Column(nullable = false)
     private Long warning = 0L;
 
@@ -52,7 +53,17 @@ public class User extends BaseTimeEntity {
     @Column(unique = true, length = 30)
     private String nickname;
 
+    // 닉네임 변경 관련
     private LocalDateTime lastNicknameChangedAt;
+
+    // 정지 종료 시각
+    private LocalDateTime suspendedUntil;
+
+    // 임시 잠금
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean viewOnly = false;
+
 
 //    private String profileImage;
 
@@ -73,4 +84,14 @@ public class User extends BaseTimeEntity {
         this.nickname = newNickname;
         this.lastNicknameChangedAt = LocalDateTime.now();
     }
+    // 임시정지 활성화
+    public void makeViewOnly() { this.viewOnly = true; }
+
+    // 임시정지 해제 ( 관리자 취소 경우 / 임계치 이하 도달 시 )
+    public void cancelViewOnly() { this.viewOnly = false; }
+
+    // 확정 정지
+    public void suspendUntil(LocalDateTime until) { this.suspendedUntil = until; }
+    // 확정 정지 해제
+    public void liftSuspension() { this.suspendedUntil = null; }
 }
