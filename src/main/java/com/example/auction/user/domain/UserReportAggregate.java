@@ -32,4 +32,24 @@ public class UserReportAggregate extends BaseTimeEntity {
 
     @Column(nullable = false)
     private Long acceptedCount;
+
+    public static UserReportAggregate init(Long targetUserId, ReportCategory category) {
+        UserReportAggregate aggregate = new UserReportAggregate();
+        aggregate.targetUserId = targetUserId;
+        aggregate.category = category;
+        aggregate.pendingCount = 0L;
+        aggregate.acceptedCount = 0L;
+        return aggregate;
+    }
+
+    public void incPending() { this.pendingCount += 1; }
+
+    public void movePendingToAccepted(long n) {
+        this.pendingCount = Math.max(0, this.pendingCount - n);
+        this.acceptedCount += n;
+    }
+
+    public void decPending(long n) {
+        this.pendingCount = Math.max(0, this.pendingCount - n);
+    }
 }
