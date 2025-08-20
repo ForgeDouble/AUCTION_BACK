@@ -82,8 +82,14 @@ public class User extends BaseTimeEntity {
         this.nickname = newNickname;
         this.lastNicknameChangedAt = LocalDateTime.now();
     }
+    // 임시정지 활성화
+    public void makeViewOnly() { this.viewOnly = true; }
 
-    public boolean isSuspendedNow() {
-        return suspendedUntil != null && suspendedUntil.isAfter(LocalDateTime.now());
-    }
+    // 임시정지 해제 ( 관리자 취소 경우 / 임계치 이하 도달 시 )
+    public void cancelViewOnly() { this.viewOnly = false; }
+
+    // 확정 정지
+    public void suspendUntil(LocalDateTime until) { this.suspendedUntil = until; }
+    // 확정 정지 해제
+    public void liftSuspension() { this.suspendedUntil = null; }
 }

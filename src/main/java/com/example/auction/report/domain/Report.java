@@ -58,4 +58,15 @@ public class Report extends BaseTimeEntity {
         report.status   = ReportStatus.PENDING;
         return report;
     }
+
+    public void accept(String adminContent) {
+        this.status = ReportStatus.ACCEPTED;
+        this.processedAt = LocalDateTime.now();
+        this.adminContent = adminContent;
+    }
+    public void reject(String adminContent) {
+        this.status = ReportStatus.REJECTED;
+        this.processedAt = LocalDateTime.now();
+        this.adminContent = adminContent;
+    }
 }
