@@ -41,7 +41,7 @@ public class ProductService {
 	// 아이템 조회
 	@Transactional(readOnly = true)
 	public ProductReadDto readProduct(Long productId) {
-		Product product = productRepository.findById(productId)
+		Product product = productRepository.findByProductIdAndDelYn(productId, DelYN.N)
 				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
 		return ProductReadDto.fromEntity(product);
 	}
