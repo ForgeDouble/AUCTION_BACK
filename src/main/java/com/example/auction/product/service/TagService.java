@@ -1,5 +1,7 @@
 package com.example.auction.product.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,9 +37,19 @@ public class TagService {
 //		
 //	}
 	
+	// 태그 단일 조회
+	@Transactional
 	public TagReadDto getTag(Long tagId) {
         Tag tag = tagRepository.findByIdWithChildren(tagId)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 태그입니다."));
         return TagReadDto.fromEntity(tag);
     }
+	
+	// 태그 목록 조회
+	 public List<TagReadDto> getAllTags() {
+		 List<Tag> tags = tagRepository.findAllWithChildren();
+		 return tags.stream()
+	                .map(TagReadDto::fromEntity)
+	                .toList();
+	}
 }
