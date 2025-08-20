@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.List;
 
 public interface ReportRepository extends JpaRepository<Report, Long> {
-    boolean existsByReporter_IdAndTargetIdAndCategory(Long reporterId, Long targetId, ReportCategory category);
+    boolean existsByReporter_UserIdAndTargetIdAndCategory(Long reporterUserId, Long targetId, ReportCategory category);
+
     List<Report> findByTargetIdAndStatus(Long targetId, ReportStatus status);
 }

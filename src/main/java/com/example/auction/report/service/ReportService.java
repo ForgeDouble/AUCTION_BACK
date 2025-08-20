@@ -53,7 +53,7 @@ public class ReportService {
         User target = userRepository.findByUserIdAndDelYn(dto.getTargetId(), DelYN.N)
                 .orElseThrow(() -> new RuntimeException("대상 유저가 존재하지 않거나 비활성화 상태입니다."));
 
-        boolean dup = reportRepository.existsByReporter_IdAndTargetIdAndCategory(
+        boolean dup = reportRepository.existsByReporter_UserIdAndTargetIdAndCategory(
                 reporter.getUserId(), dto.getTargetId(), dto.getCategory());
         if (dup) throw new RuntimeException("이미 해당 카테고리로 신고하셨습니다.");
 
