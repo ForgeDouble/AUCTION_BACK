@@ -55,13 +55,13 @@ public class User extends BaseTimeEntity {
     // 닉네임 변경 관련
     private LocalDateTime lastNicknameChangedAt;
 
-    // 잠금 시간
+    // 정지 종료 시각
     private LocalDateTime suspendedUntil;
 
-    // 활동잠금
+    // 임시 잠금
     @Column(nullable = false)
-    @Builder.Default
-    private boolean activityLocked = false;
+    private Boolean viewOnly = false;
+
 
 //    private String profileImage;
 
@@ -81,5 +81,9 @@ public class User extends BaseTimeEntity {
     public void changeNickname(String newNickname) {
         this.nickname = newNickname;
         this.lastNicknameChangedAt = LocalDateTime.now();
+    }
+
+    public boolean isSuspendedNow() {
+        return suspendedUntil != null && suspendedUntil.isAfter(LocalDateTime.now());
     }
 }

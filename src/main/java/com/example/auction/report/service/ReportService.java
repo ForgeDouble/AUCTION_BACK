@@ -55,6 +55,17 @@ public class ReportService {
     // 탈퇴
     private static final long WARN_DELETE_THRESHOLD = 50L;
 
+    // 활동 잠금 ( 같은 범위로 많은 신고 입력 시 관리자 "승인" "거절" 전까지
+    private static final Map<ReportCategory, Integer> CATEGORY_PENDING_LOCK_THRESHOLD = Map.of(
+            ReportCategory.SPAM,  3,
+            ReportCategory.AD,    3,
+            ReportCategory.ABUSE, 2,
+            ReportCategory.HATE,  2,
+            ReportCategory.SCAM,  2,
+            ReportCategory.OTHER, 3
+    );
+    private static final int CATEGORY_LOCK_WINDOW_DAYS = 30;
+
     public ReportService(UserRepository userRepository, ReportRepository reportRepository, UserService userService) {
         this.userRepository = userRepository;
         this.reportRepository = reportRepository;
@@ -112,6 +123,8 @@ public class ReportService {
 
         userRepository.save(target);
     }
+
+
 
 
 }
