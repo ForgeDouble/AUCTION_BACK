@@ -42,6 +42,7 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false, length = 11)
     private String phone; // xxx-xxxx-xxxx
 
+    @Builder.Default
     @Column(nullable = false)
     private Long warning = 0L;
 
@@ -59,6 +60,7 @@ public class User extends BaseTimeEntity {
     private LocalDateTime suspendedUntil;
 
     // 임시 잠금
+    @Builder.Default
     @Column(nullable = false)
     private Boolean viewOnly = false;
 
