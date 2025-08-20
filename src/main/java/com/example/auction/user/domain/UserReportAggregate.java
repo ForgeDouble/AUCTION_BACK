@@ -42,14 +42,14 @@ public class UserReportAggregate extends BaseTimeEntity {
         return aggregate;
     }
 
-    public void incPending() { this.pendingCount += 1; }
+    public void increasePending() { this.pendingCount += 1; }
 
     public void movePendingToAccepted(long n) {
         this.pendingCount = Math.max(0, this.pendingCount - n);
         this.acceptedCount += n;
     }
 
-    public void decPending(long n) {
+    public void decreasePending(long n) {
         this.pendingCount = Math.max(0, this.pendingCount - n);
     }
 }

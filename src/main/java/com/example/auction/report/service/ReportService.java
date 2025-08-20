@@ -60,14 +60,14 @@ public class ReportService {
         Report report = dto.toEntity(reporter);
         reportRepository.save(report);
 
-        UserReportAggregate agg = aggRepository
+        UserReportAggregate aggregate = aggRepository
                 .findByTargetUserIdAndCategory(dto.getTargetId(), dto.getCategory())
                 .orElse(UserReportAggregate.init(dto.getTargetId(), dto.getCategory()));
-        agg.incPending();
-        aggRepository.save(agg);
+        aggregate.increasePending();
+        aggRepository.save(aggregate);
 
         // 임계치까지 신고 접수 시 조회가능 메서드
-        if (agg.getPendingCount() >= PENDING_THRESHOLD_PER_CATEGORY && !Boolean.TRUE.equals(target.getViewOnly())) {
+        if (aggregate.getPendingCount() >= PENDING_THRESHOLD_PER_CATEGORY && !Boolean.TRUE.equals(target.getViewOnly())) {
             target.makeViewOnly();
             userRepository.save(target);
         }
@@ -75,7 +75,7 @@ public class ReportService {
         return ReportResponseDto.fromEntity(report);
     }
 
-    /* 관리자 승인 / 취소 */
+    /* 관리자 카테고리에 대한 승인 & 취소 */
     @Transactional
     public void adminResolveCategoryForUser(Long targetUserId, ReportCategory category, AdminResolveDto dto) {
         userService.checkAdminAuthority();
@@ -113,7 +113,7 @@ public class ReportService {
             pendings.forEach(r -> r.reject(dto.getAdminContent()));
             reportRepository.saveAll(pendings);
 
-            aggregate.decPending(pendings.size());
+            aggregate.decreasePending(pendings.size());
             aggRepository.save(aggregate);
 
             // 임계치 미만이면 임시정지 해제
@@ -122,6 +122,34 @@ public class ReportService {
                 userRepository.save(target);
             }
         }
+    }
+
+    /* 개별 즉시 정지 / 해제 */
+    @Transactional
+    public void adminSuspendUser(Long targetUserId, long days, String reason) {
+        userService.checkAdminAuthority();
+
+        User target = userRepository.findByUserIdAndDelYn(targetUserId, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("대상 유저가 존재하지 않거나 비활성화 상태입니다."));
+
+        target.suspendUntil(LocalDateTime.now().plusDays(days));
+        target.cancelViewOnly();
+        userRepository.save(target);
+        // 필요시 AdminActionLog 기록 등
+    }
+
+    /* 상태 복구 */
+    @Transactional
+    public void adminLiftAll(Long targetUserId, String reason) {
+        userService.checkAdminAuthority();
+
+        User target = userRepository.findByUserIdAndDelYn(targetUserId, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("대상 유저가 존재하지 않거나 비활성화 상태입니다."));
+
+        target.liftSuspension();
+        target.cancelViewOnly();
+
+        userRepository.save(target);
     }
 
 }
