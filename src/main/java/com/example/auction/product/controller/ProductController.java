@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.auction.common.dto.CommonResDto;
 import com.example.auction.product.dto.ProductCreateDto;
 import com.example.auction.product.dto.ProductDeleteDto;
 import com.example.auction.product.dto.ProductReadAllDto;
@@ -34,14 +35,8 @@ public class ProductController {
 	// 상품 생성
     @PostMapping("/")
     public ResponseEntity<?> createProduct(@ModelAttribute ProductCreateDto productCreateDto) {
-        try {
 			productService.createProduct(productCreateDto);
-			return ResponseEntity.ok("상품 생성 완료");
-		} catch (RuntimeException e) {
-			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-		} catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
-        }
+			return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 생성 성공", productCreateDto));
     }
     
     // 상품 단일 조회
