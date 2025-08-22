@@ -27,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/product")
 @RequiredArgsConstructor
-@Slf4j
 public class ProductController {
 	
 	private final ProductService productService;
@@ -42,54 +41,29 @@ public class ProductController {
     // 상품 단일 조회
     @GetMapping("/{productId}")
     public ResponseEntity<?> ReadProduct(@PathVariable("productId") Long productId) {
-    	log.info("ReadProduct called with id={}", productId);
-        try {
 			ProductReadDto productReadDto = productService.readProduct(productId);
-			return ResponseEntity.ok(productReadDto);
-		} catch (RuntimeException e) {
-			log.error("런타임 예외 발생", e);
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-		} catch (Exception e) {
-			log.error("알 수 없는 서버 오류", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
-        }
+			return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", productReadDto));
     }
     
     /* 상품 목록 조회 */
     @GetMapping("/")
     public ResponseEntity<?> ReadAllProducts() {
-        try {
-            List<ProductReadAllDto> products = productService.readAllProducts();
-            return ResponseEntity.ok(products);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 오류");
-        }
+    	List<ProductReadAllDto> productReadAllDtos = productService.readAllProducts();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", productReadAllDtos));
     }
     
     // 상품 수정
     @PutMapping("/")
     public ResponseEntity<?> updateProduct(@ModelAttribute ProductUpdateDto productUpdateDto) {
-        try {
-            productService.updateProduct(productUpdateDto);
-            return ResponseEntity.ok("상품정보 수정 완료");
-        } catch (RuntimeException e) {
-        	return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류");
-        }
+    	productService.updateProduct(productUpdateDto);
+    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 수정 성공", null));
     }
     
     // 상품 삭제
     @PutMapping("/delete")
     public ResponseEntity<?> deleteProduct(@ModelAttribute ProductDeleteDto productDeleteDto) {
-        try {
-            productService.deleteProduct(productDeleteDto);
-            return ResponseEntity.ok("상품정보 삭제 완료");
-        } catch (RuntimeException e) {
-        	return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("서버 내부 오류");
-        }
+    	productService.deleteProduct(productDeleteDto);
+    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 삭제 성공", null));
     }
 }
 
