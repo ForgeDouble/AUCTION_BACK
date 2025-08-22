@@ -33,7 +33,7 @@ dependencies {
 
     // redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    // redission
+    // redisson
     implementation 'org.redisson:redisson-spring-boot-starter:3.23.1'
 
     // JWT

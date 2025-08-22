@@ -62,6 +62,7 @@ public class RedisConfig {
         redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
         return redisTemplate;
     }
+
     // key = 2 신고 동시성 해결
     @Bean
     @Qualifier("report")
