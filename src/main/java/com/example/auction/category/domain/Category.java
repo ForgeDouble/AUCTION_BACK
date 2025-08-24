@@ -33,7 +33,7 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long categoryId;
 	
-	@OneToMany(mappedBy = "tag")
+	@OneToMany(mappedBy = "category")
 //	@Builder.Default
     private List<Product> products = new ArrayList<>();
 	
