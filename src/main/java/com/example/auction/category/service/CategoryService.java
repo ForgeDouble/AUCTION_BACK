@@ -39,10 +39,10 @@ public class CategoryService {
 	
 	// 태그 단일 조회
 	@Transactional
-	public CategoryReadDto getCategory(Long tagId) {
-        Category tag = categoryRepository.findByIdWithChildren(tagId)
+	public CategoryReadDto getCategory(Long categoryId) {
+        Category category = categoryRepository.findByIdWithChildren(categoryId)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 태그입니다."));
-        return CategoryReadDto.fromEntity(tag);
+        return CategoryReadDto.fromEntity(category);
     }
 	
 	// 태그 목록 조회

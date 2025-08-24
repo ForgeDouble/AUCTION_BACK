@@ -28,9 +28,9 @@ public class CategoryController {
 	
 	// 태그 생성
     @PostMapping("/")
-    public ResponseEntity<?> createTag(@ModelAttribute CategoryCreateDto tagCreateDto) {
-    	categoryService.createCategory(tagCreateDto);
-    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 생성 성공", tagCreateDto));
+    public ResponseEntity<?> createTag(@ModelAttribute CategoryCreateDto categoryCreateDto) {
+    	categoryService.createCategory(categoryCreateDto);
+    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 생성 성공", categoryCreateDto));
     }
     
     //태그 삭제
@@ -40,17 +40,17 @@ public class CategoryController {
 //    }
     
     // 태그 단일 조회
-    @GetMapping("/{tagId}")
-    public ResponseEntity<?> ReadTag(@PathVariable("tagId") Long tagId) {
-		CategoryReadDto tagReadDto = categoryService.getCategory(tagId);
-		return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 조회 성공", tagReadDto));
+    @GetMapping("/{categoryId}")
+    public ResponseEntity<?> ReadTag(@PathVariable("categoryId") Long categoryId) {
+		CategoryReadDto categoryReadDto = categoryService.getCategory(categoryId);
+		return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 조회 성공", categoryReadDto));
     }
     
     // 태그 목록 조회
     @GetMapping("/")
     public ResponseEntity<?> getAllTags() {
-    	List<CategoryReadDto> tagReadDtos = categoryService.getAllCategories();
-    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 목록 조회 성공", tagReadDtos));
+    	List<CategoryReadDto> categoryReadDtos = categoryService.getAllCategories();
+    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 목록 조회 성공", categoryReadDtos));
     }
     
 }
