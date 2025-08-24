@@ -6,16 +6,16 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.example.auction.category.domain.Category;
+import com.example.auction.category.repository.CategoryRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.product.domain.Product;
-import com.example.auction.product.domain.Tag;
 import com.example.auction.product.dto.ProductCreateDto;
 import com.example.auction.product.dto.ProductDeleteDto;
 import com.example.auction.product.dto.ProductReadAllDto;
 import com.example.auction.product.dto.ProductReadDto;
 import com.example.auction.product.dto.ProductUpdateDto;
 import com.example.auction.product.repository.ProductRepository;
-import com.example.auction.product.repository.TagRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -23,16 +23,16 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ProductService {
 	
-	private final TagRepository tagRepository;
+	private final CategoryRepository categoryRepository;
 	private final ProductRepository productRepository;
 	
 	// 아이템 생성
 	@Transactional
 	public Product createProduct(ProductCreateDto dto) {
-		Tag tag = tagRepository.findById(dto.getTagId())
+		Category category = categoryRepository.findById(dto.getCategoryId())
 				.orElseThrow(() -> new RuntimeException("태그 없음"));
 		Product product = dto.toProduct();
-		product.setTag(tag);
+		product.setCategory(category);
 		
 		return productRepository.save(product);
 	}
@@ -61,10 +61,10 @@ public class ProductService {
 		Product product = productRepository.findById(dto.getProductId())
 				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
 		
-	    Tag tag = tagRepository.findById(dto.getTagId())
+	    Category category = categoryRepository.findById(dto.getCategoryId())
 	        .orElseThrow(() -> new IllegalArgumentException("태그 없음"));
 	    
-		product.update(dto, tag);
+		product.update(dto, category);
 		productRepository.save(product);
 	}
 	

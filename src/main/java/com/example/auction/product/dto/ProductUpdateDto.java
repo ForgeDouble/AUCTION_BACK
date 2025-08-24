@@ -13,7 +13,7 @@ import lombok.Setter;
 @Builder
 public class ProductUpdateDto {
 	private Long productId;
-	private Long tagId;
+	private Long categoryId;
 	private String productName;
     private String productContent;
     private Long price;

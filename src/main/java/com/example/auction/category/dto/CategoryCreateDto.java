@@ -1,7 +1,7 @@
-package com.example.auction.product.dto;
+package com.example.auction.category.dto;
 
+import com.example.auction.category.domain.Category;
 import com.example.auction.product.domain.Product;
-import com.example.auction.product.domain.Tag;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -14,13 +14,13 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TagCreateDto {
-	private String tagName;
+public class CategoryCreateDto {
+	private String categoryName;
 	private Long parentId;
 	
-	 public Tag toTag(Tag parent) {
-	    	return Tag.builder()
-	    			.tagName(tagName)
+	 public Category toCategory(Category parent) {
+	    	return Category.builder()
+	    			.categoryName(categoryName)
 	    			.parent(parent)
 	    			.build();
 	    }

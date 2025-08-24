@@ -1,8 +1,9 @@
-package com.example.auction.product.domain;
+package com.example.auction.category.domain;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import com.example.auction.product.domain.Product;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
@@ -27,27 +28,27 @@ import lombok.Setter;
 @AllArgsConstructor
 @Entity
 @Builder
-public class Tag {
+public class Category {
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long tagId;
+    private Long categoryId;
 	
 	@OneToMany(mappedBy = "tag")
 //	@Builder.Default
     private List<Product> products = new ArrayList<>();
 	
 	@Column(nullable = false)
-	private String tagName;
+	private String categoryName;
 	
 	 // 부모 태그
     @ManyToOne
     @JoinColumn(name = "parent_id")
-    @JsonBackReference
-    private Tag parent;
+//    @JsonBackReference
+    private Category parent;
 
     // 자식 태그들
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
-    @JsonManagedReference
+//    @JsonManagedReference
 //    @Builder.Default
-    private List<Tag> children = new ArrayList<>();
+    private List<Category> children = new ArrayList<>();
 }

@@ -1,5 +1,6 @@
 package com.example.auction.product.domain;
 
+import com.example.auction.category.domain.Category;
 import com.example.auction.common.domain.BaseTimeEntity;
 import com.example.auction.product.dto.ProductUpdateDto;
 
@@ -31,8 +32,8 @@ public class Product extends BaseTimeEntity{
     private Long productId;
     
     @ManyToOne
-    @JoinColumn(name = "tag_id")
-    private Tag tag;
+    @JoinColumn(name = "category_id")
+    private Category category;
     
     @Column(nullable = false)
     private String productName;
@@ -47,8 +48,8 @@ public class Product extends BaseTimeEntity{
     @Column(nullable = false)
     private SellYN sellYN;
     
-    public void update(ProductUpdateDto dto, Tag tag) {
-    	this.tag = tag;
+    public void update(ProductUpdateDto dto, Category category) {
+    	this.category = category;
     	this.productName = dto.getProductName();
     	this.productContent = dto.getProductContent();
     	this.price = dto.getPrice();
