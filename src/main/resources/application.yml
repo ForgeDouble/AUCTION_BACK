@@ -14,7 +14,7 @@ spring:
 
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/auction
+    url: jdbc:mariadb://localhost:3307/auction
     username: root
     password: 1234
 

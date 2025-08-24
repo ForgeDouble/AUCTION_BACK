@@ -16,7 +16,7 @@ import lombok.Setter;
 @Builder
 public class ProductReadAllDto {
 	private Long productId;
-	private Long tagId;
+	private Long categoryId;
 	private String productName;
     private String productContent;
     private Long price;
@@ -25,7 +25,7 @@ public class ProductReadAllDto {
     public static ProductReadAllDto fromEntity(Product product) {
     	return ProductReadAllDto.builder()
     			.productId(product.getProductId())
-    			.tagId(product.getTag().getTagId())
+    			.categoryId(product.getCategory().getCategoryId())
     			.productName(product.getProductName())
     			.productContent(product.getProductContent())
     			.price(product.getPrice())

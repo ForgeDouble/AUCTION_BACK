@@ -16,7 +16,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class ProductCreateDto {
-	private Long tagId;
+	private Long categoryId;
 	private String productName;
     private String productContent;
     private Long price;

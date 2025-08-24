@@ -1,4 +1,4 @@
-package com.example.auction.product.controller;
+package com.example.auction.category.controller;
 
 import java.util.List;
 
@@ -12,23 +12,24 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.auction.category.dto.CategoryCreateDto;
+import com.example.auction.category.dto.CategoryReadDto;
+import com.example.auction.category.service.CategoryService;
 import com.example.auction.common.dto.CommonResDto;
 import com.example.auction.product.dto.ProductReadDto;
-import com.example.auction.product.dto.TagCreateDto;
-import com.example.auction.product.dto.TagReadDto;
-import com.example.auction.product.service.TagService;
+
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/tag")
+@RequestMapping("/category")
 @RequiredArgsConstructor
-public class TagController {
-	private final TagService tagService;
+public class CategoryController {
+	private final CategoryService categoryService;
 	
 	// 태그 생성
     @PostMapping("/")
-    public ResponseEntity<?> createTag(@ModelAttribute TagCreateDto tagCreateDto) {
-    	tagService.createTag(tagCreateDto);
+    public ResponseEntity<?> createTag(@ModelAttribute CategoryCreateDto tagCreateDto) {
+    	categoryService.createCategory(tagCreateDto);
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 생성 성공", tagCreateDto));
     }
     
@@ -41,14 +42,14 @@ public class TagController {
     // 태그 단일 조회
     @GetMapping("/{tagId}")
     public ResponseEntity<?> ReadTag(@PathVariable("tagId") Long tagId) {
-		TagReadDto tagReadDto = tagService.getTag(tagId);
+		CategoryReadDto tagReadDto = categoryService.getCategory(tagId);
 		return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 조회 성공", tagReadDto));
     }
     
     // 태그 목록 조회
     @GetMapping("/")
     public ResponseEntity<?> getAllTags() {
-    	List<TagReadDto> tagReadDtos = tagService.getAllTags();
+    	List<CategoryReadDto> tagReadDtos = categoryService.getAllCategories();
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 목록 조회 성공", tagReadDtos));
     }
     
