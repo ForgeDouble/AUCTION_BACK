@@ -1,11 +1,16 @@
 package com.example.auction.wishlist.domain;
 
 
+import com.example.auction.product.domain.Product;
+import com.example.auction.user.domain.User;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,12 +28,14 @@ public class Wishlist {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long whishlistId;
 	
-	@Column(nullable = false)
-	private Long userId;
+	@ManyToOne
+	@JoinColumn(name = "user_id")
+	private User user;
 	
-	@Column(nullable = false)
-	private Long productId;
+	@ManyToOne
+	@JoinColumn(name = "product_id")
+	private Product product;
 	
-	@Column(nullable = false)
-	private Long tagId;
+//	@Column(nullable = false)
+//	private Long categoryId;
 }
