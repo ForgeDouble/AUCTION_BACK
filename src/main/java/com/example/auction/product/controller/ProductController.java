@@ -2,6 +2,7 @@ package com.example.auction.product.controller;
 
 import java.util.List;
 
+import com.example.auction.bid.dto.BidCreateDto;
 import com.example.auction.product.dto.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,10 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auction.common.dto.CommonResDto;
 import com.example.auction.product.service.ProductService;
-import com.example.auction.user.dto.UserDto;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/product")
@@ -62,10 +61,6 @@ public class ProductController {
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 삭제 성공", null));
     }
 
-    @PostMapping("/order")
-    public ResponseEntity<?> orderProduct(@ModelAttribute ProductOrderDto productOrderDto) {
-        productService.orderProduct(productOrderDto);
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 주문 성공", null));
-    }
+
 }
 

@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.example.auction.product.dto.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -23,12 +24,12 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ProductService {
 
-    @Qualifier("product")
-    private final RedisTemplate<String, Object> redisTemplate;
-	private final CategoryRepository categoryRepository;
+    private final CategoryRepository categoryRepository;
 	private final ProductRepository productRepository;
-	
-	// 아이템 생성
+
+
+
+    // 아이템 생성
 	@Transactional
 	public Product createProduct(ProductCreateDto dto) {
 		Category category = categoryRepository.findById(dto.getCategoryId())
@@ -79,25 +80,4 @@ public class ProductService {
 		product.softDelete();
 		productRepository.save(product);
 	}
-
-    @Transactional
-    public boolean orderProduct(ProductOrderDto productOrderDto) {
-        String lockKey = "lock_product_" + productOrderDto.getProductId();
-        String lockValue = UUID.randomUUID().toString();
-
-        try {
-            Boolean acquired = redisTemplate.opsForValue()
-                    .setIfAbsent(lockKey, lockValue, Duration.ofSeconds(10));
-
-            if (!acquired) {
-                return false;
-            }
-            Product product = productRepository.findByProductIdAndDelYn(productOrderDto.getProductId(), DelYN.N)
-                    .orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
-            product.setPrice(productOrderDto.getPrice());
-            return true;
-        } finally {
-//            redisTemplate.delete(lockKey);
-        }
-    }
 }
