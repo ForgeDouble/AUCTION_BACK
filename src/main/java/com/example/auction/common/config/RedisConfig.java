@@ -79,7 +79,22 @@ public class RedisConfig {
         redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
         return redisTemplate;
     }
+
     // key = 3 product 관련 동시성 해결
+    @Bean
+    @Qualifier("bid")
+    LettuceConnectionFactory connectionFactoryBid() { return  redisConnectionFactory(3);}
+
+    @Bean
+    @Qualifier("bid")
+    public RedisTemplate<String, Object> BidRedisTemplate() {
+        RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(connectionFactoryBid());
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        return redisTemplate;
+    }
+
     // key = 4 조회수 관련
 
 
