@@ -2,6 +2,7 @@ package com.example.auction.product.controller;
 
 import java.util.List;
 
+import com.example.auction.product.dto.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,11 +14,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auction.common.dto.CommonResDto;
-import com.example.auction.product.dto.ProductCreateDto;
-import com.example.auction.product.dto.ProductDeleteDto;
-import com.example.auction.product.dto.ProductReadAllDto;
-import com.example.auction.product.dto.ProductReadDto;
-import com.example.auction.product.dto.ProductUpdateDto;
 import com.example.auction.product.service.ProductService;
 import com.example.auction.user.dto.UserDto;
 
@@ -64,6 +60,12 @@ public class ProductController {
     public ResponseEntity<?> deleteProduct(@ModelAttribute ProductDeleteDto productDeleteDto) {
     	productService.deleteProduct(productDeleteDto);
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 삭제 성공", null));
+    }
+
+    @PostMapping("/order")
+    public ResponseEntity<?> orderProduct(@ModelAttribute ProductOrderDto productOrderDto) {
+        productService.orderProduct(productOrderDto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 주문 성공", null));
     }
 }
 
