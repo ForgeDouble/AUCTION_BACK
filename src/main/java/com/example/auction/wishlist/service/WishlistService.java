@@ -1,6 +1,7 @@
 package com.example.auction.wishlist.service;
 
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.wishlist.dto.WishlistAllDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,9 @@ import com.example.auction.wishlist.repository.WishlistRepository;
 
 import lombok.RequiredArgsConstructor;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class WishlistService {
@@ -22,6 +26,7 @@ public class WishlistService {
 	private final ProductRepository productRepository;
 	private final WishlistRepository wishlistRepository;
 
+//    위시리스트 생성
 	@Transactional
 	public Wishlist createWishlist(WishlistCreateDto dto) {
 		User user = userRepository.findByUserIdAndDelYn(dto.getUserId(), DelYN.N)
@@ -37,4 +42,12 @@ public class WishlistService {
 		return wishlistRepository.save(wishlist);
 	}
 
+//    위시리스트 목록 조회
+    @Transactional(readOnly = true)
+    public List<WishlistAllDto> getAllWishlist() {
+          List<WishlistAllDto> wishlistAllDtos = wishlistRepository.findAll().stream()
+                .map(WishlistAllDto::fromEntity)
+                  .collect(Collectors.toList());
+          return wishlistAllDtos;
+    }
 }
