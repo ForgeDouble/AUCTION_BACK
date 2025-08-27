@@ -82,14 +82,14 @@ public class RedisConfig {
 
     // key = 3 product 관련 동시성 해결
     @Bean
-    @Qualifier("product")
-    LettuceConnectionFactory connectionFactoryProduct() { return  redisConnectionFactory(3);}
+    @Qualifier("bid")
+    LettuceConnectionFactory connectionFactoryBid() { return  redisConnectionFactory(3);}
 
     @Bean
-    @Qualifier("product")
-    public RedisTemplate<String, Object> productRedisTemplate() {
+    @Qualifier("bid")
+    public RedisTemplate<String, Object> BidRedisTemplate() {
         RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
-        redisTemplate.setConnectionFactory(connectionFactoryProduct());
+        redisTemplate.setConnectionFactory(connectionFactoryBid());
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
         return redisTemplate;
