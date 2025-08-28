@@ -2,6 +2,7 @@ package com.example.auction.user.service;
 
 import com.example.auction.common.auth.JwtTokenProvider;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.dto.*;
@@ -10,7 +11,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -23,11 +23,12 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
+    private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.customTokenExpiredStrategy = customTokenExpiredStrategy;
     }
 
     /* 회원가입 */
@@ -56,7 +57,19 @@ public class UserService {
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
-        return jwtTokenProvider.createAccessToken(user);
+
+        String token = jwtTokenProvider.createAccessToken(user);
+
+        long ttl = jwtTokenProvider.getRemainingSeconds(token);
+        customTokenExpiredStrategy.save(user.getEmail(), token, ttl);
+
+        return token;
+    }
+
+    @Transactional(readOnly = true)
+    public void logout() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        customTokenExpiredStrategy.delete(email);
     }
 
 

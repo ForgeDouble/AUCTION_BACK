@@ -77,4 +77,11 @@ public class JwtTokenProvider {
     private boolean isTokenExpired(String token) {
         return getClaimsFromToken(token).getExpiration().before(new Date());
     }
+
+    /* 토큰 만료 시간 추가 */
+    public long getRemainingSeconds(String token) {
+        Date exp = getClaimsFromToken(token).getExpiration();
+        long sec = (exp.getTime() - System.currentTimeMillis()) / 1000;
+        return Math.max(sec, 0);
+    }
 }

@@ -6,6 +6,7 @@ import com.example.auction.user.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -31,8 +32,15 @@ public class UserController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "로그인 성공", result));
     }
 
-    /* 회원가입 */
+    /* 로그아웃 */
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        userService.logout(); // ★ 서비스에서 처리
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "로그아웃 성공", null));
+    }
 
+    /* 회원가입 */
     @PostMapping("/register")
     public ResponseEntity<?> register(@ModelAttribute UserRegisterDto registerDto) {
         userService.register(registerDto);
