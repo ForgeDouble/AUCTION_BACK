@@ -5,6 +5,7 @@ import com.example.auction.user.dto.*;
 import com.example.auction.user.service.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -45,9 +46,10 @@ public class UserController {
     }
 
     /* 회원 마이페이지 조회 */
-    @GetMapping("/detail/{userId}")
-    public ResponseEntity<?> detail(@PathVariable Long userId) {
-        UserDetailDto detail = userService.getUserDetail(userId);
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/detail")  // /user/detail
+    public ResponseEntity<?> myDetail() {
+        UserDetailDto detail = userService.getMyDetail();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "조회 성공", detail));
     }
 

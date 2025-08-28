@@ -94,11 +94,13 @@ public class UserService {
 
     /* 회원 상세 조회 (마이페이지용) */
     @Transactional(readOnly = true)
-    public UserDetailDto getUserDetail(Long userId) {
-        User user = userRepository.findById(userId)
+    public UserDetailDto getMyDetail() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
         return UserDetailDto.fromEntity(user);
     }
+
     /* 타겟팅 조회 */
     @Transactional(readOnly = true)
     public Object getUserViewByTargetId(Long UserId) {
@@ -123,6 +125,8 @@ public class UserService {
         // 유저의 유저간 조회
         return PublicUserListDto.fromEntityForPublic(target);
     }
+
+
 
     /* 회원 목록 조회 */
     @Transactional(readOnly = true)
