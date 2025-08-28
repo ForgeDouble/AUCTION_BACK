@@ -131,8 +131,15 @@ public class UserService {
     /* 회원 목록 조회 */
     @Transactional(readOnly = true)
     public List<UserDto> getAllUsers() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User requester = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("요청자 정보를 찾을 수 없습니다."));
+        if (requester.getAuthority() != Authority.ADMIN) {
+            throw new RuntimeException("관리자만 조회할 수 있습니다.");
+        }
+
         return userRepository.findAll().stream()
-                .filter(user -> user.getDelYn() == DelYN.N)
+                .filter(u -> u.getDelYn() == DelYN.N)
                 .map(UserDto::fromEntity)
                 .collect(Collectors.toList());
     }
