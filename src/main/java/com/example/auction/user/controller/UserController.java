@@ -32,36 +32,39 @@ public class UserController {
     }
 
     /* 회원가입 */
+
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody UserRegisterDto registerDto) {
+    public ResponseEntity<?> register(@ModelAttribute UserRegisterDto registerDto) {
         userService.register(registerDto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원가입 성공", null));
     }
 
     /* 닉네임 변경 */
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/nickname")
     public ResponseEntity<?> updateNickname(@RequestBody UserNicknameUpdateDto dto) {
         userService.updateNickname(dto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "닉네임 변경 완료", null));
     }
 
-    /* 회원 마이페이지 조회 */
+    /* 마이페이지 조회 */
     @PreAuthorize("isAuthenticated()")
-    @GetMapping("/detail")  // /user/detail
+    @GetMapping("/detail")
     public ResponseEntity<?> myDetail() {
         UserDetailDto detail = userService.getMyDetail();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "조회 성공", detail));
     }
 
-    /* 타겟팅 조회 */
+    /* [관리자 + 유저 기능] 타겟팅 조회 */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/view/{userId}")
     public ResponseEntity<CommonResDto> viewUser(@PathVariable Long userId) {
         Object view = userService.getUserViewByTargetId(userId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "유저 조회 성공", view));
     }
 
-    /* 회원 목록 조회 */
-    @PreAuthorize("hasAuthority('ADMIN')")
+    /* [관리자 기능]회원 목록 조회 */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/list")
     public ResponseEntity<?> getAllUsers() {
         List<UserDto> users = userService.getAllUsers();
@@ -69,13 +72,15 @@ public class UserController {
     }
 
     /* 회원정보 수정 */
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/update")
-    public ResponseEntity<?> update(@RequestBody UserUpdateDto updateDto) {
+    public ResponseEntity<?> update(@ModelAttribute UserUpdateDto updateDto) {
         userService.update(updateDto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원정보 수정 완료", null));
     }
 
     /* 회원 탈퇴 */
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/delete")
     public ResponseEntity<?> delete(@RequestBody UserDeleteDto deleteDto) {
         userService.delete(deleteDto, "SELF");

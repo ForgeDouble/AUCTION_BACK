@@ -103,18 +103,18 @@ public class UserService {
 
     /* 타겟팅 조회 */
     @Transactional(readOnly = true)
-    public Object getUserViewByTargetId(Long UserId) {
+    public Object getUserViewByTargetId(Long userId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User requester = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("요청자 정보를 찾을 수 없습니다."));
 
         // 타겟 (삭제되지 않은 유저만 조회)
-        User target = userRepository.findById(UserId)
+        User target = userRepository.findById(userId)
                 .filter(u -> u.getDelYn() == DelYN.N)
                 .orElseThrow(() -> new RuntimeException("조회 대상 유저가 존재하지 않습니다."));
 
         if (requester.getUserId().equals(target.getUserId())) {
-            return UserDto.fromEntity(target);
+            return UserDetailDto.fromEntity(target);
         }
 
         // 관리자의 유저 조회

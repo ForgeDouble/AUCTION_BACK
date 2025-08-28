@@ -20,6 +20,7 @@ public class UserDetailDto {
     private Authority authority;
     private Long warning;
     private String address;
+    private String nickname;
 
     public static UserDetailDto fromEntity(User user) {
         return UserDetailDto.builder()
@@ -32,6 +33,7 @@ public class UserDetailDto {
                 .authority(user.getAuthority())
                 .warning(user.getWarning())
                 .address(user.getAddress())
+                .nickname(user.getNickname())
                 .build();
     }
 }
