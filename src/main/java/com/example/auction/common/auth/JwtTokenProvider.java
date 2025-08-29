@@ -80,8 +80,17 @@ public class JwtTokenProvider {
 
     /* 토큰 만료 시간 추가 */
     public long getRemainingSeconds(String token) {
-        Date exp = getClaimsFromToken(token).getExpiration();
-        long sec = (exp.getTime() - System.currentTimeMillis()) / 1000;
-        return Math.max(sec, 0);
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(secretKey)
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            long expMillis = claims.getExpiration().getTime();
+            long nowMillis = System.currentTimeMillis();
+            return Math.max(0, (expMillis - nowMillis) / 1000);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return 0;
+        }
     }
 }
