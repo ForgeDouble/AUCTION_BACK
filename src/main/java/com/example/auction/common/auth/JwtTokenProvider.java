@@ -77,4 +77,20 @@ public class JwtTokenProvider {
     private boolean isTokenExpired(String token) {
         return getClaimsFromToken(token).getExpiration().before(new Date());
     }
+
+    /* 토큰 만료 시간 추가 */
+    public long getRemainingSeconds(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(secretKey)
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            long expMillis = claims.getExpiration().getTime();
+            long nowMillis = System.currentTimeMillis();
+            return Math.max(0, (expMillis - nowMillis) / 1000);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return 0;
+        }
+    }
 }

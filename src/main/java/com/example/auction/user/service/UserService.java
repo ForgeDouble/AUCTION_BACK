@@ -2,6 +2,7 @@ package com.example.auction.user.service;
 
 import com.example.auction.common.auth.JwtTokenProvider;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.dto.*;
@@ -10,7 +11,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -23,11 +23,12 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
+    private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+        this.customTokenExpiredStrategy = customTokenExpiredStrategy;
     }
 
     /* 회원가입 */
@@ -56,7 +57,19 @@ public class UserService {
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
-        return jwtTokenProvider.createAccessToken(user);
+
+        String token = jwtTokenProvider.createAccessToken(user);
+
+        long ttl = jwtTokenProvider.getRemainingSeconds(token);
+        customTokenExpiredStrategy.save(user.getEmail(), token, ttl);
+
+        return token;
+    }
+
+    @Transactional(readOnly = true)
+    public void logout() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        customTokenExpiredStrategy.delete(email);
     }
 
 
@@ -94,25 +107,27 @@ public class UserService {
 
     /* 회원 상세 조회 (마이페이지용) */
     @Transactional(readOnly = true)
-    public UserDetailDto getUserDetail(Long userId) {
-        User user = userRepository.findById(userId)
+    public UserDetailDto getMyDetail() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
         return UserDetailDto.fromEntity(user);
     }
+
     /* 타겟팅 조회 */
     @Transactional(readOnly = true)
-    public Object getUserViewByTargetId(Long UserId) {
+    public Object getUserViewByTargetId(Long userId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User requester = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("요청자 정보를 찾을 수 없습니다."));
 
         // 타겟 (삭제되지 않은 유저만 조회)
-        User target = userRepository.findById(UserId)
+        User target = userRepository.findById(userId)
                 .filter(u -> u.getDelYn() == DelYN.N)
                 .orElseThrow(() -> new RuntimeException("조회 대상 유저가 존재하지 않습니다."));
 
         if (requester.getUserId().equals(target.getUserId())) {
-            return UserDto.fromEntity(target);
+            return UserDetailDto.fromEntity(target);
         }
 
         // 관리자의 유저 조회
@@ -124,11 +139,20 @@ public class UserService {
         return PublicUserListDto.fromEntityForPublic(target);
     }
 
+
+
     /* 회원 목록 조회 */
     @Transactional(readOnly = true)
     public List<UserDto> getAllUsers() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User requester = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("요청자 정보를 찾을 수 없습니다."));
+        if (requester.getAuthority() != Authority.ADMIN) {
+            throw new RuntimeException("관리자만 조회할 수 있습니다.");
+        }
+
         return userRepository.findAll().stream()
-                .filter(user -> user.getDelYn() == DelYN.N)
+                .filter(u -> u.getDelYn() == DelYN.N)
                 .map(UserDto::fromEntity)
                 .collect(Collectors.toList());
     }

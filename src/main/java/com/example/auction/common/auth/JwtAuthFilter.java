@@ -1,5 +1,6 @@
 package com.example.auction.common.auth;
 
+import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.service.CustomUserService;
 import com.example.auction.user.service.UserService;
 import jakarta.servlet.FilterChain;
@@ -21,7 +22,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserService customUserService;
-
+    private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -41,10 +42,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = customUserService.loadUserByUsername(username);
 
+                String current = customTokenExpiredStrategy.get(username);
+                if (current == null || !current.equals(token)) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
+                    return;
+                }
                 if (jwtTokenProvider.validateToken(token)) {
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                             userDetails, null, userDetails.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+                }  else {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.getWriter().write("만료된 JWT 토큰입니다.");
+                    return;
                 }
             }
             chain.doFilter(request, response);
