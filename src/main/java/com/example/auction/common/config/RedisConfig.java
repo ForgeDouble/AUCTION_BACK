@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
@@ -79,7 +80,15 @@ public class RedisConfig {
         redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
         return redisTemplate;
     }
-
+    @Bean
+    @Qualifier("reportCounter")
+    public StringRedisTemplate reportCounterStringRedisTemplate(
+            @Qualifier("report") LettuceConnectionFactory connectionFactoryReport
+    ) {
+        var t = new StringRedisTemplate();
+        t.setConnectionFactory(connectionFactoryReport);
+        return t;
+    }
     // key = 3 product 관련 동시성 해결
     @Bean
     @Qualifier("bid")

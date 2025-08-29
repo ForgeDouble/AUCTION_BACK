@@ -13,7 +13,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Table(name = "user_report_aggregate")
+@Table(
+        name = "user_report_aggregate",
+        uniqueConstraints = @UniqueConstraint(name="uk_user_report_agg", columnNames = {"target_user_id","category"})
+)
 public class UserReportAggregate extends BaseTimeEntity {
 
     @Id
@@ -32,6 +35,9 @@ public class UserReportAggregate extends BaseTimeEntity {
 
     @Column(nullable = false)
     private Long acceptedCount;
+
+    @Version
+    private Long version;
 
     public static UserReportAggregate init(Long targetUserId, ReportCategory category) {
         UserReportAggregate aggregate = new UserReportAggregate();
