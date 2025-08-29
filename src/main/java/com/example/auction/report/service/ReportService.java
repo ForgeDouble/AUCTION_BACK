@@ -13,11 +13,21 @@ import com.example.auction.user.domain.UserReportAggregate;
 import com.example.auction.user.repository.UserReportAggregateRepository;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.user.service.UserService;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -27,16 +37,64 @@ public class ReportService {
     private final UserReportAggregateRepository aggRepository;
     private final UserService userService;
 
+    private final StringRedisTemplate reportCounter;
+    private final DefaultRedisScript<Long> movePendingToAcceptedScript;
+    private final DefaultRedisScript<Long> safeDecrPendingScript;
 
-    public ReportService(ReportRepository reportRepository, UserRepository userRepository, UserReportAggregateRepository aggRepository, UserService userService) {
+
+    public ReportService(ReportRepository reportRepository,
+                         UserRepository userRepository,
+                         UserReportAggregateRepository aggRepository,
+                         UserService userService,
+                         @Qualifier("reportCounter") StringRedisTemplate reportCounter,
+                         @Qualifier("movePendingToAcceptedScript") DefaultRedisScript<Long> movePendingToAcceptedScript,
+                         @Qualifier("safeDecrPendingScript") DefaultRedisScript<Long> safeDecrPendingScript) {
         this.reportRepository = reportRepository;
         this.userRepository = userRepository;
         this.aggRepository = aggRepository;
         this.userService = userService;
+        this.reportCounter = reportCounter;
+        this.movePendingToAcceptedScript = movePendingToAcceptedScript;
+        this.safeDecrPendingScript = safeDecrPendingScript;
     }
 
+    // ---------- Redis Key Helper ----------
+    private String pendingKey(Long userId, ReportCategory category) {
+        return "report:pending:{" + userId + ":" + category.name() + "}";
+    }
+    private String acceptedKey(Long userId, ReportCategory category) {
+        return "report:accepted:{" + userId + ":" + category.name() + "}";
+    }
+    private String totalPendingKey(Long userId) {
+        return "report:pending:total:{" + userId + "}";
+    }
+
+    // ---------- Helpers ----------
+    private long incr(String key, long delta) {
+        Long v = reportCounter.opsForValue().increment(key, delta);
+        return v == null ? 0L : v;
+    }
+    private long getLong(String key) {
+        String v = reportCounter.opsForValue().get(key);
+        return (v == null) ? 0L : Long.parseLong(v);
+    }
+    private long getTotalPending(Long userId) { return getLong(totalPendingKey(userId)); }
+    private void safeDecr(String key, long n) {
+        reportCounter.execute(safeDecrPendingScript, Collections.singletonList(key), String.valueOf(n));
+    }
     private static final long PENDING_THRESHOLD_PER_CATEGORY = 5L;
 
+    /** Redis 카운터 → DB 스냅샷 업서트 */
+    @Transactional
+    protected void upsertAggregateSnapshot(Long targetUserId, ReportCategory category) {
+        long pending = getLong(pendingKey(targetUserId, category));
+        long accepted = getLong(acceptedKey(targetUserId, category));
+        UserReportAggregate agg = aggRepository.findByTargetUserIdAndCategory(targetUserId, category)
+                .orElseGet(() -> UserReportAggregate.init(targetUserId, category));
+        agg.setPendingCount(pending);
+        agg.setAcceptedCount(accepted);
+        aggRepository.save(agg);
+    }
 
     /* 신고하기 */
     @Transactional
@@ -60,17 +118,25 @@ public class ReportService {
         Report report = dto.toEntity(reporter);
         reportRepository.save(report);
 
-        UserReportAggregate aggregate = aggRepository
-                .findByTargetUserIdAndCategory(dto.getTargetId(), dto.getCategory())
-                .orElse(UserReportAggregate.init(dto.getTargetId(), dto.getCategory()));
-        aggregate.increasePending();
-        aggRepository.save(aggregate);
+        long newPending = incr(pendingKey(dto.getTargetId(), dto.getCategory()), 1L);
+        incr(totalPendingKey(dto.getTargetId()), 1L);
 
-        // 임계치까지 신고 접수 시 조회가능 메서드
-        if (aggregate.getPendingCount() >= PENDING_THRESHOLD_PER_CATEGORY && !Boolean.TRUE.equals(target.getViewOnly())) {
+        if (newPending >= PENDING_THRESHOLD_PER_CATEGORY && Boolean.FALSE.equals(target.getViewOnly())) {
             target.makeViewOnly();
             userRepository.save(target);
         }
+
+//        UserReportAggregate aggregate = aggRepository
+//                .findByTargetUserIdAndCategory(dto.getTargetId(), dto.getCategory())
+//                .orElse(UserReportAggregate.init(dto.getTargetId(), dto.getCategory()));
+//        aggregate.increasePending();
+//        aggRepository.save(aggregate);
+//
+//        // 임계치까지 신고 접수 시 조회가능 메서드
+//        if (aggregate.getPendingCount() >= PENDING_THRESHOLD_PER_CATEGORY && !Boolean.TRUE.equals(target.getViewOnly())) {
+//            target.makeViewOnly();
+//            userRepository.save(target);
+//        }
 
         return ReportResponseDto.fromEntity(report);
     }
@@ -83,48 +149,67 @@ public class ReportService {
         User target = userRepository.findByUserIdAndDelYn(targetUserId, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("대상 유저가 존재하지 않거나 비활성화 상태입니다."));
 
-        List<Report> pendings = reportRepository.findByTargetIdAndStatus(targetUserId, ReportStatus.PENDING)
-                .stream().filter(r -> r.getCategory() == category).toList();
+        List<Report> pendings = reportRepository
+                .findByTargetIdAndCategoryAndStatus(targetUserId, category, ReportStatus.PENDING);
         if (pendings.isEmpty()) return;
 
-        UserReportAggregate aggregate = aggRepository
-                .findByTargetUserIdAndCategory(targetUserId, category)
-                .orElseThrow(() -> new RuntimeException("집계 정보가 없습니다."));
+        int size = pendings.size();
 
         if (dto.isAccept()) {
-            // 승인 관련
+            // 1) 신고 ACCEPT
             pendings.forEach(r -> r.accept(dto.getAdminContent()));
             reportRepository.saveAll(pendings);
 
-            aggregate.movePendingToAccepted(pendings.size());
-            aggRepository.save(aggregate);
+            // 2) Redis: pending→accepted 이동(카테고리 원자 이동), 총합 pending 감소
+            reportCounter.execute(
+                    movePendingToAcceptedScript,
+                    Arrays.asList(pendingKey(targetUserId, category), acceptedKey(targetUserId, category)),
+                    String.valueOf(size)
+            );
+            reportCounter.execute(
+                    safeDecrPendingScript,
+                    Collections.singletonList(totalPendingKey(targetUserId)),
+                    String.valueOf(size)
+            );
 
+            // 3) 제재
             if (dto.getSuspendDays() != null && dto.getSuspendDays() > 0) {
                 target.suspendUntil(LocalDateTime.now().plusDays(dto.getSuspendDays()));
-                target.cancelViewOnly();
+                target.cancelViewOnly(); // 정책 따라 유지 가능
             } else {
                 target.setWarning(target.getWarning() + 1);
-                // viewOnly 유지/해제는 정책에 따라 다를 수 있음(여기서는 유지)
+                // viewOnly 유지 (정책에 따라 조정)
             }
             userRepository.save(target);
 
         } else {
-            //  취소 관련
+            // REJECT: 신고 REJECT, 카테고리 pending 감소, 총합 pending 감소
             pendings.forEach(r -> r.reject(dto.getAdminContent()));
             reportRepository.saveAll(pendings);
 
-            aggregate.decreasePending(pendings.size());
-            aggRepository.save(aggregate);
+            reportCounter.execute(
+                    safeDecrPendingScript,
+                    Collections.singletonList(pendingKey(targetUserId, category)),
+                    String.valueOf(size)
+            );
+            reportCounter.execute(
+                    safeDecrPendingScript,
+                    Collections.singletonList(totalPendingKey(targetUserId)),
+                    String.valueOf(size)
+            );
 
-            // 임계치 미만이면 임시정지 해제
-            if (aggregate.getPendingCount() < PENDING_THRESHOLD_PER_CATEGORY && Boolean.TRUE.equals(target.getViewOnly())) {
+            // 총합이 임계 미만이면 viewOnly 해제
+            long total = getTotalPending(targetUserId);
+            if (total < PENDING_THRESHOLD_PER_CATEGORY && Boolean.TRUE.equals(target.getViewOnly())) {
                 target.cancelViewOnly();
                 userRepository.save(target);
             }
         }
+
+        upsertAggregateSnapshot(targetUserId, category);
     }
 
-    /* 개별 즉시 정지 / 해제 */
+    /* [관리자] 즉시 정지 */
     @Transactional
     public void adminSuspendUser(Long targetUserId, long days, String reason) {
         userService.checkAdminAuthority();
@@ -135,7 +220,6 @@ public class ReportService {
         target.suspendUntil(LocalDateTime.now().plusDays(days));
         target.cancelViewOnly();
         userRepository.save(target);
-        // 필요시 AdminActionLog 기록 등
     }
 
     /* 상태 복구 */

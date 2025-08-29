@@ -32,9 +32,9 @@ public class ReportRedisScriptsConfig {
     }
 
     /**
-     * pending에서 n만큼 빼되 음수 방지(거절 처리용)
-     * KEYS[1]=pendingKey, ARGV[1]=n
-     * return: 감소 후 pending 값
+     * 키에서 n만큼 빼되 음수 방지
+     * KEYS[1]=key, ARGV[1]=n
+     * return: 감소 후 값
      */
     @Bean("safeDecrPendingScript")
     public DefaultRedisScript<Long> safeDecrPendingScript() {

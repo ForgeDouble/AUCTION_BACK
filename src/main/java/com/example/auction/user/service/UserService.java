@@ -54,6 +54,10 @@ public class UserService {
             throw new RuntimeException("탈퇴된 계정입니다.");
         }
 
+        if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
+            throw new RuntimeException("정지된 계정입니다. 해제 시각: " + user.getSuspendedUntil());
+        }
+
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
