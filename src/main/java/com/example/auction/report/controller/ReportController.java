@@ -8,6 +8,7 @@ import com.example.auction.report.dto.ReportResponseDto;
 import com.example.auction.report.service.ReportService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,7 @@ public class ReportController {
     }
 
     // [관리자] 특정 유저의 특정 카테고리 신고 묶음 처리 (수락/반려)
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/admin/resolve/{targetUserId}/{category}")
     public ResponseEntity<CommonResDto> adminResolve(@PathVariable Long targetUserId,
                                                      @PathVariable ReportCategory category,
@@ -37,6 +39,7 @@ public class ReportController {
     }
 
     // [관리자] 즉시 정지
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/admin/suspend")
     public ResponseEntity<CommonResDto> adminSuspend(@RequestParam Long targetUserId,
                                                      @RequestParam long days,
@@ -46,6 +49,7 @@ public class ReportController {
     }
 
     // [관리자] 모든 제재 해제 (정지/임시정지 해제)
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/admin/lift")
     public ResponseEntity<CommonResDto> adminLift(@RequestParam Long targetUserId,
                                                   @RequestParam(required = false) String reason) {
