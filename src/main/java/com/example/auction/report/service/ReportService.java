@@ -4,9 +4,11 @@ import com.example.auction.common.domain.DelYN;
 import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportStatus;
+import com.example.auction.report.dto.AdminReportGroupDto;
 import com.example.auction.report.dto.AdminResolveDto;
 import com.example.auction.report.dto.ReportCreateDto;
 import com.example.auction.report.dto.ReportResponseDto;
+import com.example.auction.report.repository.ReportGroupProjection;
 import com.example.auction.report.repository.ReportRepository;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.domain.UserReportAggregate;
@@ -14,6 +16,8 @@ import com.example.auction.user.repository.UserReportAggregateRepository;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.user.service.UserService;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.ScanOptions;
@@ -26,15 +30,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class ReportService {
     private final ReportRepository reportRepository;
     private final UserRepository userRepository;
-    private final UserReportAggregateRepository aggRepository;
+    private final UserReportAggregateRepository aggRepository;//
     private final UserService userService;
 
     private final StringRedisTemplate reportCounter;
@@ -58,7 +62,6 @@ public class ReportService {
         this.safeDecrPendingScript = safeDecrPendingScript;
     }
 
-    // ---------- Redis Key Helper ----------
     private String pendingKey(Long userId, ReportCategory category) {
         return "report:pending:{" + userId + ":" + category.name() + "}";
     }
@@ -69,7 +72,7 @@ public class ReportService {
         return "report:pending:total:{" + userId + "}";
     }
 
-    // ---------- Helpers ----------
+    // 계산관련
     private long incr(String key, long delta) {
         Long v = reportCounter.opsForValue().increment(key, delta);
         return v == null ? 0L : v;
@@ -208,6 +211,56 @@ public class ReportService {
 
         upsertAggregateSnapshot(targetUserId, category);
     }
+
+    /* [관리자] 신고여부에 따른 그룹핑 조회 (신고당한사람 + 카테고리 )*/
+    @Transactional(readOnly = true)
+    public List<AdminReportGroupDto> getAdminReportGroups(ReportCategory category,
+                                                          ReportStatus status,
+                                                          Integer minPending,
+                                                          Long targetUserId) {
+        userService.checkAdminAuthority();
+
+        var rows = reportRepository.aggregateReportGroups();
+
+        // 필터
+        var filtered = rows.stream()
+                .filter(projection -> category == null || projection.getCategory() == category)
+                .filter(projection -> targetUserId == null || Objects.equals(projection.getTargetId(), targetUserId))
+                .filter(projection -> {
+                    if (status == null) return true;
+                    return switch (status) {
+                        case PENDING  -> (projection.getPendingCount()  != null && projection.getPendingCount()  > 0);
+                        case ACCEPTED -> (projection.getAcceptedCount() != null && projection.getAcceptedCount() > 0);
+                        case REJECTED -> (projection.getRejectedCount() != null && projection.getRejectedCount() > 0);
+                    };
+                })
+                .filter(projection -> {
+                    if (minPending == null) return true;
+                    long pc = projection.getPendingCount() == null ? 0L : projection.getPendingCount();
+                    return pc >= minPending;
+                })
+                .toList();
+
+        // 타겟 정보 배치 조회
+        var ids = filtered.stream().map(ReportGroupProjection::getTargetId).collect(Collectors.toSet());
+        Map<Long, User> userMap = userRepository.findAllById(ids).stream()
+                .filter(u -> u.getDelYn() == DelYN.N)
+                .collect(Collectors.toMap(User::getUserId, Function.identity()));
+
+        return filtered.stream()
+                .map(projection -> AdminReportGroupDto.fromEntity(projection, userMap.get(projection.getTargetId())))
+                .sorted(Comparator.comparing(AdminReportGroupDto::getLastReportedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    /* [관리자] 그룹핑 조회에 따른 상세 조회*/
+    @Transactional(readOnly = true)
+    public Page<Report> getGroupReports(Long targetUserId, ReportCategory category, Pageable pageable) {
+        userService.checkAdminAuthority();
+        return reportRepository.findByTargetIdAndCategory(targetUserId, category, pageable);
+    }
+
 
     /* [관리자] 즉시 정지 */
     @Transactional
