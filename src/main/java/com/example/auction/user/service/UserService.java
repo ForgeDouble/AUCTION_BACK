@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -55,7 +56,10 @@ public class UserService {
         }
 
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
-            throw new RuntimeException("정지된 계정입니다. 해제 시각: " + user.getSuspendedUntil());
+            String until = user.getSuspendedUntil()
+                    .truncatedTo(ChronoUnit.SECONDS)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            throw new RuntimeException("정지된 계정입니다. 해제 시각: " + until);
         }
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
