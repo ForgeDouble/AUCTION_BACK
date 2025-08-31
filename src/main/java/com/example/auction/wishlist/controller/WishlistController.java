@@ -34,9 +34,10 @@ public class WishlistController {
         return  ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 조회 성공", wishlistAllDtos));
     }
 
-
-
 //  위시리스트 삭제
-
-	
+    @DeleteMapping("/delete/{wishlistId}")
+    public ResponseEntity<CommonResDto> deleteWishlist(@PathVariable("wishlistId") Long wishlistId) {
+        wishlistService.deleteWishlistById(wishlistId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 삭제 성공",  wishlistId));
+    }
 }
