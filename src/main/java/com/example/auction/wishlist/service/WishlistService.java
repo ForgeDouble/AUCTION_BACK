@@ -2,6 +2,7 @@ package com.example.auction.wishlist.service;
 
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.wishlist.dto.WishlistAllDto;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,5 +50,21 @@ public class WishlistService {
                 .map(WishlistAllDto::fromEntity)
                   .collect(Collectors.toList());
           return wishlistAllDtos;
+    }
+
+    @Transactional
+    public void deleteWishlistById(Long id) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("현재 로그인한 유저 정보를 찾을 수 없습니다."));
+
+        Wishlist wishlist = wishlistRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("해당 위시리스트가 존재하지 않습니다. id=" + id));
+
+        if (!wishlist.getUser().getUserId().equals(user.getUserId())) {
+            throw new RuntimeException("해당 위시리스트를 삭제할 권한이 없습니다.");
+        }
+
+        wishlistRepository.delete(wishlist);
     }
 }
