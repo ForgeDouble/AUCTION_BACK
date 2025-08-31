@@ -149,13 +149,24 @@ public class ReportService {
     public void adminResolveCategoryForUser(Long targetUserId, ReportCategory category, AdminResolveDto dto) {
         userService.checkAdminAuthority();
 
+        if (category == null) throw new IllegalArgumentException("카테고리를 지정해 주세요.");
+        if (dto == null) throw new IllegalArgumentException("요청 본문이 비었습니다.");
+
+        if (!dto.isAccept() && dto.getSuspendDays() != null) {
+            throw new IllegalArgumentException("반려 처리에서는 정지일수를 지정할 수 없습니다.");
+        }
+        if (dto.isAccept() && dto.getSuspendDays() != null && dto.getSuspendDays() < 0) {
+            throw new IllegalArgumentException("정지 일수는 0 이상이어야 합니다.");
+        }
+
         User target = userRepository.findByUserIdAndDelYn(targetUserId, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("대상 유저가 존재하지 않거나 비활성화 상태입니다."));
 
         List<Report> pendings = reportRepository
                 .findByTargetIdAndCategoryAndStatus(targetUserId, category, ReportStatus.PENDING);
-        if (pendings.isEmpty()) return;
-
+        if (pendings.isEmpty()) {
+            throw new IllegalStateException("해당 유저(" + targetUserId + ")의 " + category + " 카테고리에 대기중 신고가 없습니다.");
+        }
         int size = pendings.size();
 
         if (dto.isAccept()) {
