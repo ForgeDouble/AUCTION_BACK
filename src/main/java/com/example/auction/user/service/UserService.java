@@ -54,6 +54,10 @@ public class UserService {
             throw new RuntimeException("탈퇴된 계정입니다.");
         }
 
+        if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
+            throw new RuntimeException("정지된 계정입니다. 해제 시각: " + user.getSuspendedUntil());
+        }
+
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
@@ -159,11 +163,13 @@ public class UserService {
 
     /* 관리자 여부 확인 */
     @Transactional(readOnly = true)
-    public boolean checkAdminAuthority() {
+    public void checkAdminAuthority() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
-        return user.getAuthority() == Authority.ADMIN;
+        if (user.getAuthority() != Authority.ADMIN) {
+            throw new org.springframework.security.access.AccessDeniedException("관리자만 접근 가능합니다.");
+        }
     }
 
     /* 닉네임 생성 및 업데이트 */

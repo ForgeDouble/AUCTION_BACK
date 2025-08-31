@@ -24,7 +24,7 @@ public class Report extends BaseTimeEntity {
     private User reporter;
 
     // 신고당한 사람
-    @Column(nullable = false)
+    @Column(name = "target_id", nullable = false)
     private Long targetId;
 
     @Enumerated(EnumType.STRING)
