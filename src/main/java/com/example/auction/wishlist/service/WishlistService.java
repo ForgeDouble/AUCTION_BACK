@@ -1,6 +1,8 @@
 package com.example.auction.wishlist.service;
 
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.wishlist.dto.WishlistAllDto;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -27,14 +29,15 @@ public class WishlistService {
 	private final ProductRepository productRepository;
 	private final WishlistRepository wishlistRepository;
 
-//    위시리스트 생성
+//  위시리스트 생성
 	@Transactional
 	public Wishlist createWishlist(WishlistCreateDto dto) {
-		User user = userRepository.findByUserIdAndDelYn(dto.getUserId(), DelYN.N)
-				.orElseThrow(() -> new RuntimeException("유저 없음"));
-		
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
 		Product product = productRepository.findByProductIdAndDelYn(dto.getProductId(), DelYN.N)
-				.orElseThrow(() -> new RuntimeException("상품 없음"));
+				.orElseThrow(() -> new ResourceNotFoundException("Wishlist"));
 		
 		Wishlist wishlist = new Wishlist();
 		wishlist.setProduct(product);
@@ -43,28 +46,32 @@ public class WishlistService {
 		return wishlistRepository.save(wishlist);
 	}
 
-//    위시리스트 목록 조회
+//  사용자의 위시리스트 목록 조회
     @Transactional(readOnly = true)
     public List<WishlistAllDto> getAllWishlist() {
-          List<WishlistAllDto> wishlistAllDtos = wishlistRepository.findAll().stream()
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
+        List<WishlistAllDto> wishlistAllDtos = wishlistRepository.findByUser_UserId(user.getUserId()).stream()
                 .map(WishlistAllDto::fromEntity)
-                  .collect(Collectors.toList());
-          return wishlistAllDtos;
+                .collect(Collectors.toList());
+        return wishlistAllDtos;
     }
 
+//  사용자의 위시리스트 삭제
     @Transactional
     public void deleteWishlistById(Long id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("현재 로그인한 유저 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
 
         Wishlist wishlist = wishlistRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("해당 위시리스트가 존재하지 않습니다. id=" + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Wishlist", id));
 
         if (!wishlist.getUser().getUserId().equals(user.getUserId())) {
-            throw new RuntimeException("해당 위시리스트를 삭제할 권한이 없습니다.");
+            throw new UnauthorizedAccessException("해당 위시리스트를 삭제할 권한이 없습니다.");
         }
-
         wishlistRepository.delete(wishlist);
     }
 }
