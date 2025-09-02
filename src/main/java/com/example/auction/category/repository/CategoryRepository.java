@@ -10,9 +10,11 @@ import org.springframework.data.repository.query.Param;
 import com.example.auction.category.domain.Category;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
-	@Query("SELECT c FROM Category c LEFT JOIN FETCH c.children WHERE c.categoryId = :categoryId")
-    Optional<Category> findByIdWithChildren(@Param("categoryId") Long categoryId);
+//	@Query("SELECT c FROM Category c LEFT JOIN FETCH c.children WHERE c.categoryId = :categoryId")
+//    Optional<Category> findByIdWithChildren(@Param("categoryId") Long categoryId);
 	
-	@Query("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.children")
-	List<Category> findAllWithChildren();
+//	@Query("SELECT DISTINCT c FROM Category c LEFT JOIN FETCH c.children")
+//	List<Category> findAllWithChildren();
+
+    List<Category> findAllByParent_CategoryId(Long parentId);
 }
