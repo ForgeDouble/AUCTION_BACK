@@ -26,31 +26,37 @@ import lombok.RequiredArgsConstructor;
 public class CategoryController {
 	private final CategoryService categoryService;
 	
-	// 태그 생성
-    @PostMapping("/")
-    public ResponseEntity<?> createTag(@ModelAttribute CategoryCreateDto categoryCreateDto) {
+	// 카테고리 생성
+    @PostMapping("/create")
+    public ResponseEntity<?> createCategory(@ModelAttribute CategoryCreateDto categoryCreateDto) {
     	categoryService.createCategory(categoryCreateDto);
-    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 생성 성공", categoryCreateDto));
+    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 생성 성공", categoryCreateDto));
     }
     
-    //태그 삭제
+    // 카테고리 삭제
 //    @DeleteMapping("/")
 //    public ResponseEntity<?> deleteTag() {
 //    	
 //    }
     
-    // 태그 단일 조회
+    // 카테고리 단일 조회
     @GetMapping("/{categoryId}")
-    public ResponseEntity<?> ReadTag(@PathVariable("categoryId") Long categoryId) {
+    public ResponseEntity<?> ReadCategory(@PathVariable("categoryId") Long categoryId) {
 		CategoryReadDto categoryReadDto = categoryService.getCategory(categoryId);
-		return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 조회 성공", categoryReadDto));
+		return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 조회 성공", categoryReadDto));
     }
     
-    // 태그 목록 조회
-    @GetMapping("/")
-    public ResponseEntity<?> getAllTags() {
+    // 전체 카테고리 목록 조회
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllCategories() {
     	List<CategoryReadDto> categoryReadDtos = categoryService.getAllCategories();
-    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "태그 목록 조회 성공", categoryReadDtos));
+    	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadDtos));
     }
-    
+
+    // 부모 카테고리로 목록 조회
+    @GetMapping("/all/{parentId}")
+    public ResponseEntity<?> getAllCategoriesByParentId(@PathVariable("parentId")  Long parentId) {
+        List<CategoryReadDto> categoryReadDtos = categoryService.getAllCategoriesByParent(parentId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadDtos));
+    }
 }
