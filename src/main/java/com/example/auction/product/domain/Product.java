@@ -19,6 +19,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 
 @Getter
 @Setter
@@ -47,6 +49,14 @@ public class Product extends BaseTimeEntity{
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SellYN sellYN;
+
+    // 신고 관련 컬럼
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean blocked = false; // 차단 여부
+    private LocalDateTime blockedAt; // 차단 일 시
+    @Column(length = 300)
+    private String blockedReason; // 차단 사유
     
     public void update(ProductUpdateDto dto, Category category) {
     	this.category = category;
@@ -54,6 +64,17 @@ public class Product extends BaseTimeEntity{
     	this.productContent = dto.getProductContent();
     	this.price = dto.getPrice();
     }
-    
+
+
+    public void block(String reason) {
+        this.blocked = true;
+        this.blockedAt = LocalDateTime.now();
+        this.blockedReason = reason;
+    }
+    public void unblock() {
+        this.blocked = false;
+        this.blockedAt = null;
+        this.blockedReason = null;
+    }
 
 }
