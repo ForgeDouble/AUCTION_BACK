@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class BidController {
     
     private final BidService bidService;
-    @PostMapping("/")
+    @PostMapping("/bid")
     public ResponseEntity<?> bidProduct(@ModelAttribute BidCreateDto bidCreateDto) {
 //        Bid bid =
                 bidService.bidProduct(bidCreateDto);
