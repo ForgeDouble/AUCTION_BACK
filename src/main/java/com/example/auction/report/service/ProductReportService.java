@@ -101,5 +101,21 @@ public class ProductReportService {
                 .toList();
     }
 
+    // [관리자] 차단 해제
+    @Transactional
+    public void liftProductBlock(Long productId, String reason, boolean resetCounter) {
+        userService.checkAdminAuthority();
+
+        Product product = productRepository.findByProductIdAndDelYn(productId, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("대상 상품이 존재하지 않거나 비활성화 상태입니다."));
+
+        product.unblock();
+        productRepository.save(product);
+
+        if (resetCounter) {
+            reset(productCountKey(productId));
+        }
+    }
+
 
 }
