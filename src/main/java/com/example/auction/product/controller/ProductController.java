@@ -27,7 +27,7 @@ public class ProductController {
 	private final ProductService productService;
 	    
 	// 상품 생성
-    @PostMapping("/")
+    @PostMapping("/create")
     public ResponseEntity<?> createProduct(@ModelAttribute ProductCreateDto productCreateDto) {
 			productService.createProduct(productCreateDto);
 			return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 생성 성공", productCreateDto));
@@ -41,14 +41,14 @@ public class ProductController {
     }
     
     /* 상품 목록 조회 */
-    @GetMapping("/")
+    @GetMapping("/all")
     public ResponseEntity<?> ReadAllProducts() {
     	List<ProductReadAllDto> productReadAllDtos = productService.readAllProducts();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", productReadAllDtos));
     }
     
     // 상품 수정
-    @PutMapping("/")
+    @PutMapping("/update")
     public ResponseEntity<?> updateProduct(@ModelAttribute ProductUpdateDto productUpdateDto) {
     	productService.updateProduct(productUpdateDto);
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 수정 성공", null));

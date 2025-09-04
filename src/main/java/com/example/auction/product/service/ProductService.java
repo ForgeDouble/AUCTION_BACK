@@ -5,10 +5,15 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.product.dto.*;
+import com.example.auction.user.domain.User;
+import com.example.auction.user.repository.UserRepository;
+import com.example.auction.wishlist.repository.WishlistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +31,7 @@ public class ProductService {
 
     private final CategoryRepository categoryRepository;
 	private final ProductRepository productRepository;
+    private final UserRepository userRepository;
 
 
 
@@ -33,7 +39,7 @@ public class ProductService {
 	@Transactional
 	public Product createProduct(ProductCreateDto dto) {
 		Category category = categoryRepository.findById(dto.getCategoryId())
-				.orElseThrow(() -> new RuntimeException("태그 없음"));
+				.orElseThrow(() -> new ResourceNotFoundException("Category"));
 		Product product = dto.toProduct();
 		product.setCategory(category);
 		
@@ -61,7 +67,11 @@ public class ProductService {
 	// 아이템 수정
 	@Transactional
 	public void updateProduct(ProductUpdateDto dto) {
-		Product product = productRepository.findById(dto.getProductId())
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
+        Product product = productRepository.findById(dto.getProductId())
 				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
 		
 	    Category category = categoryRepository.findById(dto.getCategoryId())
@@ -75,8 +85,13 @@ public class ProductService {
 	// 아이템 삭제
 	@Transactional
 	public void deleteProduct(ProductDeleteDto dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
 		Product product = productRepository.findById(dto.getProductId())
-				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
+				.orElseThrow(() -> new ResourceNotFoundException("Product"));
+
 		product.softDelete();
 		productRepository.save(product);
 	}
