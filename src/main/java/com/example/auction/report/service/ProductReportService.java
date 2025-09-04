@@ -6,6 +6,7 @@ import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportTargetType;
+import com.example.auction.report.dto.AdminBlockedProductDto;
 import com.example.auction.report.dto.ProductReportCreateDto;
 import com.example.auction.report.repository.ReportRepository;
 import com.example.auction.user.domain.User;
@@ -17,6 +18,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class ProductReportService {
@@ -81,6 +84,21 @@ public class ProductReportService {
             product.block("신고 임계치 초과(" + count + "건)");
             productRepository.save(product);
         }
+    }
+
+    // [관리자] 차단된 상품 목록
+    @Transactional(readOnly = true)
+    public List<AdminBlockedProductDto> listBlockedProducts() {
+        userService.checkAdminAuthority();
+        return productRepository.findByBlockedAndDelYn(true, DelYN.N).stream()
+                .map(p -> AdminBlockedProductDto.builder()
+                        .productId(p.getProductId())
+                        .productName(p.getProductName())
+                        .reportCount(getLong(productCountKey(p.getProductId())))
+                        .blockedAt(p.getBlockedAt())
+                        .blockedReason(p.getBlockedReason())
+                        .build())
+                .toList();
     }
 
 
