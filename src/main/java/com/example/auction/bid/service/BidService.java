@@ -37,6 +37,7 @@ public class BidService {
         this.userRepository = userRepository;
     }
 
+    // 입찰 서비스
     public Bid bidProduct(BidCreateDto bidCreateDto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
@@ -57,6 +58,7 @@ public class BidService {
         }
     }
 
+    // bid Insert
     @Transactional
     protected Bid saveBid(BidCreateDto bidCreateDto, User user) {
         Product product = productRepository.findByProductIdAndDelYn(bidCreateDto.getProductId(), DelYN.N)
