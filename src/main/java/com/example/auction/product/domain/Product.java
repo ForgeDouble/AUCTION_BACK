@@ -4,6 +4,7 @@ import com.example.auction.category.domain.Category;
 import com.example.auction.common.domain.BaseTimeEntity;
 import com.example.auction.product.dto.ProductUpdateDto;
 
+import com.example.auction.user.domain.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -36,6 +37,10 @@ public class Product extends BaseTimeEntity{
     @ManyToOne
     @JoinColumn(name = "category_id")
     private Category category;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
     
     @Column(nullable = false)
     private String productName;
