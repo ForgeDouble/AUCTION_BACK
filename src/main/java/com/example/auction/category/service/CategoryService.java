@@ -1,6 +1,6 @@
 package com.example.auction.category.service;
 
-import java.util.List;
+import java.util.*;
 
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
@@ -100,5 +100,22 @@ public class CategoryService {
         return categories.stream()
                 .map(CategoryReadDto::fromEntity)
                 .toList();
+    }
+
+    /* 카테고리 경로 조회 */
+    @Transactional(readOnly = true)
+    public String getFullPathDisplay(Long categoryId) {
+        Category cur = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category"));
+
+        Set<Long> visited = new HashSet<>();
+        List<String> names = new ArrayList<>();
+        while (cur != null) {
+            if (!visited.add(cur.getCategoryId())) break;
+            names.add(cur.getCategoryName());
+            cur = cur.getParent();
+        }
+        Collections.reverse(names);
+        return String.join(" > ", names);
     }
 }
