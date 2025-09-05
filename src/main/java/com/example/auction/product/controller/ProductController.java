@@ -55,9 +55,9 @@ public class ProductController {
     }
     
     // 상품 삭제
-    @PutMapping("/delete")
-    public ResponseEntity<?> deleteProduct(@ModelAttribute ProductDeleteDto productDeleteDto) {
-    	productService.deleteProduct(productDeleteDto);
+    @PutMapping("/delete/{productId}")
+    public ResponseEntity<?> deleteProduct(@PathVariable("productId") Long productId) {
+    	productService.deleteProduct(productId);
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 삭제 성공", null));
     }
 

@@ -6,7 +6,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.dto.*;
+import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.wishlist.repository.WishlistRepository;
@@ -38,10 +40,17 @@ public class ProductService {
     // 아이템 생성
 	@Transactional
 	public Product createProduct(ProductCreateDto dto) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
 		Category category = categoryRepository.findById(dto.getCategoryId())
 				.orElseThrow(() -> new ResourceNotFoundException("Category"));
-		Product product = dto.toProduct();
+
+        Product product = dto.toProduct();
+
 		product.setCategory(category);
+        product.setUser(user);
 		
 		return productRepository.save(product);
 	}
@@ -52,7 +61,7 @@ public class ProductService {
 	public ProductReadDto readProduct(Long productId) {
 		Product product = productRepository
 				.findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
-				.orElseThrow(() -> new RuntimeException("존재하지 않거나 비활성화된 상품입니다."));
+				.orElseThrow(() -> new ResourceNotFoundException("Product"));
 		return ProductReadDto.fromEntity(product);
 	}
 	
@@ -67,6 +76,7 @@ public class ProductService {
 	}
 	
 	// 아이템 수정
+    // 권한 - 해당 유저, 관리자
 	@Transactional
 	public void updateProduct(ProductUpdateDto dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -74,25 +84,33 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
 
         Product product = productRepository.findById(dto.getProductId())
-				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
+				.orElseThrow(() -> new ResourceNotFoundException("Product"));
 		
 	    Category category = categoryRepository.findById(dto.getCategoryId())
-	        .orElseThrow(() -> new IllegalArgumentException("태그 없음"));
-	    
+	        .orElseThrow(() -> new IllegalArgumentException("Category"));
+
+        if(user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
+            throw new UnauthorizedAccessException("해당 상품을 수정할 권한이 없습니다.");
+        }
 		product.update(dto, category);
 		productRepository.save(product);
 	}
 	
 	
-	// 아이템 삭제
+	// 아이템 소프트 삭제
+    // 권한 - 해당 유저, 관리자
 	@Transactional
-	public void deleteProduct(ProductDeleteDto dto) {
+	public void deleteProduct(Long productId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
 
-		Product product = productRepository.findById(dto.getProductId())
+		Product product = productRepository.findById(productId)
 				.orElseThrow(() -> new ResourceNotFoundException("Product"));
+
+        if(user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
+            throw new UnauthorizedAccessException("해당 상품을 삭제할 권한이 없습니다.");
+        }
 
 		product.softDelete();
 		productRepository.save(product);

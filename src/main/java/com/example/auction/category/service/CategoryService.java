@@ -28,7 +28,8 @@ public class CategoryService {
 	private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
 	
-	// 카테고리 생성 [관리자]
+	// 카테고리 생성
+    // 관리자
 	@Transactional
 	public Category createCategory(CategoryCreateDto dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -46,18 +47,40 @@ public class CategoryService {
 		Category category = dto.toCategory(parent);
 		return categoryRepository.save(category);
 	}
-	
-//	@Transactional
-//	public void deleteTag() {
-//		
-//	}
+
+    // 카테고리 삭제
+    // 관리자
+	@Transactional
+	public void deleteCategory(Long categoryId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
+        if (user.getAuthority() != Authority.ADMIN) {
+            throw new UnauthorizedAccessException("관리자 외 권한이 없습니다.");
+        }
+
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ResourceNotFoundException("Category"));
+
+        // 연관된 product null 처리
+        for (Product product : category.getProducts()) {
+            product.setCategory(null);
+        }
+
+        for (Category child : category.getChildren()) {
+            child.setParent(null);
+        }
+
+        categoryRepository.delete(category);
+	}
 	
 	// 카테고리 단일 조회
     // 사용 안할 수 도 있음
 	@Transactional
 	public CategoryReadDto getCategory(Long categoryId) {
         Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 태그입니다."));
+                .orElseThrow(() -> new ResourceNotFoundException("Category"));
         return CategoryReadDto.fromEntity(category);
     }
 	
