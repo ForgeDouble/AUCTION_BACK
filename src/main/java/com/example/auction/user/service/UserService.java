@@ -183,6 +183,16 @@ public class UserService {
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
 
+        if (Boolean.TRUE.equals(user.getViewOnly())) {
+            throw new RuntimeException("임시 제한 상태라 닉네임을 변경할 수 없습니다.");
+        }
+        if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
+            String until = user.getSuspendedUntil()
+                    .truncatedTo(ChronoUnit.SECONDS)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            throw new RuntimeException("정지된 계정입니다. 해제 시각: " + until);
+        }
+
         String newNickname = dto.getNickname();
         if (newNickname == null || newNickname.trim().isEmpty()) {
             throw new RuntimeException("닉네임을 입력해 주세요.");

@@ -1,6 +1,8 @@
 package com.example.auction.product.service;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -35,7 +37,16 @@ public class ProductService {
 	private final ProductRepository productRepository;
     private final UserRepository userRepository;
 
-
+	/* 상품 임시정지 / 정지 함수 */
+	private void ensureCanMutateProducts(User user, String action) {
+		if (Boolean.TRUE.equals(user.getViewOnly())) {
+			throw new UnauthorizedAccessException("임시 제한(view-only) 상태라 " + action + "할 수 없습니다.");
+		}
+		if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
+			String until = user.getSuspendedUntil().truncatedTo(ChronoUnit.SECONDS).toString().replace('T', ' ');
+			throw new UnauthorizedAccessException("정지된 계정입니다. 해제 시각: " + until);
+		}
+	}
 
     // 아이템 생성
 	@Transactional
@@ -43,6 +54,8 @@ public class ProductService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
+		ensureCanMutateProducts(user, "상품 등록");
 
 		Category category = categoryRepository.findById(dto.getCategoryId())
 				.orElseThrow(() -> new ResourceNotFoundException("Category"));
@@ -65,7 +78,7 @@ public class ProductService {
 		return ProductReadDto.fromEntity(product);
 	}
 	
-	// 아이템 목록 조회
+	// 아이템 목록 상세 조회
 	@Transactional(readOnly = true)
 	public List<ProductReadAllDto> readAllProducts() {
 		return productRepository.findAll().stream()
@@ -82,6 +95,8 @@ public class ProductService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
+		ensureCanMutateProducts(user, "상품 수정");
 
         Product product = productRepository.findById(dto.getProductId())
 				.orElseThrow(() -> new ResourceNotFoundException("Product"));
@@ -104,6 +119,8 @@ public class ProductService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
+		ensureCanMutateProducts(user, "상품 삭제");
 
 		Product product = productRepository.findById(productId)
 				.orElseThrow(() -> new ResourceNotFoundException("Product"));

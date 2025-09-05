@@ -6,6 +6,7 @@ import com.example.auction.bid.dto.BidCreateDto;
 import com.example.auction.product.dto.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,6 +28,7 @@ public class ProductController {
 	private final ProductService productService;
 	    
 	// 상품 생성
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/create")
     public ResponseEntity<?> createProduct(@ModelAttribute ProductCreateDto productCreateDto) {
 			productService.createProduct(productCreateDto);
@@ -48,6 +50,7 @@ public class ProductController {
     }
     
     // 상품 수정
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/update")
     public ResponseEntity<?> updateProduct(@ModelAttribute ProductUpdateDto productUpdateDto) {
     	productService.updateProduct(productUpdateDto);
@@ -55,6 +58,7 @@ public class ProductController {
     }
     
     // 상품 삭제
+    @PreAuthorize("isAuthenticated()")
     @PutMapping("/delete/{productId}")
     public ResponseEntity<?> deleteProduct(@PathVariable("productId") Long productId) {
     	productService.deleteProduct(productId);
