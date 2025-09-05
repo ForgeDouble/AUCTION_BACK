@@ -31,6 +31,10 @@ public class Report extends BaseTimeEntity {
     @Column(nullable = false)
     private ReportCategory category;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type", nullable = false, length = 20)
+    private ReportTargetType targetType;
+
     // 신고 이유
     @Column(length = 500)
     private String content;
@@ -49,14 +53,16 @@ public class Report extends BaseTimeEntity {
         if (status == null) status = ReportStatus.PENDING;
     }
 
-    public static Report create(User reporter, Long targetId, ReportCategory category, String content) {
-        Report report = new Report();
-        report.reporter = reporter;
-        report.targetId = targetId;
-        report.category = category;
-        report.content  = content;
-        report.status   = ReportStatus.PENDING;
-        return report;
+    public static Report create(User reporter, ReportTargetType targetType, Long targetId,
+                                ReportCategory category, String content) {
+        return Report.builder()
+                .reporter(reporter)
+                .targetType(targetType)
+                .targetId(targetId)
+                .category(category)
+                .content(content)
+                .status(ReportStatus.PENDING)
+                .build();
     }
 
     public void accept(String adminContent) {

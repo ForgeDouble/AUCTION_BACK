@@ -3,6 +3,7 @@ package com.example.auction.report.repository;
 import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportStatus;
+import com.example.auction.report.domain.ReportTargetType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -34,4 +35,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     // 그룹 상세 페이징
     Page<Report> findByTargetIdAndCategory(Long targetId, ReportCategory category, Pageable pageable);
+
+    boolean existsByReporter_UserIdAndTargetTypeAndTargetId(
+            Long reporterUserId, ReportTargetType targetType, Long targetId);
 }

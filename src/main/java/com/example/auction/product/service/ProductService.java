@@ -50,8 +50,9 @@ public class ProductService {
 	// 아이템 조회
 	@Transactional(readOnly = true)
 	public ProductReadDto readProduct(Long productId) {
-		Product product = productRepository.findByProductIdAndDelYn(productId, DelYN.N)
-				.orElseThrow(() -> new RuntimeException("존재하지 않는 상품입니다."));
+		Product product = productRepository
+				.findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
+				.orElseThrow(() -> new RuntimeException("존재하지 않거나 비활성화된 상품입니다."));
 		return ProductReadDto.fromEntity(product);
 	}
 	
@@ -60,6 +61,7 @@ public class ProductService {
 	public List<ProductReadAllDto> readAllProducts() {
 		return productRepository.findAll().stream()
 				.filter(product -> product.getDelYn() == DelYN.N)
+				.filter(product -> !Boolean.TRUE.equals(product.getBlocked()))
 				.map(ProductReadAllDto::fromEntity)
 				.collect(Collectors.toList());
 	}
