@@ -1,10 +1,15 @@
 package com.example.auction.bid.service;
 
 import com.example.auction.bid.domain.Bid;
+import com.example.auction.bid.domain.IsWinned;
+import com.example.auction.bid.dto.BidAllDto;
+import com.example.auction.bid.dto.BidWinnerDto;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.product.domain.Product;
 import com.example.auction.bid.dto.BidCreateDto;
+import com.example.auction.product.domain.SellYN;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
@@ -15,6 +20,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -38,10 +47,18 @@ public class BidService {
     }
 
     // 입찰 서비스
+//    로직 보완 필요
     public Bid bidProduct(BidCreateDto bidCreateDto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
+
+        Product product = productRepository.findByProductIdAndDelYn(bidCreateDto.getProductId(), DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+
+        if (product.getSellYN() != SellYN.N) {
+            throw new RuntimeException("경매중인 상품이 아닙니다.");
+        }
 
         String lockKey = "lock_bid_" + bidCreateDto.getProductId();
         RLock lock = bidRedissonClient.getLock(lockKey);
@@ -70,5 +87,23 @@ public class BidService {
         log.info("입찰 완료 - ProductId: {}, UserId: {}", bidCreateDto.getProductId(), user.getUserId());
 
         return bid;
+    }
+
+//   특정 입찰 목록 조회
+    @Transactional(readOnly = true)
+    public List<BidAllDto> readAllBidsByProductId(Long productId) {
+        List<BidAllDto> bidAllDtos = bidRepository.findAllByProduct_ProductId(productId).stream()
+                .map(BidAllDto::fromEntity)
+                .collect(Collectors.toList());
+        return bidAllDtos;
+    }
+
+//   최종 입찰자 조회
+//   예외 처리 보완 필요
+    @Transactional(readOnly = true)
+    public BidWinnerDto readWinner(Long productId) {
+        Bid bid = bidRepository.findByProduct_ProductIdAndIsWinned(productId, IsWinned.Y);
+        BidWinnerDto bidWinnerDto = BidWinnerDto.fromEntity(bid);
+        return bidWinnerDto;
     }
 }
