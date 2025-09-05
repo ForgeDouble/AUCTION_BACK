@@ -2,6 +2,7 @@ package com.example.auction.report.controller;
 
 import com.example.auction.common.dto.CommonResDto;
 import com.example.auction.report.dto.AdminBlockedProductDto;
+import com.example.auction.report.dto.ProductLiftRequest;
 import com.example.auction.report.dto.ProductReportCreateDto;
 import com.example.auction.report.service.ProductReportService;
 import org.springframework.http.HttpStatus;
@@ -40,10 +41,8 @@ public class ProductReportController {
     /* [관리자] 차단 해제 */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/admin/lift")
-    public ResponseEntity<CommonResDto> lift(@RequestParam Long productId,
-                                             @RequestParam(required = false) String reason,
-                                             @RequestParam(defaultValue = "true") boolean resetCounter) {
-        productReportService.liftProductBlock(productId, reason, resetCounter);
+    public ResponseEntity<CommonResDto> lift(@RequestBody ProductLiftRequest dto) {
+        productReportService.liftProductBlock(dto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "차단 해제 완료", null));
     }
 }
