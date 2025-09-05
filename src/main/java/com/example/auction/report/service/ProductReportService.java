@@ -6,6 +6,8 @@ import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportTargetType;
+import com.example.auction.report.dto.AdminBlockedProductDto;
+import com.example.auction.report.dto.ProductLiftRequest;
 import com.example.auction.report.dto.ProductReportCreateDto;
 import com.example.auction.report.repository.ReportRepository;
 import com.example.auction.user.domain.User;
@@ -17,6 +19,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class ProductReportService {
@@ -83,5 +87,47 @@ public class ProductReportService {
         }
     }
 
+    // [관리자] 차단된 상품 목록
+    @Transactional(readOnly = true)
+    public List<AdminBlockedProductDto> listBlockedProducts() {
+        userService.checkAdminAuthority();
+        return productRepository.findByBlockedAndDelYn(true, DelYN.N).stream()
+                .map(p -> AdminBlockedProductDto.builder()
+                        .productId(p.getProductId())
+                        .productName(p.getProductName())
+                        .reportCount(getLong(productCountKey(p.getProductId())))
+                        .blockedAt(p.getBlockedAt())
+                        .blockedReason(p.getBlockedReason())
+                        .build())
+                .toList();
+    }
+
+    // [관리자] 차단 해제
+    @Transactional
+    public void liftProductBlock(ProductLiftRequest req) {
+        userService.checkAdminAuthority();
+
+        if (req == null || req.getProductId() == null) {
+            throw new IllegalArgumentException("productId는 필수입니다.");
+        }
+        boolean reset = (req.getResetCounter() == null) ? true : req.getResetCounter();
+
+        Product product = productRepository.findByProductIdAndDelYn(req.getProductId(), DelYN.N)
+                .orElseThrow(() -> new RuntimeException("대상 상품이 존재하지 않거나 비활성화 상태입니다."));
+
+        // 차단 해제
+        product.unblock();
+        // 해제 사유를 남기고 싶다면(운영 메모 용도): 차단이 해제되었더라도 메모로 보관
+        if (req.getReason() != null && !req.getReason().isBlank()) {
+            product.setBlockedReason(req.getReason().trim());
+        }
+        productRepository.save(product);
+
+        // 카운터 초기화(정책상 기본 true)
+        if (reset) {
+            reset(productCountKey(req.getProductId()));
+        }
+    }
 
 }
+
