@@ -47,8 +47,8 @@ public class Category {
     private Category parent;
 
     // 자식 태그들
-//    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
 //    @JsonManagedReference
 //    @Builder.Default
-//    private List<Category> children = new ArrayList<>();
+    private List<Category> children = new ArrayList<>();
 }

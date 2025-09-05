@@ -34,10 +34,13 @@ public class CategoryController {
     }
     
     // 카테고리 삭제
-//    @DeleteMapping("/")
-//    public ResponseEntity<?> deleteTag() {
-//    	
-//    }
+    // 관리자
+    // 기본 delete
+    @DeleteMapping("/delete/{categoryId}")
+    public ResponseEntity<?> deleteCategory(@PathVariable Long categoryId) {
+        categoryService.deleteCategory(categoryId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 삭제 성공", categoryId));
+    }
     
     // 카테고리 단일 조회
     @GetMapping("/{categoryId}")
