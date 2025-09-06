@@ -3,6 +3,7 @@ package com.example.auction.category.controller;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,5 +62,12 @@ public class CategoryController {
     public ResponseEntity<?> getAllCategoriesByParentId(@PathVariable("parentId")  Long parentId) {
         List<CategoryReadDto> categoryReadDtos = categoryService.getAllCategoriesByParent(parentId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadDtos));
+    }
+
+    // 카테고리 경로 조회
+    @GetMapping(value = "/path/{categoryId}/text", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> getCategoryFullPathText(@PathVariable Long categoryId) {
+        String display = categoryService.getFullPathDisplay(categoryId);
+        return ResponseEntity.ok(display);
     }
 }

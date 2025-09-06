@@ -10,13 +10,13 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 public class WishlistAllDto {
-    private Long whishlistId;
+    private Long wishlistId;
     private Long userId;
     private Long productId;
 
     public static WishlistAllDto fromEntity(Wishlist wishlist) {
         return WishlistAllDto.builder()
-                .whishlistId(wishlist.getWhishlistId())
+                .wishlistId(wishlist.getWhishlistId())
                 .userId(wishlist.getUser().getUserId())
                 .productId(wishlist.getProduct().getProductId())
                 .build();
