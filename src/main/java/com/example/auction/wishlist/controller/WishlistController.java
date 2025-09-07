@@ -3,6 +3,7 @@ package com.example.auction.wishlist.controller;
 import com.example.auction.wishlist.dto.WishlistAllDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.auction.common.dto.CommonResDto;
@@ -21,6 +22,7 @@ public class WishlistController {
 	private final WishlistService wishlistService;
 	
 //	위시리스트 생성
+    @PreAuthorize("isAuthenticated()")
 	@PostMapping("/create")
 	public ResponseEntity<CommonResDto> createWishlist(@ModelAttribute WishlistCreateDto wishlistCreateDto) {
 		wishlistService.createWishlist(wishlistCreateDto);
@@ -28,6 +30,7 @@ public class WishlistController {
 	}
 
 //  위시리스트 목록 조회
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/all")
     public ResponseEntity<CommonResDto> getAllWishlist() {
         List<WishlistAllDto> wishlistAllDtos = wishlistService.getAllWishlist();
@@ -35,6 +38,7 @@ public class WishlistController {
     }
 
 //  위시리스트 삭제
+    @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/delete/{wishlistId}")
     public ResponseEntity<CommonResDto> deleteWishlist(@PathVariable("wishlistId") Long wishlistId) {
         wishlistService.deleteWishlistById(wishlistId);

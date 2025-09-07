@@ -4,6 +4,7 @@ import com.example.auction.common.domain.DelYN;
 import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportStatus;
+import com.example.auction.report.domain.ReportTargetType;
 import com.example.auction.report.dto.AdminReportGroupDto;
 import com.example.auction.report.dto.AdminResolveDto;
 import com.example.auction.report.dto.ReportCreateDto;
@@ -114,9 +115,9 @@ public class ReportService {
         User target = userRepository.findByUserIdAndDelYn(dto.getTargetId(), DelYN.N)
                 .orElseThrow(() -> new RuntimeException("대상 유저가 존재하지 않거나 비활성화 상태입니다."));
 
-        boolean dup = reportRepository.existsByReporter_UserIdAndTargetIdAndCategory(
-                reporter.getUserId(), dto.getTargetId(), dto.getCategory());
-        if (dup) throw new RuntimeException("이미 해당 카테고리로 신고하셨습니다.");
+        boolean dup = reportRepository.existsByReporter_UserIdAndTargetTypeAndTargetId(
+                reporter.getUserId(), ReportTargetType.USER, dto.getTargetId());
+        if (dup) throw new RuntimeException("이미 해당 대상에 대해 신고하셨습니다.");
 
         Report report = dto.toEntity(reporter);
         reportRepository.save(report);
@@ -231,7 +232,7 @@ public class ReportService {
                                                           Long targetUserId) {
         userService.checkAdminAuthority();
 
-        var rows = reportRepository.aggregateReportGroups();
+        var rows = reportRepository.aggregateReportGroupsByTargetType(ReportTargetType.USER);
 
         // 필터
         var filtered = rows.stream()
@@ -269,7 +270,8 @@ public class ReportService {
     @Transactional(readOnly = true)
     public Page<Report> getGroupReports(Long targetUserId, ReportCategory category, Pageable pageable) {
         userService.checkAdminAuthority();
-        return reportRepository.findByTargetIdAndCategory(targetUserId, category, pageable);
+        return reportRepository.findByTargetTypeAndTargetIdAndCategory(
+                ReportTargetType.USER, targetUserId, category, pageable);
     }
 
 
