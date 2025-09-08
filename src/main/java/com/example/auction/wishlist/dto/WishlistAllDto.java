@@ -16,7 +16,7 @@ public class WishlistAllDto {
 
     public static WishlistAllDto fromEntity(Wishlist wishlist) {
         return WishlistAllDto.builder()
-                .wishlistId(wishlist.getWhishlistId())
+                .wishlistId(wishlist.getWishlistId())
                 .userId(wishlist.getUser().getUserId())
                 .productId(wishlist.getProduct().getProductId())
                 .build();

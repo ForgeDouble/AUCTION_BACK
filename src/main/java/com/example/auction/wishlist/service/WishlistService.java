@@ -38,7 +38,12 @@ public class WishlistService {
 
 		Product product = productRepository.findByProductIdAndDelYn(dto.getProductId(), DelYN.N)
 				.orElseThrow(() -> new ResourceNotFoundException("Wishlist"));
-		
+
+        boolean exists = wishlistRepository.existsByUser_UserIdAndProduct_ProductId(user.getUserId(), product.getProductId());
+        if (exists) {
+            throw new IllegalStateException("이미 위시리스트에 있습니다.");
+        }
+
 		Wishlist wishlist = new Wishlist();
 		wishlist.setProduct(product);
 		wishlist.setUser(user);
