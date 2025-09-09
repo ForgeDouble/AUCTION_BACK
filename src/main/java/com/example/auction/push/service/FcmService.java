@@ -13,7 +13,7 @@ public class FcmService {
     private final FirebaseMessaging messaging;
     public FcmService(FirebaseMessaging messaging) { this.messaging = messaging; }
 
-    public String sendToToken(String token, String title, String body, Map<String,String> data) throws Exception {
+    public String sendToToken(String token, String title, String body, Map<String, String> data) throws Exception {
         Message msg = Message.builder()
                 .setToken(token)
                 .setNotification(Notification.builder().setTitle(title).setBody(body).build())
@@ -30,7 +30,8 @@ public class FcmService {
         return messaging.send(msg);
     }
 
-    public BatchResponse sendMulticast(List<String> tokens, String title, String body, Map<String,String> data) throws Exception {
+    public BatchResponse sendMulticast(List<String> tokens, String title, String body, Map<String, String> data) throws Exception {
+
         MulticastMessage msg = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(Notification.builder().setTitle(title).setBody(body).build())
