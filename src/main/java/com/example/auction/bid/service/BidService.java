@@ -103,7 +103,40 @@ public class BidService {
         return bid;
     }
 
-//   특정 입찰 목록 조회
+    // 핫 경매
+    private Bid bidHotAuction(BidCreateDto bidDto, User user, Product product) {
+        String redisKey = "product_bid_" + product.getProductId();
+
+        String luaScript = """
+        local current = tonumber(redis.call('GET', KEYS[1]) or '0')
+        local bid = tonumber(ARGV[1])
+        if bid > current then
+            redis.call('SET', KEYS[1], bid)
+            return 1
+        else
+            return 0
+        end
+    """;
+
+//        Long result = redisTemplate.execute(
+//                new DefaultRedisScript<>(luaScript, Long.class),
+//                List.of(redisKey),
+//                bidDto.getBidAmount()
+//        );
+
+//        if (result == 0) {
+//            throw new RuntimeException("현재가보다 높은 입찰가여야 합니다.");
+//        }
+
+        // 선택: 비동기 DB 저장 (정합성 보장용)
+//        saveBidAsync(bidDto, user, product);
+
+        return bidDto.toBid(); // 임시 반환
+    }
+
+
+
+    //   특정 입찰 목록 조회
     @Transactional(readOnly = true)
     public List<BidAllDto> readAllBidsByProductId(Long productId) {
         List<BidAllDto> bidAllDtos = bidRepository.findAllByProduct_ProductId(productId).stream()
@@ -123,5 +156,4 @@ public class BidService {
         return bidWinnerDto;
     }
 
-//  경매 종료 처리
 }
