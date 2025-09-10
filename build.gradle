@@ -47,6 +47,9 @@ dependencies {
 
     // Mockito
     testImplementation 'org.mockito:mockito-core:5.17.0'
+
+    //fcm
+    implementation 'com.google.firebase:firebase-admin:9.4.1'
 }
 
 tasks.named('test') {
