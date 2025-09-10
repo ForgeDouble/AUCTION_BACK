@@ -43,4 +43,7 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     boolean existsByReporter_UserIdAndTargetTypeAndTargetId(
             Long reporterUserId, ReportTargetType targetType, Long targetId);
+
+    // 관리자 미처리 건수 카운트용
+    long countByStatus(ReportStatus status);
 }
