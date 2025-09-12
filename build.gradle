@@ -44,6 +44,9 @@ dependencies {
     // RabbitMQ
     implementation 'org.springframework.boot:spring-boot-starter-amqp'
 
+    // WebSocket + STOMP + SockJS
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
 
     //test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
