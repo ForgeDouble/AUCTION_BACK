@@ -102,24 +102,25 @@ public class ProductService {
 
         try {
             String bidEventJson = objectMapper.writeValueAsString(bidEvent);
+            String uuid = UUID.randomUUID().toString();
 
             // Lua 스크립트로 ZSET + Hash 초기값 세팅 (원자성 보장)
             String luaScript = """
             local zsetKey = KEYS[1]
             local hashKey = KEYS[2]
-            local userId = ARGV[1]
+            local uuId = ARGV[1]
             local bidAmount = tonumber(ARGV[2])
             local bidEventJson = ARGV[3]
 
             -- ZSET에 초기값 없으면 세팅
-            local exists = redis.call('ZSCORE', zsetKey, userId)
-            if not exists then
-                local added = redis.call('ZADD', zsetKey, bidAmount, userId)
+            local exists = redis.call('ZCARD', zsetKey)
+            if exists == 0 then
+                local added = redis.call('ZADD', zsetKey, bidAmount, uuId)
                 if added == 1 then
-                    redis.call('HSET', hashKey, userId, bidEventJson)
+                    redis.call('HSET', hashKey, uuId, bidEventJson)
                     return 1
                 else
-                    return 0
+                    return 2
                 end
             else
                 return 0
@@ -129,23 +130,24 @@ public class ProductService {
             Long result = bidStringRedisTemplate.execute(
                     new DefaultRedisScript<>(luaScript, Long.class),
                     List.of(bidZSetKey, bidHashKey),
-                    String.valueOf(user.getUserId()),
+                    uuid,
                     String.valueOf(savedProduct.getPrice()),
                     bidEventJson
             );
 
             if (result == null || result == 0) {
-                throw new RuntimeException("Redis 초기 입찰 세팅 실패 - 값이 입력되지 않았습니다.");
+                throw new RuntimeException("Redis 초기 입찰 세팅 실패 - 초기값이 존재합니다.");
+            } else if (result == 2) {
+                throw new RuntimeException("Redis 초기 입찰 세팅 실패 - ZSET 입력을 실패했습니다.");
             }
 
 
-            log.info("Redis ZSET + Hash 초기 입찰가 세팅 완료 - ZSET Key: {}, Hash Key: {}, 시작가: {}",
-                    bidZSetKey, bidHashKey, savedProduct.getPrice());
+            log.info("Redis ZSET + Hash 초기 입찰가 세팅 완료 - ZSET Key: {}, Hash Key: {}, UUID: {}, 시작가: {}",
+                    bidZSetKey, bidHashKey, uuid, savedProduct.getPrice());
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException("BidEvent JSON 변환 실패", e);
         }
-
         return savedProduct;
     }
 
