@@ -28,9 +28,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,6 +44,7 @@ public class BidService {
     private final RedisTemplate<String, String> bidStringRedisTemplate;
     private final BidEventProducer bidEventProducer;
     private final ObjectMapper objectMapper;
+    private final BidWebsocketService bidWebsocketService;
 
     public BidService(
             @Qualifier("bidRedisson") RedissonClient bidRedissonClient,
@@ -54,7 +54,8 @@ public class BidService {
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
             BidEventProducer bidEventProducer,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            BidWebsocketService bidWebsocketService) {
         this.bidRedissonClient = bidRedissonClient;
         this.bidRepository = bidRepository;
         this.productRepository = productRepository;
@@ -63,13 +64,18 @@ public class BidService {
         this.bidStringRedisTemplate = bidStringRedisTemplate;
         this.bidEventProducer = bidEventProducer;
         this.objectMapper = objectMapper;
+        this.bidWebsocketService = bidWebsocketService;
     }
 
     // 입찰 서비스
 //    로직 보완 필요
-    public Bid bidProduct(BidCreateDto bidCreateDto) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+    public BidEvent bidProduct(BidCreateDto bidCreateDto) {
+//        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+//        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+//                .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
+        
+//        websocket test용 코드
+        User user = userRepository.findById(1L)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
 
         Product product = productRepository.findByProductIdAndDelYn(bidCreateDto.getProductId(), DelYN.N)
@@ -99,40 +105,46 @@ public class BidService {
 //                log.info("락 해제 성공 - Key: {}", lockKey);
 //            }
 //        }
-        return bidHotAuction(bidCreateDto, user, product);
+        BidEvent bidEvent = bidHotAuction(bidCreateDto, user);
+
+        bidWebsocketService.broadcastBidEvent(bidEvent);
+
+        return bidEvent;
     }
 
     // bid Insert
-    @Transactional
-    protected Bid saveBid(BidCreateDto bidCreateDto, User user, Product product) {
-
-        Bid recentBid = bidRepository.findTopByProduct_ProductIdOrderByCreatedAtDesc(product.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("최신 Bid"));
-
-        if (bidCreateDto.getBidAmount() < recentBid.getBidAmount()) {
-            throw new RuntimeException("이전 입찰가 보다 높아야합니다.");
-        } else if (bidCreateDto.getBidAmount() % 100 != 0) {
-            throw  new RuntimeException("입찰가는 100원 단위여야 합니다.");
-        }
-
-        Bid bid = bidCreateDto.toBid();
-        bid.setProduct(product);
-        bid.setUser(user);
-        bidRepository.save(bid);
-        log.info("입찰 완료 - ProductId: {}, UserId: {}", bidCreateDto.getProductId(), user.getUserId());
-
-        return bid;
-    }
+//    @Transactional
+//    protected Bid saveBid(BidCreateDto bidCreateDto, User user, Product product) {
+//
+//        Bid recentBid = bidRepository.findTopByProduct_ProductIdOrderByCreatedAtDesc(product.getProductId())
+//                .orElseThrow(() -> new ResourceNotFoundException("최신 Bid"));
+//
+//        if (bidCreateDto.getBidAmount() < recentBid.getBidAmount()) {
+//            throw new RuntimeException("이전 입찰가 보다 높아야합니다.");
+//        } else if (bidCreateDto.getBidAmount() % 100 != 0) {
+//            throw  new RuntimeException("입찰가는 100원 단위여야 합니다.");
+//        }
+//
+//        Bid bid = bidCreateDto.toBid();
+//        bid.setProduct(product);
+//        bid.setUser(user);
+//        bidRepository.save(bid);
+//        log.info("입찰 완료 - ProductId: {}, UserId: {}", bidCreateDto.getProductId(), user.getUserId());
+//
+//        return bid;
+//    }
 
     // 핫 경매
-    private Bid bidHotAuction(BidCreateDto bidDto, User user, Product product) {
-        String bidZSetKey = "product_bid_zset_" + product.getProductId();
-        String bidHashKey = "product_bid_hash_" + product.getProductId();
+    private BidEvent bidHotAuction(BidCreateDto bidDto, User user) {
+        String bidZSetKey = "product_bid_zset_" + bidDto.getProductId();
+        String bidHashKey = "product_bid_hash_" + bidDto.getProductId();
 
         BidEvent bidEvent = BidEvent.builder()
                 .userId(user.getUserId())
+                .userName(user.getName())
                 .productId(bidDto.getProductId())
                 .bidAmount(bidDto.getBidAmount())
+                .createdAt(LocalDateTime.now())
                 .isWinned(bidDto.getIsWinned())
                 .build();
 
@@ -185,42 +197,75 @@ public class BidService {
         }
 
         // 비동기 DB 저장 (정합성 보장용)
-        bidEventProducer.publishBidEvent(bidDto, user);
+        bidEventProducer.publishBidEvent(bidEvent);
 
-        return bidDto.toBid(); // 임시 반환
+        return bidEvent; // 임시 반환
     }
 
 
     // 콜드 경매
-    @Transactional
-    public Bid bidColdAuction(BidCreateDto bidDto, User user, Product product) {
-        int retry = 3;
-        while (retry-- > 0) {
-            Product p = productRepository.findById(product.getProductId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Product"));
+//    @Transactional
+//    public Bid bidColdAuction(BidCreateDto bidDto, User user, Product product) {
+//        int retry = 3;
+//        while (retry-- > 0) {
+//            Product p = productRepository.findById(product.getProductId())
+//                    .orElseThrow(() -> new ResourceNotFoundException("Product"));
+//
+//            Bid recentBid = bidRepository.findTopByProduct_ProductIdOrderByCreatedAtDesc(product.getProductId())
+//                    .orElse(null);
+//
+//            if (recentBid != null && bidDto.getBidAmount() <= recentBid.getBidAmount()) {
+//                throw new RuntimeException("현재가보다 높은 입찰가여야 합니다.");
+//            }
+//
+//            try {
+//                Bid bid = bidDto.toBid();
+//                bid.setUser(user);
+//                bid.setProduct(product);
+//                bidRepository.save(bid);
+//                return bid;
+//            } catch (OptimisticLockException e) {
+//                // 재시도
+//            }
+//        }
+//        throw new RuntimeException("입찰 처리 중 오류 발생, 다시 시도해주세요.");
+//    }
 
-            Bid recentBid = bidRepository.findTopByProduct_ProductIdOrderByCreatedAtDesc(product.getProductId())
-                    .orElse(null);
+    // 특정 입찰 목록 조회 From Redis
+    public List<BidEvent> getAllBidHistory(Long productId, boolean desc) {
+        String zsetKey = "product_bid_zset_" + productId;
+        String hashKey = "product_bid_hash_" + productId;
 
-            if (recentBid != null && bidDto.getBidAmount() <= recentBid.getBidAmount()) {
-                throw new RuntimeException("현재가보다 높은 입찰가여야 합니다.");
-            }
+        // ZSET 전체 가져오기
+        Set<String> uuids;
+        if (desc) {
+            uuids = bidStringRedisTemplate.opsForZSet().reverseRange(zsetKey, 0, -1); // 최신순
+        } else {
+            uuids = bidStringRedisTemplate.opsForZSet().range(zsetKey, 0, -1); // 오래된 순
+        }
 
+        log.info("입찰 데이터 uuid 조회 : {}" , uuids.toString());
+
+        if (uuids == null || uuids.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // HASH에서 상세 데이터 조회
+        List<Object> jsonList = bidStringRedisTemplate.opsForHash()
+                .multiGet(hashKey, new ArrayList<>(uuids));
+        log.info("입찰 데이터 json list 조회 : {}" , jsonList.toString());
+
+        List<BidEvent> bidEvents = new ArrayList<>();
+        for (Object obj : jsonList) {
+            if (obj == null) continue;
             try {
-                Bid bid = bidDto.toBid();
-                bid.setUser(user);
-                bid.setProduct(product);
-                bidRepository.save(bid);
-                return bid;
-            } catch (OptimisticLockException e) {
-                // 재시도
+                bidEvents.add(objectMapper.readValue(obj.toString(), BidEvent.class));
+            } catch (JsonProcessingException e) {
+                e.printStackTrace(); // 파싱 실패한 건 무시
             }
         }
-        throw new RuntimeException("입찰 처리 중 오류 발생, 다시 시도해주세요.");
+        return bidEvents;
     }
-
-
-
 
     //   특정 입찰 목록 조회
     @Transactional(readOnly = true)
