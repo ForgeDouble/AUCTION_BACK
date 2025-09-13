@@ -104,6 +104,21 @@ public class RedisConfig {
         return redisTemplate;
     }
 
+    // value 값을 string 으로 받는 커스텀 bidtemplate
+    @Bean
+    @Qualifier("bidPrice")
+    public RedisTemplate<String, String> bidNumberRedisTemplate(
+        @Qualifier("bid") LettuceConnectionFactory connectionFactoryBid
+    ) {
+        RedisTemplate<String, String> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(connectionFactoryBid);
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setValueSerializer(new StringRedisSerializer());
+        redisTemplate.setHashKeySerializer(new StringRedisSerializer());
+        redisTemplate.setHashValueSerializer(new StringRedisSerializer());
+        return redisTemplate;
+    }
+
     // key = 4 조회수 관련
 
 

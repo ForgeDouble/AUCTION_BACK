@@ -51,7 +51,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/user/login",
-                                "/user/register"
+                                "/user/register",
+//                                웹소캣 테스트용
+                                "/bid/redis/1",
+                                "/ws/**"
+
 
                         ).permitAll()  // 로그인, 회원가입 경로는 인증x
                         .anyRequest().authenticated() // 나머지 토큰값 필요
