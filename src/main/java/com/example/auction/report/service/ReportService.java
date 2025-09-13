@@ -1,6 +1,7 @@
 package com.example.auction.report.service;
 
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.notification.event.UserTemporarilyRestrictedEvent;
 import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportStatus;
@@ -17,19 +18,15 @@ import com.example.auction.user.repository.UserReportAggregateRepository;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.user.service.UserService;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.redis.core.Cursor;
-import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -45,7 +42,7 @@ public class ReportService {
     private final StringRedisTemplate reportCounter;
     private final DefaultRedisScript<Long> movePendingToAcceptedScript;
     private final DefaultRedisScript<Long> safeDecrPendingScript;
-
+    private final ApplicationEventPublisher publisher;
 
     public ReportService(ReportRepository reportRepository,
                          UserRepository userRepository,
@@ -53,7 +50,7 @@ public class ReportService {
                          UserService userService,
                          @Qualifier("reportCounter") StringRedisTemplate reportCounter,
                          @Qualifier("movePendingToAcceptedScript") DefaultRedisScript<Long> movePendingToAcceptedScript,
-                         @Qualifier("safeDecrPendingScript") DefaultRedisScript<Long> safeDecrPendingScript) {
+                         @Qualifier("safeDecrPendingScript") DefaultRedisScript<Long> safeDecrPendingScript, ApplicationEventPublisher publisher) {
         this.reportRepository = reportRepository;
         this.userRepository = userRepository;
         this.aggRepository = aggRepository;
@@ -61,6 +58,7 @@ public class ReportService {
         this.reportCounter = reportCounter;
         this.movePendingToAcceptedScript = movePendingToAcceptedScript;
         this.safeDecrPendingScript = safeDecrPendingScript;
+        this.publisher = publisher;
     }
 
     private String pendingKey(Long userId, ReportCategory category) {
@@ -88,7 +86,7 @@ public class ReportService {
     }
     private static final long PENDING_THRESHOLD_PER_CATEGORY = 5L;
 
-    /** Redis 카운터 → DB 스냅샷 업서트 */
+    /* Redis 카운터 → DB 스냅샷 업서트 */
     @Transactional
     protected void upsertAggregateSnapshot(Long targetUserId, ReportCategory category) {
         long pending = getLong(pendingKey(targetUserId, category));
@@ -128,6 +126,13 @@ public class ReportService {
         if (newPending >= PENDING_THRESHOLD_PER_CATEGORY && Boolean.FALSE.equals(target.getViewOnly())) {
             target.makeViewOnly();
             userRepository.save(target);
+
+            publisher.publishEvent(new UserTemporarilyRestrictedEvent(
+                    target.getUserId(),
+                    dto.getCategory(),
+                    newPending,
+                    "해당 카테고리 신고 임계치에 도달하여 임시 제한이 적용되었습니다."
+            ));
         }
 
 //        UserReportAggregate aggregate = aggRepository
