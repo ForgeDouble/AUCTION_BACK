@@ -1,15 +1,19 @@
 package com.example.auction.bid.controller;
 
 
+import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.dto.BidAllDto;
 import com.example.auction.bid.dto.BidCreateDto;
 
+import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.bid.dto.BidWinnerDto;
 import com.example.auction.bid.service.BidService;
 import com.example.auction.common.dto.CommonResDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,13 +24,31 @@ import java.util.List;
 public class BidController {
     
     private final BidService bidService;
+    private final SimpMessagingTemplate messagingTemplate;
 
 //    입찰
     @PostMapping("/bid")
     public ResponseEntity<?> bidProduct(@ModelAttribute BidCreateDto bidCreateDto) {
-        bidService.bidProduct(bidCreateDto);
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 입찰 성공", null));
+        BidEvent bidEvent = bidService.bidProduct(bidCreateDto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 입찰 성공", bidEvent));
     }
+
+    //    입찰 - websocket 버전
+    @MessageMapping("/bid")
+    public void bidProductWeb(BidCreateDto bidCreateDto) {
+        BidEvent bidEvent = bidService.bidProduct(bidCreateDto);
+    }
+
+    //    productId로 입찰 목록 조회
+    @GetMapping("/redis/{productId}")
+    public ResponseEntity<?> getBidHistory(
+            @PathVariable("productId") Long productId,
+            @RequestParam(defaultValue = "true") boolean desc
+    ) {
+        List<BidEvent> bids = bidService.getAllBidHistory(productId, desc);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "입찰 목록 조회 성공", bids));
+    }
+
 
 //    productId로 입찰 목록 조회
     @GetMapping("/all/{productId}")
