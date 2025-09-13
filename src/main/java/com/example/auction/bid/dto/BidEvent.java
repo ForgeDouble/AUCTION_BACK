@@ -6,13 +6,17 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 public class BidEvent {
     private Long userId;
+    private String userName;
     private Long productId;
     private Long bidAmount;
+    private LocalDateTime createdAt;
     private IsWinned isWinned;
 }

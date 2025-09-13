@@ -16,14 +16,7 @@ public class BidEventProducer {
     private final BidRepository bidRepository;
     private final RabbitTemplate rabbitTemplate;
 
-    public void publishBidEvent(BidCreateDto bidCreateDto, User user) {
-        BidEvent bidEvent = BidEvent.builder()
-                .userId(user.getUserId())
-                .productId(bidCreateDto.getProductId())
-                .bidAmount(bidCreateDto.getBidAmount())
-                .isWinned(bidCreateDto.getIsWinned())
-                .build();
-
+    public void publishBidEvent(BidEvent bidEvent) {
         rabbitTemplate.convertAndSend("bid-exchange", "bid-routing-key", bidEvent);
     }
 }

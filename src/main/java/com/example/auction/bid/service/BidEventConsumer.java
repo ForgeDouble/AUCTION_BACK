@@ -31,6 +31,7 @@ public class BidEventConsumer {
         bid.setProduct(product);
         bid.setUser(user);
         bid.setBidAmount(event.getBidAmount());
+        bid.setCreatedAt(event.getCreatedAt());
         bid.setIsWinned(event.getIsWinned());
         bidRepository.save(bid);
 

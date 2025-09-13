@@ -95,8 +95,10 @@ public class ProductService {
 
         BidEvent bidEvent = BidEvent.builder()
                 .userId(user.getUserId())
+                .userName(user.getName())
                 .productId(savedProduct.getProductId())
                 .bidAmount(savedProduct.getPrice())
+                .createdAt(LocalDateTime.now())
                 .isWinned(IsWinned.N)
                 .build();
 
