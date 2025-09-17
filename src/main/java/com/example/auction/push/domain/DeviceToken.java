@@ -1,6 +1,7 @@
 package com.example.auction.push.domain;
 
 
+import com.example.auction.common.crypto.AesGcmStringConverter;
 import com.example.auction.common.domain.BaseTimeEntity;
 import com.example.auction.user.domain.User;
 import jakarta.persistence.*;

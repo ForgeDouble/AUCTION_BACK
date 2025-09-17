@@ -39,4 +39,22 @@ public class FcmService {
                 .build();
         return messaging.sendMulticast(msg);
     }
+
+    public BatchResponse sendMulticastWithRetry(List<String> tokens, String title, String body, Map<String, String> data) throws Exception {
+        int attempts = 0;
+        while (true) {
+            try {
+                return sendMulticast(tokens, title, body, data);
+            } catch (FirebaseMessagingException e) {
+                MessagingErrorCode code = e.getMessagingErrorCode();
+                if (code == MessagingErrorCode.UNAVAILABLE || code == MessagingErrorCode.INTERNAL) {
+                    if (++attempts <= 3) {
+                        Thread.sleep(200L * attempts * attempts);
+                        continue;
+                    }
+                }
+                throw e;
+            }
+        }
+    }
 }
