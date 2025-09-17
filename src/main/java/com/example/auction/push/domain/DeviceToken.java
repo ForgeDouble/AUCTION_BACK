@@ -25,6 +25,7 @@ public class DeviceToken extends BaseTimeEntity {
     private User user;
 
     @Column(nullable=false, length=500, unique=true)
+    @Convert(converter = AesGcmStringConverter.class)
     private String token;
 
     @Enumerated(EnumType.STRING) @Column(nullable=false, length=10)
