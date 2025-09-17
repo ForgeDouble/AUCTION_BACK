@@ -49,6 +49,8 @@ public class ProductService {
     private final RedisTemplate<String, Object> bidRedisTemplate;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
 
+    private static final int AUCTION_DURATION_HOURS = 24;
+
     public ProductService(
             CategoryRepository categoryRepository,
             ProductRepository productRepository,
@@ -156,21 +158,36 @@ public class ProductService {
         return savedProduct;
     }
 
+//    만료된 옥션들 처리
     @Scheduled(fixedRate = 30000)
-    @Transactional
+    @Transactional(readOnly = true)  // 읽기 전용으로 성능 최적화
     public void checkExpiredAuctions() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime cutoffTime = now.minusHours(24); // 24시간 전
+        LocalDateTime cutoffTime = LocalDateTime.now().minusHours(AUCTION_DURATION_HOURS);
 
-        // 24시간이 지났지만 아직 ACTIVE 상태인 경매들
         List<Product> expiredAuctions = productRepository
-                .findBySellYNAndCreatedAtBefore(SellYN.N, cutoffTime);
+                .findBySellYNAndCreatedAtBeforeOrderByCreatedAtAsc(SellYN.N, cutoffTime);
 
-        for (Product product : expiredAuctions) {
+        if (expiredAuctions.isEmpty()) {
+            return;
+        }
+
+        log.info("만료된 경매 발견 - 처리 대상: {}개", expiredAuctions.size());
+
+        // 배치로 처리 (대량 데이터 대비)
+        expiredAuctions.parallelStream()
+            .forEach(this::endAuctionSafely);
+    }
+
+    private void endAuctionSafely(Product product) {
+        try {
             endAuction(product);
+        } catch (Exception e) {
+            log.error("개별 경매 종료 처리 실패 - ProductId: {}", product.getProductId(), e);
+            // 한 건 실패가 전체를 막지 않도록
         }
     }
 
+//    경매 낙찰 처리
     private void endAuction(Product product) {
         try {
             // 1. 상품 상태를 ENDED로 변경
