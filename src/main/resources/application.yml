@@ -42,4 +42,4 @@ logging:
     org.springframework: WARN
 
 firebase:
-  service-account-json: ${FIREBASE_SERVICE_ACCOUNT_B64:}
+  service-account-b64: ${FIREBASE_SERVICE_ACCOUNT_B64:}
