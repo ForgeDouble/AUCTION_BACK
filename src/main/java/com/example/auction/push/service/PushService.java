@@ -21,6 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 
+/*
+* 해당 코드를 통해서 등록 / 해제 / 유저 발송 / 죽은 토큰 정리 의 기능 구현
+*
+* */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -43,7 +47,7 @@ public class PushService {
         }
         User user = currentUser();
         String hash = TokenHash.hmacSha256B64(dto.getToken());
-        log.info("[Push] register userId={}, tokenHashPrefix={}", user.getUserId(), hash.substring(0, 8));
+        log.info("[Push] 가입 userID = {}, tokenHashPrefix = {}", user.getUserId(), hash.substring(0, 8));
 
         DeviceToken token = deviceTokenRepository.findByTokenHash(hash)
                 .orElse(DeviceToken.builder().build());
@@ -63,10 +67,10 @@ public class PushService {
         if (tokenPlain == null || tokenPlain.isBlank()) return;
         String hash = TokenHash.hmacSha256B64(tokenPlain);
         deviceTokenRepository.deleteByTokenHash(hash);
-        log.info("[Push] unregister tokenHashPrefix={}", hash.substring(0, 8));
+        log.info("[Push] 저장되지 않은 tokenHashPrefix={}", hash.substring(0, 8));
     }
 
-    /* 특정 유저의 모든 유효 토큰으로 전송(실패 토큰 정리 포함) */
+    /* 특정 유저의 모든 유효 토큰으로 전송 (실패 토큰 정리) */
     @Transactional
     public int sendToUser(Long userId, String title, String body, Map<String,String> data) throws Exception {
         User target = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User"));
@@ -83,6 +87,7 @@ public class PushService {
             List<String> chunk = validTokens.subList(i, Math.min(i + 500, validTokens.size()));
             BatchResponse batchResponse = fcmService.sendMulticastWithRetry(chunk, title, body, data);
 
+            // 실패 시 토큰 정리 코드
             for (int idx = 0; idx < batchResponse.getResponses().size(); idx++) {
                 var r = batchResponse.getResponses().get(idx);
                 if (!r.isSuccessful()) {
@@ -101,7 +106,7 @@ public class PushService {
             }
             success += batchResponse.getSuccessCount();
         }
-        log.info("[Push] sendToUser userId={}, success={}", userId, success);
+        log.info("[Push] 발송받은 userId={}, 성공 = {}", userId, success);
         return success;
     }
 }

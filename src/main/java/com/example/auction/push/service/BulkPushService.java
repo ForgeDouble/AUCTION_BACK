@@ -16,13 +16,15 @@ import java.util.concurrent.*;
 public class BulkPushService {
     private final FcmService fcmService;
 
-    // 500개 청크 병렬 전송 구조
+    // 대량 발송 관련
     @Async("pushExecutor")
     public CompletableFuture<Integer> sendAll(List<String> tokens, String title, String body, Map<String,String> data) {
-        if (tokens == null || tokens.isEmpty()) return CompletableFuture.completedFuture(0);
-        List<List<String>> chunks = partition(tokens, 500);
+        if (tokens == null || tokens.isEmpty())
+            return CompletableFuture.completedFuture(0);
+
+        List<List<String>> chunks = partition(tokens, 500); // 500개의 병렬 구조
         int workers = Math.min(20, chunks.size());
-        log.info("[FCM] bulk chunks={}, workers={}", chunks.size(), workers);
+        log.info("[FCM] bulk chunks = {}, workers = {}", chunks.size(), workers);
 
         ExecutorService pool = Executors.newFixedThreadPool(workers);
         List<CompletableFuture<Integer>> futures = new ArrayList<>();
@@ -41,7 +43,7 @@ public class BulkPushService {
                 .thenApply(v -> {
                     pool.shutdown();
                     int total = futures.stream().mapToInt(CompletableFuture::join).sum();
-                    log.info("[FCM] 벌크가 전부 성공 ={}", total);
+                    log.info("[FCM] 벌크 전부 성공 ={}", total);
                     return total;
                 });
     }

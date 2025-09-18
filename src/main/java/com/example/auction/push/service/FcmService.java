@@ -30,7 +30,7 @@ public class FcmService {
                         .build())
                 .build();
         String messageId = messaging.send(msg);
-        log.info("[FCM] messageId 보낸 값 : ", messageId);
+        log.debug("[FCM] messageId 보낸 값 : ", messageId);
         return messageId;
     }
 
@@ -52,16 +52,16 @@ public class FcmService {
         while (true) {
             try {
                 return sendMulticast(tokens, title, body, data);
-            } catch (FirebaseMessagingException e) {
-                var code = e.getMessagingErrorCode();
+            } catch (FirebaseMessagingException firebaseMessagingException) {
+                var code = firebaseMessagingException.getMessagingErrorCode();
                 if (code == MessagingErrorCode.UNAVAILABLE || code == MessagingErrorCode.INTERNAL) {
                     attempts++;
                     long backoff = 200L * attempts * attempts;
                     log.warn("[FCM] 일시적 오류 ({}), 재시도 #{} 백오프 {}ms", code, attempts, backoff);
                     if (attempts <= 3) { Thread.sleep(backoff); continue; }
                 }
-                log.error("[FCM] 전송에 실패했습니다 : code={}, msg={}", e.getMessagingErrorCode(), e.getMessage());
-                throw e;
+                log.error("[FCM] 전송에 실패했습니다 : code={}, msg={}", firebaseMessagingException.getMessagingErrorCode(), firebaseMessagingException.getMessage());
+                throw firebaseMessagingException;
             }
         }
     }

@@ -13,12 +13,4 @@ public class TokenRegisterDto {
     private String appVersion;
     private String deviceModel;
 
-    public DeviceToken toEntity() {
-        return DeviceToken.builder()
-                .token(token)
-                .platform(platform)
-                .appVersion(appVersion)
-                .deviceModel(deviceModel)
-                .build();
-    }
 }

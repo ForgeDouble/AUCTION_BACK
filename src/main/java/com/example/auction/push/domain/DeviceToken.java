@@ -31,7 +31,7 @@ public class DeviceToken extends BaseTimeEntity {
     @Convert(converter = AesGcmStringConverter.class)
     private String token;
 
-    // HMAC-SHA256(Base64)
+    // 해시 HMAC-SHA256(Base64)
     @Column(name="token_hash", nullable=false, length=64, unique=true)
     private String tokenHash;
 

@@ -12,6 +12,7 @@ import java.util.Base64;
 /*
 * AES-GCM 을 사용한 토큰 암호화 / 해시
 * 매번 암호화 된 형태로 제공
+* DB <-> 암호문
 * */
 @Converter
 @Slf4j

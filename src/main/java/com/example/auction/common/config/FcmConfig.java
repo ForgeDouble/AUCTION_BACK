@@ -38,26 +38,30 @@ public class FcmConfig {
     public FirebaseApp firebaseApp() throws Exception {
         // Base64 환경변수 우선 적용
         if (serviceAccountB64 != null && !serviceAccountB64.isBlank()) {
+            log.info("[FCM] B64 env 들어옴");
             byte[] decoded = Base64.getDecoder().decode(serviceAccountB64.trim());
             return initFromStream(new ByteArrayInputStream(decoded));
         }
 
         // 생 JSON 문자열
         if (serviceAccountJson != null && !serviceAccountJson.isBlank()) {
-            byte[] bytes = serviceAccountJson.getBytes(StandardCharsets.UTF_8);
-            return initFromStream(new ByteArrayInputStream(bytes));
+            log.info("[FCM] JSON 들어옴");
+            return initFromStream(new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8)));
         }
 
         //ADC — 파일 없이 워크로드 아이덴티티
-        if (isDefaultCredentialsAvailable()) {
+        try {
+            GoogleCredentials.getApplicationDefault();
+            log.info("[FCM] ADC 로 들어옴");
             var options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.getApplicationDefault())
                     .build();
             return initOnce(options);
-        }
+        } catch (Exception ignore) {}
 
         // 파일 경로 ( 로컬 환경 )
         if (serviceAccountPath != null && serviceAccountPath.exists()) {
+            log.info("[FCM] file path로 들어옴: {}", serviceAccountPath);
             try (InputStream in = serviceAccountPath.getInputStream()) {
                 return initFromStream(in);
             }
@@ -72,17 +76,6 @@ public class FcmConfig {
             중 하나를 설정하세요.
         """);
     }
-
-    private boolean isDefaultCredentialsAvailable() {
-        try {
-            // 가용성 체크
-            GoogleCredentials.getApplicationDefault();
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     private FirebaseApp initFromStream(InputStream in) throws Exception {
         var options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(in))
