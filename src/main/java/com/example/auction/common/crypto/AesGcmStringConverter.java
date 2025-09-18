@@ -8,7 +8,7 @@ import java.util.Arrays;
 import java.util.Base64;
 @Converter
 public class AesGcmStringConverter implements AttributeConverter<String, String> {
-    private static final String PREFIX = "v1:"; // 버전 관리
+    private static final String PREFIX = "v1:";
     private static final int IV_LEN = 12;
     private static final SecretKey KEY = CryptoKeys.currentKey();
 

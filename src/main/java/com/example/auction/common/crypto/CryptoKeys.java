@@ -13,7 +13,7 @@ public final class CryptoKeys {
             b64 = System.getProperty("AES_GCM_KEY_B64");
         }
         if (b64 == null || b64.isBlank()) {
-            throw new IllegalStateException("AES_GCM_KEY_B64 is not set");
+            throw new IllegalStateException("AES_GCM_KEY_B64 설정되지 않았습니다");
         }
         byte[] raw = Base64.getDecoder().decode(b64);
         if (!(raw.length == 16 || raw.length == 24 || raw.length == 32)) {

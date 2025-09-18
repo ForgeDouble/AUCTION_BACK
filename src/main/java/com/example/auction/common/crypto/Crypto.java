@@ -17,7 +17,7 @@ public final class Crypto {
             cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_BITS, iv));
             return cipher.doFinal(plain);
         } catch (Exception e) {
-            throw new IllegalStateException("AES-GCM encrypt failed", e);
+            throw new IllegalStateException("AES-GCM 암호화에 실패했습니다", e);
         }
     }
 
@@ -27,7 +27,7 @@ public final class Crypto {
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_BITS, iv));
             return cipher.doFinal(cipherBytes);
         } catch (Exception e) {
-            throw new IllegalStateException("AES-GCM decrypt failed", e);
+            throw new IllegalStateException("AES-GCM 해독에 실패했습니다", e);
         }
     }
 
