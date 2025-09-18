@@ -26,6 +26,7 @@ public class DeviceToken extends BaseTimeEntity {
     @JoinColumn(name="user_id", nullable=false)
     private User user;
 
+    // AESGCM 을 통한 암호화 형태
     @Column(nullable=false, length=500, unique=true)
     @Convert(converter = AesGcmStringConverter.class)
     private String token;

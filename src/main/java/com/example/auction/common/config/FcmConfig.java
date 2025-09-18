@@ -4,6 +4,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,34 +15,40 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+
+/*
+* 배포 환경에서 credential 증명 방식이 다름
+* 따라서 fcmConfig 에서 해당 자격을 받을 때 각각의 경우(if) 문을 활용해서 우선순위 적용 후 처리
+* env(B64) -> JSON -> ADC -> FILE 순
+* */
 @Configuration
+@Slf4j
 public class FcmConfig {
 
-    @Value("${firebase.service-account-b64:}")  // Base64 인코딩된 JSON을 yml/env로 주입
+    @Value("${firebase.service-account-b64:}")
     private String serviceAccountB64;
 
-    @Value("${firebase.service-account-json:}") // 생 JSON 문자열을 yml/env로 주입
+    @Value("${firebase.service-account-json:}")
     private String serviceAccountJson;
 
-    @Value("${firebase.service-account-path:}") // (옵션) 기존 파일/클래스패스 경로
+    @Value("${firebase.service-account-path:}")
     private Resource serviceAccountPath;
 
     @Bean
     public FirebaseApp firebaseApp() throws Exception {
-        // 1) Base64 환경변수 우선
+        // Base64 환경변수 우선 적용
         if (serviceAccountB64 != null && !serviceAccountB64.isBlank()) {
             byte[] decoded = Base64.getDecoder().decode(serviceAccountB64.trim());
             return initFromStream(new ByteArrayInputStream(decoded));
         }
 
-        // 2) 생 JSON 문자열
+        // 생 JSON 문자열
         if (serviceAccountJson != null && !serviceAccountJson.isBlank()) {
             byte[] bytes = serviceAccountJson.getBytes(StandardCharsets.UTF_8);
             return initFromStream(new ByteArrayInputStream(bytes));
         }
 
-        // 3) GCP/ADC(Workload Identity or GOOGLE_APPLICATION_CREDENTIALS)
-        //    - GCP 런너/클러스터면 파일 없이 이걸로 동작 (권한만 맞으면 됨)
+        //ADC — 파일 없이 워크로드 아이덴티티
         if (isDefaultCredentialsAvailable()) {
             var options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.getApplicationDefault())
@@ -49,7 +56,7 @@ public class FcmConfig {
             return initOnce(options);
         }
 
-        // 4) (fallback) 파일/클래스패스 경로
+        // 파일 경로 ( 로컬 환경 )
         if (serviceAccountPath != null && serviceAccountPath.exists()) {
             try (InputStream in = serviceAccountPath.getInputStream()) {
                 return initFromStream(in);
@@ -68,7 +75,8 @@ public class FcmConfig {
 
     private boolean isDefaultCredentialsAvailable() {
         try {
-            GoogleCredentials.getApplicationDefault(); // 가용성 체크
+            // 가용성 체크
+            GoogleCredentials.getApplicationDefault();
             return true;
         } catch (Exception e) {
             return false;
@@ -84,8 +92,10 @@ public class FcmConfig {
 
     private FirebaseApp initOnce(FirebaseOptions options) {
         if (FirebaseApp.getApps().isEmpty()) {
+            log.info("[FCM] FirebaseApp 초기화 되었습니다.");
             return FirebaseApp.initializeApp(options);
         }
+        log.info("[FCM] FirebaseApp 이미 존재합니다");
         return FirebaseApp.getInstance();
     }
 

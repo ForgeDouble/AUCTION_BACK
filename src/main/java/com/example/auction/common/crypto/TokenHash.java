@@ -6,6 +6,10 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+/*
+* AES-GCM 을 사용하면 매번 랜덤 암호이기 때문에 HMAC 해시 컬럼으로 조회/유니크/삭제 처리 기능
+* 검색결과 해시 -> SERVER SECRET KEY 없이 역산 불가
+* */
 public final class TokenHash {
     private TokenHash() {}
 
