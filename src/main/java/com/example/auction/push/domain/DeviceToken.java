@@ -1,6 +1,7 @@
 package com.example.auction.push.domain;
 
 
+import com.example.auction.common.crypto.AesGcmStringConverter;
 import com.example.auction.common.domain.BaseTimeEntity;
 import com.example.auction.user.domain.User;
 import jakarta.persistence.*;
@@ -21,13 +22,21 @@ public class DeviceToken extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="user_id", nullable=false)
+    @ManyToOne(fetch=FetchType.LAZY)
+    @JoinColumn(name="user_id", nullable=false)
     private User user;
 
+    // AESGCM 을 통한 암호화 형태
     @Column(nullable=false, length=500, unique=true)
+    @Convert(converter = AesGcmStringConverter.class)
     private String token;
 
-    @Enumerated(EnumType.STRING) @Column(nullable=false, length=10)
+    // 해시 HMAC-SHA256(Base64)
+    @Column(name="token_hash", nullable=false, length=64, unique=true)
+    private String tokenHash;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable=false, length=10)
     private DevicePlatform platform;
 
     @Builder.Default

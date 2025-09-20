@@ -29,7 +29,7 @@ spring:
     generate-ddl: true
     hibernate:
       format_sql: false
-      ddl-auto: create
+      ddl-auto: update
     show-sql: true
 
 jwt:
@@ -42,4 +42,9 @@ logging:
     org.springframework: WARN
 
 firebase:
-  service-account-json: ${FIREBASE_SERVICE_ACCOUNT_B64:}
+  service-account-b64: ${FIREBASE_SERVICE_ACCOUNT_b64:}
+  service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
+  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
+crypto:
+  aes-gcm-key-b64: ${AES_GCM_KEY_B64:}
+  aes-gcm-key-file: ${AES_GCM_KEY_FILE:}
