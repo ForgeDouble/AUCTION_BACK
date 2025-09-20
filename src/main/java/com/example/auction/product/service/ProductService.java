@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -11,6 +12,7 @@ import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
+import com.example.auction.product.domain.SellYN;
 import com.example.auction.product.dto.*;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
@@ -23,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +48,8 @@ public class ProductService {
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> bidRedisTemplate;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
+
+    private static final int AUCTION_DURATION_HOURS = 24;
 
     public ProductService(
             CategoryRepository categoryRepository,
@@ -153,6 +158,70 @@ public class ProductService {
         return savedProduct;
     }
 
+//    만료된 옥션들 처리
+    @Scheduled(fixedRate = 30000)
+    @Transactional(readOnly = true)  // 읽기 전용으로 성능 최적화
+    public void checkExpiredAuctions() {
+        LocalDateTime cutoffTime = LocalDateTime.now().minusHours(AUCTION_DURATION_HOURS);
+
+        List<Product> expiredAuctions = productRepository
+                .findBySellYNAndCreatedAtBeforeOrderByCreatedAtAsc(SellYN.N, cutoffTime);
+
+        if (expiredAuctions.isEmpty()) {
+            return;
+        }
+
+        log.info("만료된 경매 발견 - 처리 대상: {}개", expiredAuctions.size());
+
+        // 배치로 처리 (대량 데이터 대비)
+        expiredAuctions.parallelStream()
+            .forEach(this::endAuctionSafely);
+    }
+
+    private void endAuctionSafely(Product product) {
+        try {
+            endAuction(product);
+        } catch (Exception e) {
+            log.error("개별 경매 종료 처리 실패 - ProductId: {}", product.getProductId(), e);
+            // 한 건 실패가 전체를 막지 않도록
+        }
+    }
+
+//    경매 낙찰 처리
+    private void endAuction(Product product) {
+        try {
+            // 1. 상품 상태를 ENDED로 변경
+            product.setSellYN(SellYN.Y);
+            productRepository.save(product);
+
+            // 2. Redis에서 최고 입찰자 확인
+            String bidZSetKey = "product_bid_zset_" + product.getProductId();
+            String bidHashKey = "product_bid_hash_" + product.getProductId();
+
+            // 최고 입찰가 조회 (ZSET에서 가장 높은 스코어)
+            Set<String> winners = bidStringRedisTemplate.opsForZSet()
+                    .reverseRange(bidZSetKey, 0, 0); // 최고가 1개만
+
+            if (winners != null && !winners.isEmpty()) {
+                String winnerUuid = winners.iterator().next();
+                String bidEventJson = bidStringRedisTemplate.opsForHash()
+                        .get(bidHashKey, winnerUuid).toString();
+
+                BidEvent winnerBid = objectMapper.readValue(bidEventJson, BidEvent.class);
+
+                log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
+                        product.getProductId(), winnerBid.getUserName(), winnerBid.getBidAmount());
+
+                // 3. 낙찰 처리 로직 (결제, 알림 등)
+//                processWinningBid(product, winnerBid);
+            } else {
+                log.info("경매 종료 - ProductId: {}, 입찰자 없음", product.getProductId());
+            }
+
+        } catch (Exception e) {
+            log.error("경매 종료 처리 중 오류 발생 - ProductId: {}", product.getProductId(), e);
+        }
+    }
 
     // DelYN.N 인것을 조회
 	// 아이템 조회

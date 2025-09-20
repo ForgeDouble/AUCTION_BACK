@@ -20,6 +20,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 
@@ -70,7 +71,6 @@ public class Product extends BaseTimeEntity{
     	this.price = dto.getPrice();
     }
 
-
     public void block(String reason) {
         this.blocked = true;
         this.blockedAt = LocalDateTime.now();
@@ -82,4 +82,30 @@ public class Product extends BaseTimeEntity{
         this.blockedReason = null;
     }
 
+    // 경매 종료 시간 계산 (24시간 고정)
+    public LocalDateTime getAuctionEndTime() {
+        return this.getCreatedAt().plusHours(24);
+    }
+
+    // 경매 상태 체크
+    public boolean isAuctionActive() {
+        LocalDateTime now = LocalDateTime.now();
+        return sellYN == SellYN.N &&
+                now.isBefore(getAuctionEndTime());
+    }
+
+    public boolean isAuctionEnded() {
+        return sellYN == SellYN.Y ||
+                LocalDateTime.now().isAfter(getAuctionEndTime());
+    }
+
+    // 남은 시간 계산
+    public Duration getTimeRemaining() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime endTime = getAuctionEndTime();
+        if (now.isAfter(endTime)) {
+            return Duration.ZERO;
+        }
+        return Duration.between(now, endTime);
+    }
 }
