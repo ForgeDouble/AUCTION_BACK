@@ -1,7 +1,9 @@
 package com.example.auction.product.service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
@@ -25,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -48,6 +51,7 @@ public class ProductService {
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> bidRedisTemplate;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
+    private final TaskScheduler taskScheduler;
 
     private static final int AUCTION_DURATION_HOURS = 24;
 
@@ -57,7 +61,8 @@ public class ProductService {
             UserRepository userRepository,
             ObjectMapper objectMapper,
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
-            @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate
+            @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
+            TaskScheduler taskScheduler
     ) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -65,6 +70,7 @@ public class ProductService {
         this.objectMapper = objectMapper;
         this.bidRedisTemplate = bidRedisTemplate;
         this.bidStringRedisTemplate = bidStringRedisTemplate;
+        this.taskScheduler = taskScheduler;
     }
 
     /* 상품 임시정지 / 정지 함수 */
@@ -95,8 +101,22 @@ public class ProductService {
         product.setUser(user);
         Product savedProduct = productRepository.save(product);
 
+        // 경매 종료 스케줄링 추가
+        if (savedProduct.getSellYN() == SellYN.N) { // 경매 상품인 경우만
+            LocalDateTime endTime = savedProduct.getCreatedAt().plusHours(AUCTION_DURATION_HOURS);
+            Instant endInstant = endTime.atZone(ZoneId.systemDefault()).toInstant(); // schedule() 함수에 맞게 변형
+
+            taskScheduler.schedule(() -> {
+                endAuction(savedProduct);
+            }, endInstant);
+
+            log.info("경매 자동 종료 스케줄링 등록 - ProductId: {}, 종료예정: {}",
+                    savedProduct.getProductId(), endTime);
+        }
+
         String bidZSetKey = "product_bid_zset_" + savedProduct.getProductId();
         String bidHashKey = "product_bid_hash_" + savedProduct.getProductId();
+        String auctionTimeKey = "auction_end_time_" + savedProduct.getProductId();
 
         BidEvent bidEvent = BidEvent.builder()
                 .userId(user.getUserId())
@@ -111,35 +131,48 @@ public class ProductService {
             String bidEventJson = objectMapper.writeValueAsString(bidEvent);
             String uuid = UUID.randomUUID().toString();
 
+//            경매 종료 시간 추가
+            long auctionEndTimeMillis = savedProduct.getCreatedAt().plusHours(AUCTION_DURATION_HOURS)
+                    .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+            // 테스트용 코드
+//            long auctionEndTimeMillis = savedProduct.getCreatedAt().plusHours(0)
+//                    .atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+
             // Lua 스크립트로 ZSET + Hash 초기값 세팅 (원자성 보장)
             String luaScript = """
-            local zsetKey = KEYS[1]
-            local hashKey = KEYS[2]
-            local uuId = ARGV[1]
-            local bidAmount = tonumber(ARGV[2])
-            local bidEventJson = ARGV[3]
+        local zsetKey = KEYS[1]
+        local hashKey = KEYS[2]
+        local timeKey = KEYS[3]
+        local uuId = ARGV[1]
+        local bidAmount = tonumber(ARGV[2])
+        local bidEventJson = ARGV[3]
+        local auctionEndTime = ARGV[4]
 
-            -- ZSET에 초기값 없으면 세팅
-            local exists = redis.call('ZCARD', zsetKey)
-            if exists == 0 then
-                local added = redis.call('ZADD', zsetKey, bidAmount, uuId)
-                if added == 1 then
-                    redis.call('HSET', hashKey, uuId, bidEventJson)
-                    return 1
-                else
-                    return 2
-                end
+        -- ZSET에 초기값 없으면 세팅
+        local exists = redis.call('ZCARD', zsetKey)
+        if exists == 0 then
+            local added = redis.call('ZADD', zsetKey, bidAmount, uuId)
+            if added == 1 then
+                redis.call('HSET', hashKey, uuId, bidEventJson)
+                -- 경매 종료 시간 저장 (24시간 + 1시간 여유분으로 TTL 설정)
+                redis.call('SET', timeKey, auctionEndTime, 'EX', 90000)
+                return 1
             else
-                return 0
+                return 2
             end
-            """;
+        else
+            return 0
+        end
+        """;
 
             Long result = bidStringRedisTemplate.execute(
                     new DefaultRedisScript<>(luaScript, Long.class),
-                    List.of(bidZSetKey, bidHashKey),
+                    List.of(bidZSetKey, bidHashKey, auctionTimeKey),
                     uuid,
                     String.valueOf(savedProduct.getPrice()),
-                    bidEventJson
+                    bidEventJson,
+                    String.valueOf(auctionEndTimeMillis)
             );
 
             if (result == null || result == 0) {
@@ -148,9 +181,8 @@ public class ProductService {
                 throw new RuntimeException("Redis 초기 입찰 세팅 실패 - ZSET 입력을 실패했습니다.");
             }
 
-
-            log.info("Redis ZSET + Hash 초기 입찰가 세팅 완료 - ZSET Key: {}, Hash Key: {}, UUID: {}, 시작가: {}",
-                    bidZSetKey, bidHashKey, uuid, savedProduct.getPrice());
+            log.info("Redis ZSET + Hash + 경매종료시간 초기 세팅 완료 - ProductId: {}, 종료시간: {}, 시작가: {}",
+                    savedProduct.getProductId(), auctionEndTimeMillis, savedProduct.getPrice());
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException("BidEvent JSON 변환 실패", e);
@@ -160,7 +192,7 @@ public class ProductService {
 
 //    만료된 옥션들 처리
     @Scheduled(fixedRate = 30000)
-    @Transactional(readOnly = true)  // 읽기 전용으로 성능 최적화
+    @Transactional(readOnly = true)
     public void checkExpiredAuctions() {
         LocalDateTime cutoffTime = LocalDateTime.now().minusHours(AUCTION_DURATION_HOURS);
 
@@ -188,15 +220,19 @@ public class ProductService {
     }
 
 //    경매 낙찰 처리
-    private void endAuction(Product product) {
+    @Transactional
+    public void endAuction(Product product) {
         try {
-            // 1. 상품 상태를 ENDED로 변경
-            product.setSellYN(SellYN.Y);
-            productRepository.save(product);
+
+            Product currentProduct = productRepository.findById(product.getProductId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+            // 1. 상품 상태를 SellYN.Y 변경
+            currentProduct.setSellYN(SellYN.Y);
+            productRepository.save(currentProduct);
 
             // 2. Redis에서 최고 입찰자 확인
-            String bidZSetKey = "product_bid_zset_" + product.getProductId();
-            String bidHashKey = "product_bid_hash_" + product.getProductId();
+            String bidZSetKey = "product_bid_zset_" + currentProduct.getProductId();
+            String bidHashKey = "product_bid_hash_" + currentProduct.getProductId();
 
             // 최고 입찰가 조회 (ZSET에서 가장 높은 스코어)
             Set<String> winners = bidStringRedisTemplate.opsForZSet()
@@ -210,7 +246,7 @@ public class ProductService {
                 BidEvent winnerBid = objectMapper.readValue(bidEventJson, BidEvent.class);
 
                 log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
-                        product.getProductId(), winnerBid.getUserName(), winnerBid.getBidAmount());
+                        currentProduct.getProductId(), winnerBid.getUserName(), winnerBid.getBidAmount());
 
                 // 3. 낙찰 처리 로직 (결제, 알림 등)
 //                processWinningBid(product, winnerBid);
