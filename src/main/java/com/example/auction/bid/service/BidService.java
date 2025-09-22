@@ -138,6 +138,7 @@ public class BidService {
     private BidEvent bidHotAuction(BidCreateDto bidDto, User user) {
         String bidZSetKey = "product_bid_zset_" + bidDto.getProductId();
         String bidHashKey = "product_bid_hash_" + bidDto.getProductId();
+        String auctionTimeKey = "auction_end_time_" + bidDto.getProductId();
 
         BidEvent bidEvent = BidEvent.builder()
                 .userId(user.getUserId())
@@ -151,46 +152,66 @@ public class BidService {
         try {
             String bidEventJson = objectMapper.writeValueAsString(bidEvent);
             String uuid = UUID.randomUUID().toString();
-
+            long currentTimeMillis = System.currentTimeMillis();
             // Lua 스크립트 (최고가 비교 후 갱신)
             String luaScript = """
         local zsetKey = KEYS[1]
         local hashKey = KEYS[2]
+        local timeKey = KEYS[3]
         local uuId = ARGV[1]
         local bidAmount = tonumber(ARGV[2])
         local bidEventJson = ARGV[3]
-
+        local currentTime = tonumber(ARGV[4])
+        
+        -- Redis에서 경매 종료 시간 조회
+        local auctionEndTime = redis.call('GET', timeKey)
+        if not auctionEndTime then
+            return -2  -- 경매 정보 없음 (만료된 경매)
+        end
+        
+        -- 경매 시간 검증
+        if currentTime > tonumber(auctionEndTime) then
+            return -1  -- 경매 시간 만료
+        end
+        
         -- 현재 최고가 확인
         local currentMax = redis.call('ZREVRANGE', zsetKey, 0, 0, 'WITHSCORES')
         local currentScore = 0
         if #currentMax > 0 then
             currentScore = tonumber(currentMax[2])
         end
-
+        
         -- 새로운 입찰가가 더 높아야 갱신
         if bidAmount > currentScore then
             redis.call('ZADD', zsetKey, bidAmount, uuId)
             redis.call('HSET', hashKey, uuId, bidEventJson)
-            return 1
+            return 1  -- 입찰 성공
         else
-            return 0
+            return 0  -- 입찰가 부족
         end
         """;
 
             Long result = bidStringRedisTemplate.execute(
                     new DefaultRedisScript<>(luaScript, Long.class),
-                    List.of(bidZSetKey, bidHashKey),
+                    List.of(bidZSetKey, bidHashKey, auctionTimeKey),
                     uuid,
                     String.valueOf(bidDto.getBidAmount()),
-                    bidEventJson
+                    bidEventJson,
+                    String.valueOf(currentTimeMillis)
             );
 
-            if (result == null || result == 0) {
+            if (result == null) {
+                throw new RuntimeException("입찰 처리 중 오류가 발생했습니다.");
+            } else if (result == -2) {
+                throw new RuntimeException("존재하지 않거나 만료된 경매입니다.");
+            } else if (result == -1) {
+                throw new RuntimeException("경매 시간이 종료되었습니다.");
+            } else if (result == 0) {
                 throw new RuntimeException("현재 최고가보다 높은 금액만 입찰 가능합니다.");
             }
 
-            log.info("Redis ZSET + Hash 입찰 성공 - ZSET Key: {}, Hash Key: {}, UUID: {}, 입찰가: {}",
-                    bidZSetKey, bidHashKey, uuid, bidDto.getBidAmount());
+            log.info("Redis ZSET + Hash 입찰 성공 - ProductId: {}, 입찰가: {}, 현재시간: {}",
+                    bidDto.getProductId(), bidDto.getBidAmount(), currentTimeMillis);
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException("BidEvent JSON 변환 실패", e);
