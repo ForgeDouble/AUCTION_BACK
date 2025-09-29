@@ -1,9 +1,15 @@
 package com.example.auction.common.config;
 
-import io.lettuce.core.StaticCredentialsProvider;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+
 
 @Configuration
 public class AwsConfig {
@@ -17,5 +23,26 @@ public class AwsConfig {
     @Value("${cloud.aws.credentials.secret-key:}")
     private String secretKey;
 
+    private StaticCredentialsProvider staticCreds() {
+        var c = AwsBasicCredentials.create(accessKey, secretKey);
+        return StaticCredentialsProvider.create(c);
+    }
 
+    @Bean
+    public S3Client s3Client() {
+        var builder = S3Client.builder().region(Region.of(region));
+        if (!accessKey.isBlank() && !secretKey.isBlank()) {
+            builder.credentialsProvider(staticCreds());
+        } // 아니면 EC2/IAM Role, Env, Profile 순으로 자동
+        return builder.build();
+    }
+
+    @Bean
+    public S3Presigner s3Presigner() {
+        var builder = S3Presigner.builder().region(Region.of(region));
+        if (!accessKey.isBlank() && !secretKey.isBlank()) {
+            builder.credentialsProvider(staticCreds());
+        }
+        return builder.build();
+    }
 }
