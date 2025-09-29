@@ -17,21 +17,21 @@ public class FileValidationUtil {
 
     public FileValidationUtil(
             @Value("${storage.max-image-mb:10}") int maxMb,
-            @Value("${storage.allowed-mime:image/jpeg,image/png,image/webp,image/gif}") String allowedMimeCsv) {
+            @Value("${storage.allowed-mime:image/jpeg,image/png,image/webp,image/gif}") String allowedCsv) {
         this.maxBytes = (long) maxMb * 1024 * 1024;
-        this.allowed = Arrays.stream(allowedMimeCsv.split(","))
+        this.allowed = Arrays.stream(allowedCsv.split(","))
                 .map(String::trim).filter(s -> !s.isBlank()).collect(Collectors.toSet());
     }
 
     public void ensureImage(MultipartFile multipartFile) {
         if (multipartFile == null || multipartFile.isEmpty()) throw new IllegalArgumentException("빈 파일입니다.");
-        if (multipartFile.getSize() > maxBytes) throw new IllegalArgumentException("파일 크기 초과 (" + (maxBytes / (1024*1024)) + "MB 이내)");
+        if (multipartFile.getSize() > maxBytes) throw new IllegalArgumentException("파일 크기 초과");
         String ct = Optional.ofNullable(multipartFile.getContentType()).orElse("");
         if (!allowed.contains(ct)) throw new IllegalArgumentException("허용되지 않는 타입: " + ct);
     }
 
-    public String extensionFromContentType(String ct) {
-        return switch (ct) {
+    public String ext(String contentType) {
+        return switch (contentType) {
             case "image/jpeg" -> ".jpg";
             case "image/png"  -> ".png";
             case "image/webp" -> ".webp";
