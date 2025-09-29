@@ -79,7 +79,7 @@ public class PushService {
             log.info("[Push] userId={} 에 토큰이 없습니다", userId);
             return 0;
         }
-        List<String> validTokens = tokens.stream().map(DeviceToken::getToken).toList();
+        List<String> validTokens = tokens.stream().map(DeviceToken::getToken).distinct().toList();
         log.info("[Push] sendToUser userId={}, tokenCount={}", userId, validTokens.size());
 
         int success = 0;

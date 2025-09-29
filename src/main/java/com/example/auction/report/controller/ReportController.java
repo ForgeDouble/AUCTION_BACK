@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Controller
+@RestController
 @RequestMapping("/report")
 public class ReportController {
 
@@ -28,6 +28,7 @@ public class ReportController {
         this.reportService = reportService;
     }
     // 유저 → 유저 신고
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/create")
     public ResponseEntity<CommonResDto> create(@RequestBody ReportCreateDto dto) {
         ReportResponseDto reportResponseDto = reportService.create(dto);
