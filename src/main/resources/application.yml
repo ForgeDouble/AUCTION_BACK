@@ -48,3 +48,23 @@ firebase:
 crypto:
   aes-gcm-key-b64: ${AES_GCM_KEY_B64:}
   aes-gcm-key-file: ${AES_GCM_KEY_FILE:}
+
+cloud:
+  aws:
+    region:
+      static: ap-northeast-2
+    s3:
+      # 후 추가 예정
+      bucket: your-bucket
+    credentials:
+      access-key: ${AWS_ACCESS_KEY_ID:}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:}
+
+storage:
+  # 이미지 최대 크기 (MB)
+  max-image-mb: 10
+  # 공개 URL 베이스 -> 입력 안하는 경우 S3 기본 URL 셋팅
+  # 후 클라우드 프론트 배포 후 설정
+  public-base-url:
+  # 허용 타입
+  allowed-mime: image/jpeg,image/png,image/webp,image/gif
