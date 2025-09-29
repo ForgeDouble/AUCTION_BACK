@@ -22,6 +22,8 @@ public class UserDetailDto {
     private String address;
     private String nickname;
 
+    private String profileImageUrl;
+
     public static UserDetailDto fromEntity(User user) {
         return UserDetailDto.builder()
                 .userId(user.getUserId())
@@ -34,6 +36,7 @@ public class UserDetailDto {
                 .warning(user.getWarning())
                 .address(user.getAddress())
                 .nickname(user.getNickname())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
     }
 }

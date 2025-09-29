@@ -102,7 +102,7 @@ public class UserController {
 
     /* 이미지 저장 */
     @PreAuthorize("isAuthenticated()")
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(path = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<CommonResDto> upload(@RequestParam("file") MultipartFile file) throws IOException {
         String url = userImageService.uploadOrReplace(file);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "프로필 이미지 저장", Map.of("url", url)));
@@ -110,7 +110,7 @@ public class UserController {
 
     /* 이미지 삭제 */
     @PreAuthorize("isAuthenticated()")
-    @DeleteMapping
+    @DeleteMapping("/image/delete")
     public ResponseEntity<CommonResDto> delete() {
         userImageService.deleteAvatar();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "프로필 이미지 삭제", null));

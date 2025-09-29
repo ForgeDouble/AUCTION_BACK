@@ -55,7 +55,7 @@ cloud:
       static: ap-northeast-2
     s3:
       # 후 추가 예정
-      bucket: your-bucket
+      bucket: ${AWS_BUCKET_NAME:}
     credentials:
       access-key: ${AWS_ACCESS_KEY_ID:}
       secret-key: ${AWS_SECRET_ACCESS_KEY:}
