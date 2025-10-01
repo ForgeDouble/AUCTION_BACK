@@ -5,11 +5,6 @@
 - **목적** : 실시간 경매 서비스를 구현
 - **기간** : 2025.09.05 ~ 진행중
 
-## 관련 저장소
-**프론트엔드**: [링크](https://github.com/ForgeDouble/AUCTION_FRONT)
-
-# 시작가이드
-
 ## Stacks
 
 **Language**
@@ -22,6 +17,14 @@
 
 
 **Database**
+
+![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-DC382D?style=flat-square&logo=redis&logoColor=white)
+
+## 관련 저장소
+**프론트엔드**: [링크](https://github.com/ForgeDouble/AUCTION_FRONT)
+
+# 시작가이드
 
 
 ## 환경변수
