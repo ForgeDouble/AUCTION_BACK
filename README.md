@@ -39,6 +39,8 @@
 
 | 변수명 | 설명 | 예시 | 필수 여부 |
 |--------|------|------|-----------|
+| `AES_GCM_KEY_B64` | fcm | `` | ✅ |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | fcm| `` | ✅ |
 | `AWS_BUCKET_NAME` | S3 관련 AWS 버킷 이름 | `your-bucket-name` | ✅ |
 | `AWS_SECRET_ACCESS_KEY` | S3 관련 AWS 엑세스 키 | `ABsdsd2DAs...` | ✅ |
 | `AWS_ACCESS_KEY_ID` | S3 관련 AWS 키 ID | `ADS5SDF3...` | ✅ |
