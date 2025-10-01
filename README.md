@@ -24,6 +24,7 @@
 **Technology**
 
 ![RabbitMQ](https://img.shields.io/badge/RabbitMQ-FF6600?style=flat&logo=rabbitmq&logoColor=white)
+![FCM](https://img.shields.io/badge/FCM-FFCA28?style=flat&logo=firebase&logoColor=black)
 
 ## 관련 저장소
 **프론트엔드**: [링크](https://github.com/ForgeDouble/AUCTION_FRONT)
