@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -34,17 +36,27 @@ public class UserImageService {
     public String uploadOrReplace(MultipartFile file) throws IOException {
         Long userId = currentUserId();
         validator.ensureImage(file);
+
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User"));
 
-        String ext = validator.ext(file.getContentType());
+        String ext = validator.ext(file.getContentType(), file.getOriginalFilename());
         String newKey = keyUtil.userAvatarKey(userId, ext);
 
         s3.put(newKey, file);
-        s3.delete(user.getProfileImageKey());
-
         String url = s3.toPublicUrl(newKey);
+
+        String oldKey = user.getProfileImageKey();
         user.setProfileImageKey(newKey);
         user.setProfileImageUrl(url);
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() {
+                if (oldKey != null && !oldKey.isBlank()) s3.delete(oldKey);
+            }
+            @Override public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) s3.delete(newKey);
+            }
+        });
         return url;
     }
 
@@ -52,8 +64,15 @@ public class UserImageService {
     public void deleteAvatar() {
         Long userId = currentUserId();
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User"));
-        s3.delete(user.getProfileImageKey());
+
+        String oldKey = user.getProfileImageKey();
         user.setProfileImageKey(null);
         user.setProfileImageUrl(null);
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override public void afterCommit() {
+                if (oldKey != null && !oldKey.isBlank()) s3.delete(oldKey);
+            }
+        });
     }
 }
