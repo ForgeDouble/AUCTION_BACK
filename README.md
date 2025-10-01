@@ -14,8 +14,10 @@
 
 **Language**
 ![Java](https://img.shields.io/badge/Java-ED8B00?style=flat-square&logo=java&logoColor=white)
-  **FrameWork**
+
+**Framework**
 ![SpringBoot](https://img.shields.io/badge/SpringBoot-6DB33F?style=flat-square&logo=spring&logoColor=white)
+
 ## 환경변수
 
 | 변수명 | 설명 | 예시 | 필수 여부 |
