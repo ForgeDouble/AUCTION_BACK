@@ -5,6 +5,9 @@
 - **목적** : 실시간 경매 서비스를 구현
 - **기간** : 2025.09.05 ~ 진행중
 
+## 관련 저장소
+**프론트엔드**: [링크](https://github.com/ForgeDouble/AUCTION_FRONT)
+
 ## Stacks
 
 **Language**
@@ -27,8 +30,7 @@
 ![FCM](https://img.shields.io/badge/FCM-FFCA28?style=flat&logo=firebase&logoColor=black)
 ![S3](https://img.shields.io/badge/S3-569A31?style=flat&logo=amazons3&logoColor=white)
 
-## 관련 저장소
-**프론트엔드**: [링크](https://github.com/ForgeDouble/AUCTION_FRONT)
+
 
 # 시작가이드
 
