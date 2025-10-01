@@ -2,13 +2,16 @@ package com.example.auction.user.controller;
 
 import com.example.auction.common.dto.CommonResDto;
 import com.example.auction.user.dto.*;
+import com.example.auction.user.service.UserImageService;
 import com.example.auction.user.service.UserService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,9 +21,11 @@ import java.util.Map;
 public class UserController {
 
     private final UserService userService;
+    private final UserImageService userImageService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, UserImageService userImageService) {
         this.userService = userService;
+        this.userImageService = userImageService;
     }
 
     /* 로그인 */
@@ -93,5 +98,21 @@ public class UserController {
     public ResponseEntity<?> delete(@RequestBody UserDeleteDto deleteDto) {
         userService.delete(deleteDto, "SELF");
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원 탈퇴 성공", null));
+    }
+
+    /* 이미지 저장 */
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping(path = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<CommonResDto> upload(@RequestParam("file") MultipartFile file) throws IOException {
+        String url = userImageService.uploadOrReplace(file);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "프로필 이미지 저장", Map.of("url", url)));
+    }
+
+    /* 이미지 삭제 */
+    @PreAuthorize("isAuthenticated()")
+    @DeleteMapping("/image/delete")
+    public ResponseEntity<CommonResDto> delete() {
+        userImageService.deleteAvatar();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "프로필 이미지 삭제", null));
     }
 }
