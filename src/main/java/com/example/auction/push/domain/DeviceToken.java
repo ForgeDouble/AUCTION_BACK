@@ -15,7 +15,7 @@ import lombok.*;
 @Builder
 @Table(name = "device_token", indexes = {
         @Index(name="idx_device_token_user", columnList="user_id"),
-        @Index(name="idx_device_token_token", columnList="token", unique=true)
+        @Index(name="idx_device_token_token_hash", columnList="token_hash", unique=true)
 })
 public class DeviceToken extends BaseTimeEntity {
     @Id
@@ -27,7 +27,7 @@ public class DeviceToken extends BaseTimeEntity {
     private User user;
 
     // AESGCM 을 통한 암호화 형태
-    @Column(nullable=false, length=500, unique=true)
+    @Column(nullable=false, length=500)
     @Convert(converter = AesGcmStringConverter.class)
     private String token;
 

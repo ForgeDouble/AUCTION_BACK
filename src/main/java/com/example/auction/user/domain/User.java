@@ -64,6 +64,11 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean viewOnly = false;
 
+    @Column(length = 500)
+    private String profileImageUrl;
+
+    @Column(length = 500)
+    private String profileImageKey;
 
 //    private String profileImage;
 
