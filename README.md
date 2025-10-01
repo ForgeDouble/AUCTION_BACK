@@ -17,9 +17,9 @@
 
 | 변수명 | 설명 | 예시 | 필수 여부 |
 |--------|------|------|-----------|
-| `AWS_BUCKET_NAME` | S3 관련 AWS 버킷 이름 | `postgresql://user:pass@localhost:5432/db` | ✅ |
-| `AWS_SECRET_ACCESS_KEY` | S3 관련 AWS 엑세스 키 | `your-256-bit-secret` | ✅ |
-| `AWS_ACCESS_KEY_ID` | S3 관련 AWS 키 ID | `sk_live_...` | ✅ |
+| `AWS_BUCKET_NAME` | S3 관련 AWS 버킷 이름 | `your-bucket-name` | ✅ |
+| `AWS_SECRET_ACCESS_KEY` | S3 관련 AWS 엑세스 키 | `ABsdsd2DAs...` | ✅ |
+| `AWS_ACCESS_KEY_ID` | S3 관련 AWS 키 ID | `ADS5SDF3...` | ✅ |
 
 ## API 문서
 
