@@ -47,5 +47,11 @@
 
 ## API 문서
 
+1. (대기중) 다운로드
+2. Postman에서 Import
+3. Environment 설정:
+   - `user_token`: 로그인 후 받은 JWT 토큰
+4. 테스트 시작!
+
 ## 시스템 아키텍처
 
