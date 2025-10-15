@@ -54,6 +54,7 @@ public class SecurityConfig {
                                 "/user/register",
 //                                웹소캣 테스트용
                                 "/bid/**",
+                                "/category/**",
                                 "/product/**",
                                 "/ws/**"
 
