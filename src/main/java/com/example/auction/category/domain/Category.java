@@ -51,4 +51,14 @@ public class Category {
 //    @JsonManagedReference
 //    @Builder.Default
     private List<Category> children = new ArrayList<>();
+
+    public List<Category> getPath() {
+        List<Category> path = new ArrayList<>();
+        Category current = this;
+        while (current != null) {
+            path.add(0, current); // 앞에 추가
+            current = current.parent;
+        }
+        return path;
+    }
 }
