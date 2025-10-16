@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static sun.util.locale.LocaleUtils.isEmpty;
+
 
 @RequiredArgsConstructor
 @Service
@@ -110,11 +110,13 @@ public class ProductImageService {
     @Transactional
     public void applyOps(Long productId,
                          List<MultipartFile> addFiles,
-                         List<ReplaceSpec> replaces,
+                         List<Long> replaceIds,
+                         List<MultipartFile> replaceFiles,
                          List<Long> deleteIds,
                          List<Long> orderIds) {
 
-        boolean noOps = isEmpty(addFiles) && isEmpty(replaces) && isEmpty(deleteIds) && isEmpty(orderIds);
+        boolean noOps = isEmpty(addFiles) && isEmpty(replaceIds) && isEmpty(replaceFiles) && isEmpty(deleteIds) && isEmpty(orderIds);
+        // 번경 없을 경우 이미지 그대로 유지
         if (noOps) return;
 
         loadOwnedProduct(productId);
@@ -127,8 +129,13 @@ public class ProductImageService {
             uploadInitial(productId, addFiles);
         }
 
-        if (!isEmpty(replaces)) {
-            for (ReplaceSpec rs : replaces) replaceOne(productId, rs.imageId(), rs.file());
+        if (!isEmpty(replaceIds) || !isEmpty(replaceFiles)) {
+            if (isEmpty(replaceIds) || isEmpty(replaceFiles) || replaceIds.size() != replaceFiles.size()) {
+                throw new IllegalArgumentException("수정하는 이미지와 개수가 다릅니다");
+            }
+            for (int i = 0; i < replaceIds.size(); i++) {
+                replaceOne(productId, replaceIds.get(i), replaceFiles.get(i));
+            }
         }
 
         if (!isEmpty(deleteIds)) {
@@ -136,7 +143,6 @@ public class ProductImageService {
         }
 
         long remain = productImageRepository.countByProduct_ProductId(productId);
-
         if (remain == 0) {
             throw new IllegalArgumentException("이미지는 최소 1장 이상이어야 합니다.");
         }

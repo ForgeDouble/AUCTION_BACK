@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -306,38 +307,41 @@ public class ProductService {
 	
 	// 아이템 수정
     // 권한 - 해당 유저, 관리자
-	@Transactional
-	public void updateProduct(ProductUpdateDto dto,
-                              List<MultipartFile> addFiles,
-                              List<Long> replaceIds,
-                              List<MultipartFile> replaceFiles,
-                              List<Long> deleteIds,
-                              List<Long> orderIds) {
+
+    @Transactional
+    public void updateProduct(ProductUpdateDto dto,
+                                       List<MultipartFile> addFiles,
+                                       List<Long> replaceIds,
+                                       List<MultipartFile> replaceFiles,
+                                       List<Long> deleteIds,
+                                       List<Long> orderIds) {
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
 
         Product product = productRepository.findById(dto.getProductId())
-				.orElseThrow(() -> new ResourceNotFoundException("Product"));
-		
-	    Category category = categoryRepository.findById(dto.getCategoryId())
-	        .orElseThrow(() -> new IllegalArgumentException("Category"));
+                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+        Category category = categoryRepository.findById(dto.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("Category"));
 
-        if(user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
+        if (user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
             throw new UnauthorizedAccessException("해당 상품을 수정할 권한이 없습니다.");
         }
         ensureCanMutateProducts(user, "상품 수정");
+
         product.update(dto, category);
         productRepository.save(product);
 
         productImageService.applyOps(
                 product.getProductId(),
                 addFiles,
-                pairReplace(replaceIds, replaceFiles),
+                replaceIds,
+                replaceFiles,
                 deleteIds,
                 orderIds
         );
-	}
+    }
 	
 	
 	// 아이템 소프트 삭제
