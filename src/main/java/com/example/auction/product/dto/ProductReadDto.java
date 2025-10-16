@@ -23,7 +23,7 @@ public class ProductReadDto {
     private SellYN sellYN;
 	private String previewImageUrl;
     
-    public static ProductReadDto fromEntity(Product product, String previewImageUrl) {
+    public static ProductReadDto fromEntity(Product product) {
     	return ProductReadDto.builder()
     			.productId(product.getProductId())
     			.categoryId(product.getCategory().getCategoryId())
@@ -31,7 +31,8 @@ public class ProductReadDto {
     			.productContent(product.getProductContent())
     			.price(product.getPrice())
     			.sellYN(product.getSellYN())
-				.previewImageUrl(previewImageUrl)
     			.build();
     }
+
+
 }

@@ -49,7 +49,7 @@ public class ProductService {
     private final RedisTemplate<String, Object> bidRedisTemplate;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
 
-    private final ProductImageRepository imageRepository;
+    private final ProductImageRepository productImageRepository;
     private final ProductImageService productImageService;
     private final TaskScheduler taskScheduler;
 
@@ -62,7 +62,7 @@ public class ProductService {
             ObjectMapper objectMapper,
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
-            ProductImageRepository imageRepository, ProductImageService productImageService, TaskScheduler taskScheduler
+            ProductImageRepository productImageRepository, ProductImageService productImageService, TaskScheduler taskScheduler
     ) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -70,7 +70,8 @@ public class ProductService {
         this.objectMapper = objectMapper;
         this.bidRedisTemplate = bidRedisTemplate;
         this.bidStringRedisTemplate = bidStringRedisTemplate;
-        this.imageRepository = imageRepository;
+        this.productImageRepository = productImageRepository;
+
         this.productImageService = productImageService;
         this.taskScheduler = taskScheduler;
     }
@@ -275,17 +276,32 @@ public class ProductService {
 		Product product = productRepository
 				.findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
 				.orElseThrow(() -> new ResourceNotFoundException("Product"));
-		return ProductReadDto.fromEntity(product);
-	}
+
+        String mainUrl = productImageRepository
+                .findByProduct_ProductIdOrderByPositionAsc(productId)
+                .stream().findFirst().map(pi -> pi.getUrl()).orElse(null);
+
+
+        ProductReadDto dto = ProductReadDto.fromEntity(product);
+        dto.setPreviewImageUrl(mainUrl);
+        return dto;
+    }
 	
 	// 아이템 목록 상세 조회
 	@Transactional(readOnly = true)
 	public List<ProductReadAllDto> readAllProducts() {
-		return productRepository.findAll().stream()
-				.filter(product -> product.getDelYn() == DelYN.N)
-				.filter(product -> !Boolean.TRUE.equals(product.getBlocked()))
-				.map(ProductReadAllDto::fromEntity)
-				.collect(Collectors.toList());
+        return productRepository.findAll().stream()
+                .filter(product -> product.getDelYn() == DelYN.N)
+                .filter(product -> !Boolean.TRUE.equals(product.getBlocked()))
+                .map(product -> {
+                    var images = productImageRepository
+                            .findByProduct_ProductIdOrderByPositionAsc(product.getProductId());
+
+                    var dto = ProductReadAllDto.fromEntity(product);
+                    dto.setImages(images.stream().map(ProductImageDto::from).toList());
+                    return dto;
+                })
+                .collect(Collectors.toList());
 	}
 	
 	// 아이템 수정

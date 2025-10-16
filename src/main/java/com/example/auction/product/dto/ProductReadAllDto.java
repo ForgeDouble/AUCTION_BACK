@@ -26,7 +26,7 @@ public class ProductReadAllDto {
     private SellYN sellYN;
 	private List<ProductImageDto> images;
     
-    public static ProductReadAllDto fromEntity(Product product, List<ProductImage> images) {
+    public static ProductReadAllDto fromEntity(Product product) {
     	return ProductReadAllDto.builder()
     			.productId(product.getProductId())
     			.categoryId(product.getCategory().getCategoryId())
@@ -34,7 +34,6 @@ public class ProductReadAllDto {
     			.productContent(product.getProductContent())
     			.price(product.getPrice())
     			.sellYN(product.getSellYN())
-				.images(images.stream().map(ProductImageDto::from).toList())
     			.build();
     }
 }
