@@ -1,6 +1,7 @@
 package com.example.auction.product.dto;
 
 import com.example.auction.product.domain.Product;
+import com.example.auction.product.domain.ProductImage;
 import com.example.auction.product.domain.SellYN;
 
 import lombok.AllArgsConstructor;
@@ -8,6 +9,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
+import java.util.List;
 
 @Getter
 @Setter
@@ -21,8 +24,9 @@ public class ProductReadAllDto {
     private String productContent;
     private Long price;
     private SellYN sellYN;
+	private List<ProductImageDto> images;
     
-    public static ProductReadAllDto fromEntity(Product product) {
+    public static ProductReadAllDto fromEntity(Product product, List<ProductImage> imgs) {
     	return ProductReadAllDto.builder()
     			.productId(product.getProductId())
     			.categoryId(product.getCategory().getCategoryId())
@@ -30,6 +34,7 @@ public class ProductReadAllDto {
     			.productContent(product.getProductContent())
     			.price(product.getPrice())
     			.sellYN(product.getSellYN())
+				.images(imgs.stream().map(ProductImageDto::from).toList())
     			.build();
     }
 }
