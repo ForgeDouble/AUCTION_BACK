@@ -1,6 +1,5 @@
 package com.example.auction.product.service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -16,14 +15,13 @@ import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.SellYN;
 import com.example.auction.product.dto.*;
+import com.example.auction.product.repository.ProductImageRepository;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
-import com.example.auction.wishlist.repository.WishlistRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -38,8 +36,7 @@ import com.example.auction.category.repository.CategoryRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.repository.ProductRepository;
-
-import lombok.RequiredArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Slf4j
@@ -51,6 +48,9 @@ public class ProductService {
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> bidRedisTemplate;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
+
+    private final ProductImageRepository imageRepository;
+    private final ProductImageService productImageService;
     private final TaskScheduler taskScheduler;
 
     private static final int AUCTION_DURATION_HOURS = 24;
@@ -62,7 +62,7 @@ public class ProductService {
             ObjectMapper objectMapper,
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
-            TaskScheduler taskScheduler
+            ProductImageRepository imageRepository, ProductImageService productImageService, TaskScheduler taskScheduler
     ) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -70,6 +70,8 @@ public class ProductService {
         this.objectMapper = objectMapper;
         this.bidRedisTemplate = bidRedisTemplate;
         this.bidStringRedisTemplate = bidStringRedisTemplate;
+        this.imageRepository = imageRepository;
+        this.productImageService = productImageService;
         this.taskScheduler = taskScheduler;
     }
 
@@ -86,7 +88,12 @@ public class ProductService {
 
     // 아이템 생성
     @Transactional
-    public Product createProduct(ProductCreateDto dto) {
+    public Product createProduct(ProductCreateDto dto, List<MultipartFile> files) {
+
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("최소 1장의 이미지가 필요합니다.");
+        }
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
@@ -100,6 +107,8 @@ public class ProductService {
         product.setCategory(category);
         product.setUser(user);
         Product savedProduct = productRepository.save(product);
+
+        productImageService.uploadInitial(savedProduct.getProductId(), files);
 
         // 경매 종료 스케줄링 추가
         if (savedProduct.getSellYN() == SellYN.N) { // 경매 상품인 경우만
