@@ -307,12 +307,15 @@ public class ProductService {
 	// 아이템 수정
     // 권한 - 해당 유저, 관리자
 	@Transactional
-	public void updateProduct(ProductUpdateDto dto) {
+	public void updateProduct(ProductUpdateDto dto,
+                              List<MultipartFile> addFiles,
+                              List<Long> replaceIds,
+                              List<MultipartFile> replaceFiles,
+                              List<Long> deleteIds,
+                              List<Long> orderIds) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
-
-		ensureCanMutateProducts(user, "상품 수정");
 
         Product product = productRepository.findById(dto.getProductId())
 				.orElseThrow(() -> new ResourceNotFoundException("Product"));
@@ -323,8 +326,17 @@ public class ProductService {
         if(user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
             throw new UnauthorizedAccessException("해당 상품을 수정할 권한이 없습니다.");
         }
-		product.update(dto, category);
-		productRepository.save(product);
+        ensureCanMutateProducts(user, "상품 수정");
+        product.update(dto, category);
+        productRepository.save(product);
+
+        productImageService.applyOps(
+                product.getProductId(),
+                addFiles,
+                pairReplace(replaceIds, replaceFiles),
+                deleteIds,
+                orderIds
+        );
 	}
 	
 	
@@ -348,4 +360,6 @@ public class ProductService {
 		product.softDelete();
 		productRepository.save(product);
 	}
+
+
 }

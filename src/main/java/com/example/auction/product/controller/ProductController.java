@@ -37,15 +37,15 @@ public class ProductController {
     // 상품 단일 조회
     @GetMapping("/{productId}")
     public ResponseEntity<?> ReadProduct(@PathVariable("productId") Long productId) {
-			ProductReadDto productReadDto = productService.readProduct(productId);
-			return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", productReadDto));
+			ProductReadDto dto = productService.readProduct(productId);
+			return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", dto));
     }
     
     /* 상품 목록 조회 */
     @GetMapping("/all")
     public ResponseEntity<?> ReadAllProducts() {
-    	List<ProductReadAllDto> productReadAllDtos = productService.readAllProducts();
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", productReadAllDtos));
+    	List<ProductReadAllDto> dto = productService.readAllProducts();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
     }
     
     // 상품 수정

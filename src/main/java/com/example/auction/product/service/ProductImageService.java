@@ -13,6 +13,7 @@ import com.example.auction.product.repository.ProductImageRepository;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,20 +22,30 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static sun.util.locale.LocaleUtils.isEmpty;
 
 @RequiredArgsConstructor
 @Service
 public class ProductImageService {
 
     private final ProductRepository productRepository;
-    private final ProductImageRepository imageRepository;
+    private final ProductImageRepository productImageRepository;
     private final UserRepository userRepository;
 
     private final FileValidationUtil validator;
     private final S3KeyUtil keyUtil;
     private final S3ObjectService s3;
+
+    @Value("${storage.max-images-per-product:10}")
+    private int maxImages;
+
+    public record ReplaceSpec(Long imageId, MultipartFile file) {
+    }
 
     private Long currentUserId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -58,10 +69,14 @@ public class ProductImageService {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("최소 1장의 이미지가 필요합니다.");
         }
-        List<ProductImage> saved = new ArrayList<>();
-        List<String> newKeys = new ArrayList<>();
+        int current = (int) productImageRepository.countByProduct_ProductId(productId);
+        if (current + files.size() > maxImages) {
+            throw new IllegalArgumentException("최대 " + maxImages + "장까지 업로드 가능합니다.");
+        }
 
-        int startPos = (int) imageRepository.countByProduct_ProductId(productId);
+        List<ProductImage> productImages = new ArrayList<>();
+        List<String> newKeys = new ArrayList<>();
+        int startPosition = current;
 
         for (int i = 0; i < files.size(); i++) {
             MultipartFile f = files.get(i);
@@ -70,27 +85,138 @@ public class ProductImageService {
             String key = keyUtil.productImageKey(productId, ext);
             s3.put(key, f);
             newKeys.add(key);
-
             String url = s3.toPublicUrl(key);
-            ProductImage pi = ProductImage.builder()
+
+            productImages.add(ProductImage.builder()
                     .product(product)
                     .s3Key(key)
                     .url(url)
-                    .position(startPos + i)
-                    .build();
-            saved.add(pi);
+                    .position(startPosition + i)
+                    .build());
         }
-        imageRepository.saveAll(saved);
+        productImageRepository.saveAll(productImages);
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCompletion(int status) {
-                if (status == STATUS_ROLLED_BACK) {
-                    newKeys.forEach(s3::delete);
-                }
+                if (status == STATUS_ROLLED_BACK) newKeys.forEach(s3::delete);
             }
         });
 
-        return saved.stream().map(ProductImageDto::from).toList();
+        return productImages.stream().map(ProductImageDto::from).toList();
+    }
+
+
+    @Transactional
+    public void applyOps(Long productId,
+                         List<MultipartFile> addFiles,
+                         List<ReplaceSpec> replaces,
+                         List<Long> deleteIds,
+                         List<Long> orderIds) {
+
+        boolean noOps = isEmpty(addFiles) && isEmpty(replaces) && isEmpty(deleteIds) && isEmpty(orderIds);
+        if (noOps) return;
+
+        loadOwnedProduct(productId);
+
+        if (!isEmpty(addFiles)) {
+            int current = (int) productImageRepository.countByProduct_ProductId(productId);
+            if (current + addFiles.size() > maxImages) {
+                throw new IllegalArgumentException("최대 " + maxImages + "장까지 업로드 가능합니다.");
+            }
+            uploadInitial(productId, addFiles);
+        }
+
+        if (!isEmpty(replaces)) {
+            for (ReplaceSpec rs : replaces) replaceOne(productId, rs.imageId(), rs.file());
+        }
+
+        if (!isEmpty(deleteIds)) {
+            for (Long id : deleteIds) deleteOne(productId, id);
+        }
+
+        long remain = productImageRepository.countByProduct_ProductId(productId);
+
+        if (remain == 0) {
+            throw new IllegalArgumentException("이미지는 최소 1장 이상이어야 합니다.");
+        }
+
+        if (!isEmpty(orderIds)) {
+            reorder(productId, orderIds);
+        }
+    }
+
+    @Transactional
+    public void reorder(Long productId, List<Long> ids) {
+        loadOwnedProduct(productId);
+        var imgs = productImageRepository.findByProduct_ProductIdOrderByPositionAsc(productId);
+        if (imgs.size() != ids.size())
+            throw new IllegalArgumentException("현재 이미지 수와 id 수가 다릅니다.");
+
+        var map = imgs.stream().collect(Collectors.toMap(ProductImage::getId, x -> x));
+        if (!map.keySet().containsAll(ids))
+            throw new IllegalArgumentException("잘못된 imageId가 포함되어 있습니다.");
+
+        for (int i = 0; i < ids.size(); i++) {
+            map.get(ids.get(i)).setPosition(i);
+        }
+        productImageRepository.saveAll(imgs);
+    }
+
+    @Transactional
+    public void deleteOne(Long productId, Long imageId) {
+        loadOwnedProduct(productId);
+        var img = productImageRepository.findByIdAndProduct_ProductId(imageId, productId)
+                .orElseThrow(() -> new RuntimeException("이미지 없음"));
+
+        String oldKey = img.getS3Key();
+        productImageRepository.delete(img);
+
+        var remain = productImageRepository.findByProduct_ProductIdOrderByPositionAsc(productId);
+        for (int i = 0; i < remain.size(); i++) {
+            remain.get(i).setPosition(i);
+        }
+        productImageRepository.saveAll(remain);
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                s3.delete(oldKey);
+            }
+        });
+    }
+
+    @Transactional
+    public void replaceOne(Long productId, Long imageId, MultipartFile file) {
+        loadOwnedProduct(productId);
+        validator.ensureImage(file);
+
+        var img = productImageRepository.findByIdAndProduct_ProductId(imageId, productId)
+                .orElseThrow(() -> new RuntimeException("이미지 없음"));
+
+        String oldKey = img.getS3Key();
+        String ext = validator.ext(file.getContentType(), file.getOriginalFilename());
+        String newKey = keyUtil.productImageKey(productId, ext);
+        s3.put(newKey, file);
+        String newUrl = s3.toPublicUrl(newKey);
+
+        img.setS3Key(newKey);
+        img.setUrl(newUrl);
+        productImageRepository.save(img);
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                if (oldKey != null && !oldKey.isBlank()) s3.delete(oldKey);
+            }
+
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) s3.delete(newKey);
+            }
+        });
+    }
+
+    private static boolean isEmpty(Collection<?> c) {
+        return c == null || c.isEmpty();
     }
 }
