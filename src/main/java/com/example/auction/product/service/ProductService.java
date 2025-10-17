@@ -4,7 +4,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -14,6 +13,7 @@ import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
+import com.example.auction.product.domain.ProductImage;
 import com.example.auction.product.domain.SellYN;
 import com.example.auction.product.dto.*;
 import com.example.auction.product.repository.ProductImageRepository;
@@ -271,39 +271,46 @@ public class ProductService {
     }
 
     // DelYN.N 인것을 조회
-	// 아이템 조회
-	@Transactional(readOnly = true)
-	public ProductReadDto readProduct(Long productId) {
-		Product product = productRepository
-				.findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
-				.orElseThrow(() -> new ResourceNotFoundException("Product"));
+	// 아이템 상세 조회
+    @Transactional(readOnly = true)
+    public ProductDetailDto readProduct(Long productId) {
+        Product product = productRepository
+                .findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
+                .orElseThrow(() -> new ResourceNotFoundException("Product"));
 
-        String mainUrl = productImageRepository
+        ProductDetailDto dto = ProductDetailDto.fromEntity(product);
+
+        List<ProductImageDto> images = productImageRepository
                 .findByProduct_ProductIdOrderByPositionAsc(productId)
-                .stream().findFirst().map(pi -> pi.getUrl()).orElse(null);
+                .stream()
+                .map(ProductImageDto::from)
+                .toList();
 
-
-        ProductReadDto dto = ProductReadDto.fromEntity(product);
-        dto.setPreviewImageUrl(mainUrl);
+        dto.setImages(images);
         return dto;
     }
 	
-	// 아이템 목록 상세 조회
-	@Transactional(readOnly = true)
-	public List<ProductReadAllDto> readAllProducts() {
+	// 아이템 목록 조회
+    @Transactional(readOnly = true)
+    public List<ProductListDto> readAllProducts() {
         return productRepository.findAll().stream()
-                .filter(product -> product.getDelYn() == DelYN.N)
-                .filter(product -> !Boolean.TRUE.equals(product.getBlocked()))
-                .map(product -> {
-                    var images = productImageRepository
-                            .findByProduct_ProductIdOrderByPositionAsc(product.getProductId());
+                .filter(p -> p.getDelYn() == DelYN.N)
+                .filter(p -> !Boolean.TRUE.equals(p.getBlocked()))
+                .map(p -> {
+                    ProductListDto dto = ProductListDto.fromEntity(p);
 
-                    var dto = ProductReadAllDto.fromEntity(product);
-                    dto.setImages(images.stream().map(ProductImageDto::from).toList());
+                    String previewUrl = productImageRepository
+                            .findByProduct_ProductIdOrderByPositionAsc(p.getProductId())
+                            .stream()
+                            .findFirst()
+                            .map(ProductImage::getUrl)
+                            .orElse(null);
+
+                    dto.setPreviewImageUrl(previewUrl);
                     return dto;
                 })
                 .collect(Collectors.toList());
-	}
+    }
 	
 	// 아이템 수정
     // 권한 - 해당 유저, 관리자

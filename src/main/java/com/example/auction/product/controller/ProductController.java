@@ -2,7 +2,6 @@ package com.example.auction.product.controller;
 
 import java.util.List;
 
-import com.example.auction.bid.dto.BidCreateDto;
 import com.example.auction.product.dto.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,14 +36,14 @@ public class ProductController {
     // 상품 단일 조회
     @GetMapping("/{productId}")
     public ResponseEntity<?> ReadProduct(@PathVariable("productId") Long productId) {
-			ProductReadDto dto = productService.readProduct(productId);
+			ProductDetailDto dto = productService.readProduct(productId);
 			return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", dto));
     }
     
     /* 상품 목록 조회 */
     @GetMapping("/all")
     public ResponseEntity<?> ReadAllProducts() {
-    	List<ProductReadAllDto> dto = productService.readAllProducts();
+    	List<ProductListDto> dto = productService.readAllProducts();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
     }
     

@@ -65,10 +65,16 @@ public class Product extends BaseTimeEntity{
     private String blockedReason; // 차단 사유
     
     public void update(ProductUpdateDto dto, Category category) {
-    	this.category = category;
-    	this.productName = dto.getProductName();
-    	this.productContent = dto.getProductContent();
-    	this.price = dto.getPrice();
+        if (category != null) this.category = category;
+        if (dto.getProductName() != null && !dto.getProductName().isBlank()) {
+            this.productName = dto.getProductName().trim();
+        }
+        if (dto.getProductContent() != null && !dto.getProductContent().isBlank()) {
+            this.productContent = dto.getProductContent().trim();
+        }
+        if (dto.getPrice() != null) {
+            this.price = dto.getPrice();
+        }
     }
 
     public void block(String reason) {

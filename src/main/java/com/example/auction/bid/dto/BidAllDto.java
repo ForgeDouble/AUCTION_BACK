@@ -3,12 +3,6 @@ package com.example.auction.bid.dto;
 import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.common.domain.DelYN;
-import com.example.auction.product.domain.Product;
-import com.example.auction.product.dto.ProductReadAllDto;
-import com.example.auction.user.domain.User;
-import jakarta.persistence.Column;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import lombok.*;
 
 import java.time.LocalDateTime;
