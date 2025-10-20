@@ -117,6 +117,7 @@ public class UserController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "프로필 이미지 삭제", null));
     }
 
+    /* 접속중인 유저 확인 */
     @GetMapping("/verify-token")
     public ResponseEntity<?> verifyToken() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();

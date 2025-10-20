@@ -56,7 +56,8 @@ public class SecurityConfig {
                                 "/bid/**",
                                 "/category/**",
                                 "/product/**",
-                                "/ws/**"
+                                "/ws/**",
+                                "/user/**"
 
 
                         ).permitAll()  // 로그인, 회원가입 경로는 인증x
