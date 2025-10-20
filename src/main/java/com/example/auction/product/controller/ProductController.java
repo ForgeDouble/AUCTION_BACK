@@ -50,14 +50,13 @@ public class ProductController {
     // 상품 수정
     @PreAuthorize("isAuthenticated()")
     @PutMapping(value = "/update", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateProduct(@ModelAttribute ProductUpdateDto productUpdateDto,
-                                           @RequestPart(value = "addFiles", required = false) List<MultipartFile> addFiles,
-                                           @RequestPart(value = "replaceImageIds", required = false) List<Long> replaceIds,
-                                           @RequestPart(value = "replaceFiles", required = false) List<MultipartFile> replaceFiles,
-                                           @RequestPart(value = "deleteImageIds", required = false) List<Long> deleteIds,
-                                           @RequestPart(value = "orderImageIds", required = false) List<Long> orderIds
+    public ResponseEntity<?> updateProduct(
+            @ModelAttribute ProductUpdateDto productUpdateDto,
+            @RequestPart(value = "addFiles", required = false) List<MultipartFile> addFiles,
+            @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteIds,
+            @RequestParam(value = "orderImageIds", required = false) List<Long> orderIds
     ) {
-        productService.updateProduct(productUpdateDto, addFiles, replaceIds, replaceFiles, deleteIds, orderIds);
+        productService.updateProduct(productUpdateDto, addFiles, deleteIds, orderIds);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 수정 성공", null));
     }
     

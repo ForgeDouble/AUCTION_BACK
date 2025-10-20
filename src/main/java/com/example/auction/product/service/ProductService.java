@@ -318,8 +318,6 @@ public class ProductService {
     @Transactional
     public void updateProduct(ProductUpdateDto dto,
                                        List<MultipartFile> addFiles,
-                                       List<Long> replaceIds,
-                                       List<MultipartFile> replaceFiles,
                                        List<Long> deleteIds,
                                        List<Long> orderIds) {
 
@@ -329,9 +327,11 @@ public class ProductService {
 
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product"));
-        Category category = categoryRepository.findById(dto.getCategoryId())
-                .orElseThrow(() -> new IllegalArgumentException("Category"));
-
+        Category category = null;
+        if (dto.getCategoryId() != null) {
+            category = categoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category"));
+        }
         if (user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
             throw new UnauthorizedAccessException("해당 상품을 수정할 권한이 없습니다.");
         }
@@ -343,8 +343,6 @@ public class ProductService {
         productImageService.applyOps(
                 product.getProductId(),
                 addFiles,
-                replaceIds,
-                replaceFiles,
                 deleteIds,
                 orderIds
         );

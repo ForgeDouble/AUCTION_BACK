@@ -110,12 +110,10 @@ public class ProductImageService {
     @Transactional
     public void applyOps(Long productId,
                          List<MultipartFile> addFiles,
-                         List<Long> replaceIds,
-                         List<MultipartFile> replaceFiles,
                          List<Long> deleteIds,
                          List<Long> orderIds) {
 
-        boolean noOps = isEmpty(addFiles) && isEmpty(replaceIds) && isEmpty(replaceFiles) && isEmpty(deleteIds) && isEmpty(orderIds);
+        boolean noOps = isEmpty(addFiles) && isEmpty(deleteIds) && isEmpty(orderIds);
         // 번경 없을 경우 이미지 그대로 유지
         if (noOps) return;
 
@@ -129,14 +127,6 @@ public class ProductImageService {
             uploadInitial(productId, addFiles);
         }
 
-        if (!isEmpty(replaceIds) || !isEmpty(replaceFiles)) {
-            if (isEmpty(replaceIds) || isEmpty(replaceFiles) || replaceIds.size() != replaceFiles.size()) {
-                throw new IllegalArgumentException("수정하는 이미지와 개수가 다릅니다");
-            }
-            for (int i = 0; i < replaceIds.size(); i++) {
-                replaceOne(productId, replaceIds.get(i), replaceFiles.get(i));
-            }
-        }
 
         if (!isEmpty(deleteIds)) {
             for (Long id : deleteIds) deleteOne(productId, id);
@@ -190,37 +180,37 @@ public class ProductImageService {
             }
         });
     }
-
-    @Transactional
-    public void replaceOne(Long productId, Long imageId, MultipartFile file) {
-        loadOwnedProduct(productId);
-        validator.ensureImage(file);
-
-        var img = productImageRepository.findByIdAndProduct_ProductId(imageId, productId)
-                .orElseThrow(() -> new RuntimeException("이미지 없음"));
-
-        String oldKey = img.getS3Key();
-        String ext = validator.ext(file.getContentType(), file.getOriginalFilename());
-        String newKey = keyUtil.productImageKey(productId, ext);
-        s3.put(newKey, file);
-        String newUrl = s3.toPublicUrl(newKey);
-
-        img.setS3Key(newKey);
-        img.setUrl(newUrl);
-        productImageRepository.save(img);
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                if (oldKey != null && !oldKey.isBlank()) s3.delete(oldKey);
-            }
-
-            @Override
-            public void afterCompletion(int status) {
-                if (status == STATUS_ROLLED_BACK) s3.delete(newKey);
-            }
-        });
-    }
+// 이미지를 대체하는 기능이 불 필요 함 고려하여 주석처리
+//    @Transactional
+//    public void replaceOne(Long productId, Long imageId, MultipartFile file) {
+//        loadOwnedProduct(productId);
+//        validator.ensureImage(file);
+//
+//        var img = productImageRepository.findByIdAndProduct_ProductId(imageId, productId)
+//                .orElseThrow(() -> new RuntimeException("이미지 없음"));
+//
+//        String oldKey = img.getS3Key();
+//        String ext = validator.ext(file.getContentType(), file.getOriginalFilename());
+//        String newKey = keyUtil.productImageKey(productId, ext);
+//        s3.put(newKey, file);
+//        String newUrl = s3.toPublicUrl(newKey);
+//
+//        img.setS3Key(newKey);
+//        img.setUrl(newUrl);
+//        productImageRepository.save(img);
+//
+//        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+//            @Override
+//            public void afterCommit() {
+//                if (oldKey != null && !oldKey.isBlank()) s3.delete(oldKey);
+//            }
+//
+//            @Override
+//            public void afterCompletion(int status) {
+//                if (status == STATUS_ROLLED_BACK) s3.delete(newKey);
+//            }
+//        });
+//    }
 
     private static boolean isEmpty(Collection<?> c) {
         return c == null || c.isEmpty();
