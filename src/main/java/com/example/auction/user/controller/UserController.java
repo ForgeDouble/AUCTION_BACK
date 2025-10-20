@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -114,5 +115,12 @@ public class UserController {
     public ResponseEntity<CommonResDto> delete() {
         userImageService.deleteAvatar();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "프로필 이미지 삭제", null));
+    }
+
+    /* 접속중인 유저 확인 */
+    @GetMapping("/verify-token")
+    public ResponseEntity<?> verifyToken() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "계정 조회 성공", email));
     }
 }

@@ -1,5 +1,7 @@
 package com.example.auction.product.dto;
 
+import com.example.auction.category.domain.Category;
+import com.example.auction.category.dto.CategoryDto;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.domain.SellYN;
 
@@ -10,6 +12,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /* 목록 리스트 보기 */
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -25,15 +30,20 @@ public class ProductListDto {
     private SellYN sellYN;
 
 	private String previewImageUrl;
-    
+
+    private List<CategoryDto> path;
+
     public static ProductListDto fromEntity(Product product) {
-    	return ProductListDto.builder()
-    			.productId(product.getProductId())
-    			.categoryId(product.getCategory().getCategoryId())
-    			.productName(product.getProductName())
-    			.productContent(product.getProductContent())
-    			.price(product.getPrice())
-    			.sellYN(product.getSellYN())
-    			.build();
+        return ProductListDto.builder()
+                .productId(product.getProductId())
+                .categoryId(product.getCategory().getCategoryId())
+                .productName(product.getProductName())
+                .productContent(product.getProductContent())
+                .price(product.getPrice())
+                .sellYN(product.getSellYN())
+                .path(product.getCategory().getPath().stream()
+                        .map(CategoryDto::fromEntity)
+                        .collect(Collectors.toList()))
+                .build();
     }
 }

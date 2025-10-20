@@ -53,10 +53,11 @@ public class SecurityConfig {
                                 "/user/login",
                                 "/user/register",
 //                                웹소캣 테스트용
-                                "/bid/redis/1",
-                                "/bid/redis/2",
-                                "/product/2",
-                                "/ws/**"
+                                "/bid/**",
+                                "/category/**",
+                                "/product/**",
+                                "/ws/**",
+                                "/user/**"
 
 
                         ).permitAll()  // 로그인, 회원가입 경로는 인증x

@@ -93,6 +93,15 @@ public class CategoryService {
 	                .toList();
 	}
 
+    // 부모 id가 null인 카테고리 목록 조회
+    @Transactional
+    public List<CategoryReadDto> getNullParentCategories() {
+        List<Category> categories = categoryRepository.findAllByParent_CategoryId(null);
+        return categories.stream()
+                .map(CategoryReadDto::fromEntity)
+                .toList();
+    }
+
     // 부모 카테고리로 목록 조회
     @Transactional
     public List<CategoryReadDto> getAllCategoriesByParent(Long parentId) {

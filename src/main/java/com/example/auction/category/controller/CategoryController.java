@@ -56,6 +56,13 @@ public class CategoryController {
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadDtos));
     }
 
+    // 부모 id가 Null인 카테고리 목록 조회
+    @GetMapping("/parent_category")
+    public ResponseEntity<?> getNullCategories() {
+        List<CategoryReadDto> categoryReadDtos = categoryService.getNullParentCategories();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadDtos));
+    }
+
     // 부모 카테고리로 목록 조회
     @GetMapping("/all/{parentId}")
     public ResponseEntity<?> getAllCategoriesByParentId(@PathVariable("parentId")  Long parentId) {
