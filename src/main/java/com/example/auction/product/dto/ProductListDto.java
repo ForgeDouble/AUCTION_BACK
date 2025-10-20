@@ -9,21 +9,25 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/* 목록 리스트 보기 */
+
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductReadAllDto {
+public class ProductListDto {
 	private Long productId;
 	private Long categoryId;
 	private String productName;
     private String productContent;
     private Long price;
     private SellYN sellYN;
+
+	private String previewImageUrl;
     
-    public static ProductReadAllDto fromEntity(Product product) {
-    	return ProductReadAllDto.builder()
+    public static ProductListDto fromEntity(Product product) {
+    	return ProductListDto.builder()
     			.productId(product.getProductId())
     			.categoryId(product.getCategory().getCategoryId())
     			.productName(product.getProductName())

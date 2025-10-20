@@ -17,7 +17,6 @@ import com.example.auction.category.dto.CategoryCreateDto;
 import com.example.auction.category.dto.CategoryReadDto;
 import com.example.auction.category.service.CategoryService;
 import com.example.auction.common.dto.CommonResDto;
-import com.example.auction.product.dto.ProductReadDto;
 
 import lombok.RequiredArgsConstructor;
 

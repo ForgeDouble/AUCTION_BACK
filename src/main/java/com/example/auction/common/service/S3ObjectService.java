@@ -2,6 +2,7 @@ package com.example.auction.common.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -9,6 +10,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.IOException;
+import java.net.URLConnection;
 
 @Service
 @RequiredArgsConstructor
@@ -22,8 +24,9 @@ public class S3ObjectService {
 
     private final S3Client s3;
 
-    /** S3에 스트리밍 업로드 */
-    public String put(String key, MultipartFile file) throws IOException {
+    // S3에 스트리밍 업로드
+    // 추가 - 파일의 확장자가 없는 경우 이를 해결하기 위한 확장자 추론 형태
+    public String put(String key, MultipartFile file) {
         PutObjectRequest req = PutObjectRequest.builder()
                 .bucket(bucket)
                 .key(key)
@@ -32,8 +35,10 @@ public class S3ObjectService {
                 .build();
         try (var in = file.getInputStream()) {
             s3.putObject(req, RequestBody.fromInputStream(in, file.getSize()));
+            return key;
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException("S3 업로드 실패: " + key, e);
         }
-        return key;
     }
 
     /* S3 객체 삭제 */
