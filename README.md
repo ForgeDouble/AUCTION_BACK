@@ -10,14 +10,10 @@
 
 ## Stacks
 
-**Language**
+**Language & Framework**
 
 ![Java](https://img.shields.io/badge/Java-ED8B00?style=flat-square&logo=java&logoColor=white)
-
-**Framework**
-
 ![SpringBoot](https://img.shields.io/badge/SpringBoot-6DB33F?style=flat-square&logo=spring&logoColor=white)
-
 
 **Database**
 
@@ -34,6 +30,7 @@
 
 # 시작가이드
 
+## Requirements
 
 ## 환경변수
 
@@ -46,6 +43,12 @@
 | `AWS_ACCESS_KEY_ID` | S3 관련 AWS 키 ID | `ADS5SDF3...` | ✅ |
 
 ## API 문서
+
+1. (대기중) 다운로드
+2. Postman에서 Import
+3. Environment 설정:
+   - `user_token`: 로그인 후 받은 JWT 토큰
+4. 테스트 시작!
 
 ## 시스템 아키텍처
 

@@ -1,6 +1,5 @@
 package com.example.auction.product.service;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -14,16 +13,16 @@ import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
+import com.example.auction.product.domain.ProductImage;
 import com.example.auction.product.domain.SellYN;
 import com.example.auction.product.dto.*;
+import com.example.auction.product.repository.ProductImageRepository;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
-import com.example.auction.wishlist.repository.WishlistRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -38,8 +37,7 @@ import com.example.auction.category.repository.CategoryRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.repository.ProductRepository;
-
-import lombok.RequiredArgsConstructor;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @Slf4j
@@ -51,6 +49,9 @@ public class ProductService {
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> bidRedisTemplate;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
+
+    private final ProductImageRepository productImageRepository;
+    private final ProductImageService productImageService;
     private final TaskScheduler taskScheduler;
 
     private static final int AUCTION_DURATION_HOURS = 24;
@@ -62,7 +63,7 @@ public class ProductService {
             ObjectMapper objectMapper,
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
-            TaskScheduler taskScheduler
+            ProductImageRepository productImageRepository, ProductImageService productImageService, TaskScheduler taskScheduler
     ) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -70,6 +71,9 @@ public class ProductService {
         this.objectMapper = objectMapper;
         this.bidRedisTemplate = bidRedisTemplate;
         this.bidStringRedisTemplate = bidStringRedisTemplate;
+        this.productImageRepository = productImageRepository;
+
+        this.productImageService = productImageService;
         this.taskScheduler = taskScheduler;
     }
 
@@ -86,7 +90,12 @@ public class ProductService {
 
     // 아이템 생성
     @Transactional
-    public Product createProduct(ProductCreateDto dto) {
+    public Product createProduct(ProductCreateDto dto, List<MultipartFile> files) {
+
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("최소 1장의 이미지가 필요합니다.");
+        }
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
@@ -100,6 +109,8 @@ public class ProductService {
         product.setCategory(category);
         product.setUser(user);
         Product savedProduct = productRepository.save(product);
+
+        productImageService.uploadInitial(savedProduct.getProductId(), files);
 
         // 경매 종료 스케줄링 추가
         if (savedProduct.getSellYN() == SellYN.N) { // 경매 상품인 경우만
@@ -260,47 +271,82 @@ public class ProductService {
     }
 
     // DelYN.N 인것을 조회
-	// 아이템 조회
-	@Transactional(readOnly = true)
-	public ProductReadDto readProduct(Long productId) {
-		Product product = productRepository
-				.findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
-				.orElseThrow(() -> new ResourceNotFoundException("Product"));
-		return ProductReadDto.fromEntity(product);
-	}
+	// 아이템 상세 조회
+    @Transactional(readOnly = true)
+    public ProductDetailDto readProduct(Long productId) {
+        Product product = productRepository
+                .findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
+                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+
+        ProductDetailDto dto = ProductDetailDto.fromEntity(product);
+
+        List<ProductImageDto> images = productImageRepository
+                .findByProduct_ProductIdOrderByPositionAsc(productId)
+                .stream()
+                .map(ProductImageDto::from)
+                .toList();
+
+        dto.setImages(images);
+        return dto;
+    }
 	
-	// 아이템 목록 상세 조회
-	@Transactional(readOnly = true)
-	public List<ProductReadAllDto> readAllProducts() {
-		return productRepository.findAll().stream()
-				.filter(product -> product.getDelYn() == DelYN.N)
-				.filter(product -> !Boolean.TRUE.equals(product.getBlocked()))
-				.map(ProductReadAllDto::fromEntity)
-				.collect(Collectors.toList());
-	}
+	// 아이템 목록 조회
+    @Transactional(readOnly = true)
+    public List<ProductListDto> readAllProducts() {
+        return productRepository.findAll().stream()
+                .filter(p -> p.getDelYn() == DelYN.N)
+                .filter(p -> !Boolean.TRUE.equals(p.getBlocked()))
+                .map(p -> {
+                    ProductListDto dto = ProductListDto.fromEntity(p);
+
+                    String previewUrl = productImageRepository
+                            .findByProduct_ProductIdOrderByPositionAsc(p.getProductId())
+                            .stream()
+                            .findFirst()
+                            .map(ProductImage::getUrl)
+                            .orElse(null);
+
+                    dto.setPreviewImageUrl(previewUrl);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
 	
 	// 아이템 수정
     // 권한 - 해당 유저, 관리자
-	@Transactional
-	public void updateProduct(ProductUpdateDto dto) {
+
+    @Transactional
+    public void updateProduct(ProductUpdateDto dto,
+                                       List<MultipartFile> addFiles,
+                                       List<Long> deleteIds,
+                                       List<Long> orderIds) {
+
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
 
-		ensureCanMutateProducts(user, "상품 수정");
-
         Product product = productRepository.findById(dto.getProductId())
-				.orElseThrow(() -> new ResourceNotFoundException("Product"));
-		
-	    Category category = categoryRepository.findById(dto.getCategoryId())
-	        .orElseThrow(() -> new IllegalArgumentException("Category"));
-
-        if(user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
+                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+        Category category = null;
+        if (dto.getCategoryId() != null) {
+            category = categoryRepository.findById(dto.getCategoryId())
+                    .orElseThrow(() -> new IllegalArgumentException("Category"));
+        }
+        if (user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
             throw new UnauthorizedAccessException("해당 상품을 수정할 권한이 없습니다.");
         }
-		product.update(dto, category);
-		productRepository.save(product);
-	}
+        ensureCanMutateProducts(user, "상품 수정");
+
+        product.update(dto, category);
+        productRepository.save(product);
+
+        productImageService.applyOps(
+                product.getProductId(),
+                addFiles,
+                deleteIds,
+                orderIds
+        );
+    }
 	
 	
 	// 아이템 소프트 삭제
@@ -323,4 +369,6 @@ public class ProductService {
 		product.softDelete();
 		productRepository.save(product);
 	}
+
+
 }

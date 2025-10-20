@@ -30,13 +30,20 @@ public class FileValidationUtil {
         if (!allowed.contains(ct)) throw new IllegalArgumentException("허용되지 않는 타입: " + ct);
     }
 
-    public String ext(String contentType) {
-        return switch (contentType) {
-            case "image/jpeg" -> ".jpg";
-            case "image/png"  -> ".png";
-            case "image/webp" -> ".webp";
-            case "image/gif"  -> ".gif";
-            default -> "";
-        };
+    public String ext(String contentType, String originalFilename) {
+        // contentType선 적용 및 파일명으로 확장자 추론
+        if ("image/jpeg".equals(contentType)) return ".jpg";
+        if ("image/png".equals(contentType))  return ".png";
+        if ("image/webp".equals(contentType)) return ".webp";
+        if ("image/gif".equals(contentType))  return ".gif";
+
+        if (originalFilename != null && originalFilename.contains(".")) {
+            String lower = originalFilename.toLowerCase();
+            if (lower.endsWith(".jpeg") || lower.endsWith(".jpg")) return ".jpg";
+            if (lower.endsWith(".png"))  return ".png";
+            if (lower.endsWith(".webp")) return ".webp";
+            if (lower.endsWith(".gif"))  return ".gif";
+        }
+        return "";
     }
 }

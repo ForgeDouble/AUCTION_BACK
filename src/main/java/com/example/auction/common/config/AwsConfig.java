@@ -40,6 +40,7 @@ public class AwsConfig {
         return builder.build();
     }
 
+    @Bean
     public S3Presigner s3Presigner() {
         var builder = S3Presigner.builder().region(Region.of(region));
         if (!accessKey.isBlank() && !secretKey.isBlank()) {

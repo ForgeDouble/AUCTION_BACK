@@ -11,6 +11,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/* 목록 리스트 보기 */
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,7 +21,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductReadAllDto {
+public class ProductListDto {
 	private Long productId;
 	private Long categoryId;
 	private String productName;
@@ -27,8 +29,10 @@ public class ProductReadAllDto {
     private Long price;
     private SellYN sellYN;
 
+	private String previewImageUrl;
+
     private List<CategoryDto> path;
-    
+
     public static ProductReadAllDto fromEntity(Product product) {
         return ProductReadAllDto.builder()
                 .productId(product.getProductId())
