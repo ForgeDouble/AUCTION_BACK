@@ -33,8 +33,8 @@ public class ProductListDto {
 
     private List<CategoryDto> path;
 
-    public static ProductReadAllDto fromEntity(Product product) {
-        return ProductReadAllDto.builder()
+    public static ProductListDto fromEntity(Product product) {
+        return ProductListDto.builder()
                 .productId(product.getProductId())
                 .categoryId(product.getCategory().getCategoryId())
                 .productName(product.getProductName())
