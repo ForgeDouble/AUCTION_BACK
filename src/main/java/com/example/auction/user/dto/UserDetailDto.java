@@ -5,6 +5,8 @@ import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,6 +25,7 @@ public class UserDetailDto {
     private String nickname;
 
     private String profileImageUrl;
+    private LocalDateTime createdAt;
 
     public static UserDetailDto fromEntity(User user) {
         return UserDetailDto.builder()
@@ -37,6 +40,7 @@ public class UserDetailDto {
                 .address(user.getAddress())
                 .nickname(user.getNickname())
                 .profileImageUrl(user.getProfileImageUrl())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }
