@@ -30,19 +30,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String authorizationHeader = request.getHeader("Authorization");
 
-        String username = null;
+        String email = null;
         String token = null;
 
         try {
             if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
                 token = authorizationHeader.substring(7); // "Bearer " 제거 후 토큰 추출
-                username = jwtTokenProvider.getEmailFromToken(token); // 토큰에서 파싱
+                email = jwtTokenProvider.getEmailFromToken(token); // 토큰에서 파싱
             }
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = customUserService.loadUserByUsername(username);
+            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UserDetails userDetails = customUserService.loadUserByUsername(email);
 
-                String current = customTokenExpiredStrategy.get(username);
+                String current = customTokenExpiredStrategy.get(email);
                 if (current == null || !current.equals(token)) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     response.getWriter().write("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
