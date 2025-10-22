@@ -2,6 +2,7 @@ package com.example.auction.common.auth;
 
 import com.example.auction.user.domain.User;
 import io.jsonwebtoken.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -9,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @Component
 public class JwtTokenProvider {
 
@@ -66,9 +68,13 @@ public class JwtTokenProvider {
     public boolean validateToken(String token) {
         try {
             Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token);
-            return !isTokenExpired(token);
-        } catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException | IllegalArgumentException e) {
-            System.out.println("만료된 JWT 토큰입니다." + e.getMessage());
+            return true;
+        } catch (io.jsonwebtoken.ExpiredJwtException
+                 | io.jsonwebtoken.UnsupportedJwtException
+                 | io.jsonwebtoken.MalformedJwtException
+                 | io.jsonwebtoken.SignatureException
+                 | IllegalArgumentException e) {
+             log.debug("JWT invalid: {}", e.toString());
             return false;
         }
     }

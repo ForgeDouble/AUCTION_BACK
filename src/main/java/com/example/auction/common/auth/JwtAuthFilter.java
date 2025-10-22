@@ -62,21 +62,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
             chain.doFilter(request, response);
 
-        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+        } catch (io.jsonwebtoken.ExpiredJwtException
+                 | io.jsonwebtoken.UnsupportedJwtException
+                 | io.jsonwebtoken.MalformedJwtException
+                 | io.jsonwebtoken.SignatureException
+                 | IllegalArgumentException e) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("Access Token이 만료되었습니다.");
-        } catch (io.jsonwebtoken.UnsupportedJwtException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("지원하지 않는 JWT 토큰입니다.");
-        } catch (io.jsonwebtoken.MalformedJwtException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("잘못된 형식의 JWT 토큰입니다.");
-        } catch (io.jsonwebtoken.SignatureException e) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write("JWT 서명 검증에 실패했습니다.");
-        } catch (IllegalArgumentException e) {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            response.getWriter().write("유효하지 않은 JWT 토큰입니다.");
+            response.getWriter().write("유효하지 않거나 만료된 JWT 토큰입니다.");
         } catch (Exception e) {
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.getWriter().write("서버 내부 오류가 발생했습니다.");
