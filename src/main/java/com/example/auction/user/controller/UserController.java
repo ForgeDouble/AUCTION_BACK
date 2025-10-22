@@ -42,7 +42,7 @@ public class UserController {
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
-        userService.logout(); // ★ 서비스에서 처리
+        userService.logout();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "로그아웃 성공", null));
     }
 
@@ -68,6 +68,7 @@ public class UserController {
         UserDetailDto detail = userService.getMyDetail();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "조회 성공", detail));
     }
+
 
     /* [관리자 + 유저 기능] 타겟팅 조회 */
     @PreAuthorize("isAuthenticated()")

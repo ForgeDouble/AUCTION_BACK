@@ -217,6 +217,11 @@ public class ProductService {
         log.info("만료된 경매 발견 - 처리 대상: {}개", expiredAuctions.size());
 
         // 배치로 처리 (대량 데이터 대비)
+
+        // 내부 컬럼 사용으로 SPRING AOP 정책 위반 -> 자기호출은  @Transaction 사용불가
+        // 이려면 checkExpiredAuctions() -> @Transactional 으로 인해서 MANAUAL 으로 바뀜 -> 여기서 호출된 endAuction() -> 트랜잭션 적용 불가 상태
+        // -> setSell / setIsWinned 커밋 flush 되지 않음 -> 반영이 안되거나 일부만 반영되는 원자성 보장 불가 문제 발생
+        // 해결방안 : endAuction을 별도 service 처리(@Bean 분리) 그 메서드에 @Transaction 처리를 하고 그 걸 불러와서 checkExpiredAuctions() 에서 호출
         expiredAuctions.parallelStream()
             .forEach(this::endAuctionSafely);
     }
@@ -239,6 +244,14 @@ public class ProductService {
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
             // 1. 상품 상태를 SellYN.Y 변경
             currentProduct.setSellYN(SellYN.Y);
+
+            //  DB의 Bid.isWinned를 Y로 바꾸지 않음
+            // findByProduct_ProductIdAndIsWinned(..., Y)가 없어서 404(ResourceNotFoundException).
+
+            // redis 에 정보를 받아올 때
+            // 잔존 키 제거에 대한 코드가 부재
+            // 의구심 : 우리 서비스가 입찰 취소 기능의 여부가 있나? (기능을 제공하나)
+            // 요약 : 종료 시점에 ZSET/HASH/TIME 모두 정리가 들어가야 하고, 현재 코드는 그 부분이 빠져 있습니다.
             productRepository.save(currentProduct);
 
             // 2. Redis에서 최고 입찰자 확인
