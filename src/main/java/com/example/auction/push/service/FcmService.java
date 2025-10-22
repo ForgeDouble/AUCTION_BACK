@@ -30,7 +30,7 @@ public class FcmService {
                         .build())
                 .build();
         String messageId = messaging.send(msg);
-        log.debug("[FCM] messageId 보낸 값 : ", messageId);
+        log.debug("[FCM] messageId 보낸 값 : {}", messageId);
         return messageId;
     }
 

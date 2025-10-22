@@ -42,7 +42,7 @@ logging:
     org.springframework: WARN
 
 firebase:
-  service-account-b64: ${FIREBASE_SERVICE_ACCOUNT_b64:}
+  service-account-B64: ${FIREBASE_SERVICE_ACCOUNT_B64:}
   service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
   service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
 crypto:
