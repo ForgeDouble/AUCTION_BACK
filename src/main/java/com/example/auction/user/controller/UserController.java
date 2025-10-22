@@ -118,6 +118,8 @@ public class UserController {
     }
 
     /* 접속중인 유저 확인 */
+    /* 근데 이 코드라면 jwt -> bear 헤더로 전달하고 자기만 판단하는 코드같은디;?*/
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/verify-token")
     public ResponseEntity<?> verifyToken() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
