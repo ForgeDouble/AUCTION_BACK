@@ -30,32 +30,34 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String authorizationHeader = request.getHeader("Authorization");
 
-        String email = null;
         String token = null;
 
         try {
             if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-                token = authorizationHeader.substring(7); // "Bearer " 제거 후 토큰 추출
-                email = jwtTokenProvider.getEmailFromToken(token); // 토큰에서 파싱
-            }
+                token = authorizationHeader.substring(7); // "Bearer " 제거
 
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = customUserService.loadUserByUsername(email);
 
-                String current = customTokenExpiredStrategy.get(email);
-                if (current == null || !current.equals(token)) {
+                if (!jwtTokenProvider.validateToken(token)) {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
+                    response.getWriter().write("만료되었거나 유효하지 않은 JWT 토큰입니다.");
                     return;
                 }
-                if (jwtTokenProvider.validateToken(token)) {
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userDetails, null, userDetails.getAuthorities());
+
+                String email = jwtTokenProvider.getEmailFromToken(token);
+
+                if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    UserDetails userDetails = customUserService.loadUserByUsername(email);
+
+                    String current = customTokenExpiredStrategy.get(email);
+                    if (current == null || !current.equals(token)) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.getWriter().write("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
+                        return;
+                    }
+
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
-                }  else {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("만료된 JWT 토큰입니다.");
-                    return;
                 }
             }
             chain.doFilter(request, response);
