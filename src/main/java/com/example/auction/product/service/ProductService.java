@@ -9,8 +9,11 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
+import com.example.auction.bid.repository.BidRepository;
+import com.example.auction.bid.service.BidService;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.ProductImage;
@@ -46,9 +49,11 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
 	private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final BidRepository bidRepository;
     private final ObjectMapper objectMapper;
     private final RedisTemplate<String, Object> bidRedisTemplate;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
+
 
     private final ProductImageRepository productImageRepository;
     private final ProductImageService productImageService;
@@ -59,15 +64,16 @@ public class ProductService {
     public ProductService(
             CategoryRepository categoryRepository,
             ProductRepository productRepository,
-            UserRepository userRepository,
+            UserRepository userRepository, BidRepository bidRepository,
             ObjectMapper objectMapper,
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
-            ProductImageRepository productImageRepository, ProductImageService productImageService, TaskScheduler taskScheduler
-    ) {
+            ProductImageRepository productImageRepository, ProductImageService productImageService, TaskScheduler taskScheduler,
+            BidService bidService) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.bidRepository = bidRepository;
         this.objectMapper = objectMapper;
         this.bidRedisTemplate = bidRedisTemplate;
         this.bidStringRedisTemplate = bidStringRedisTemplate;
@@ -198,6 +204,16 @@ public class ProductService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("BidEvent JSON 변환 실패", e);
         }
+
+        Bid bid = new Bid();
+        bid.setProduct(savedProduct);
+        bid.setUser(user);
+        bid.setBidAmount(savedProduct.getPrice());
+        bid.setCreatedAt(savedProduct.getCreatedAt());
+        bid.setIsWinned(IsWinned.N);
+
+        bidRepository.save(bid);
+
         return savedProduct;
     }
 
@@ -294,6 +310,32 @@ public class ProductService {
     @Transactional(readOnly = true)
     public List<ProductListDto> readAllProducts() {
         return productRepository.findAll().stream()
+                .filter(p -> p.getDelYn() == DelYN.N)
+                .filter(p -> !Boolean.TRUE.equals(p.getBlocked()))
+                .map(p -> {
+                    ProductListDto dto = ProductListDto.fromEntity(p);
+
+                    String previewUrl = productImageRepository
+                            .findByProduct_ProductIdOrderByPositionAsc(p.getProductId())
+                            .stream()
+                            .findFirst()
+                            .map(ProductImage::getUrl)
+                            .orElse(null);
+
+                    dto.setPreviewImageUrl(previewUrl);
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    // 마이페이지 아이템 목록 조회
+    @Transactional(readOnly = true)
+    public List<ProductListDto> readAllProductsByUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        bidRepository
+
+        return productRepository.findAllByUser_Email(email).stream()
                 .filter(p -> p.getDelYn() == DelYN.N)
                 .filter(p -> !Boolean.TRUE.equals(p.getBlocked()))
                 .map(p -> {

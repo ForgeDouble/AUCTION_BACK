@@ -16,4 +16,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	Optional<Product> findByProductIdAndDelYnAndBlocked(Long productId, DelYN delYn, Boolean blocked);
 	List<Product> findByBlockedAndDelYn(Boolean blocked, DelYN delYn);
+    List<Product> findAllByUser_Email(String email);
 }
