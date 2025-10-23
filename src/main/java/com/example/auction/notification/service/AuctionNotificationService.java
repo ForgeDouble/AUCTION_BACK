@@ -70,7 +70,7 @@ public class AuctionNotificationService {
             pushService.sendToUser(
                     product.getUser().getUserId(),
                     "경매가 시작되었습니다",
-                    "등록하신 \"" + product.getProductName() + "\" 경매가 시작됐어요.",
+                    "등록하신 \"" + product.getProductName() + "\" 상품의 경매가 시작했습니다.",
                     Map.of("type","AUCTION_STARTED","productId", String.valueOf(product.getProductId()))
             );
         } catch (Exception e) {
@@ -88,7 +88,8 @@ public class AuctionNotificationService {
         var endI = product.getAuctionEndTime().atZone(ZoneId.systemDefault()).toInstant();
         if (!setOnce(kEndSoon(productId, minutes), ttlUntil(endI, 3600))) return;
 
-        // 입찰자 집합(중복 제거)
+        // 입찰자 집합
+        // 입찰한 모든 인원들에게 입찰했던 상품의 경매 종료 직전임을 알림
         List<BidEvent> history = bidService.getAllBidHistory(productId, true);
         Set<Long> bidderIds = history.stream()
                 .map(BidEvent::getUserId)
@@ -120,7 +121,7 @@ public class AuctionNotificationService {
         }
 
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+                .orElseThrow(() -> new ResourceNotFoundException("상품이 존재하지 않습니다."));
 
         Long sellerId = product.getUser().getUserId();
         String safeName = (productName != null && !productName.isBlank())
@@ -134,7 +135,7 @@ public class AuctionNotificationService {
             pushService.sendToUser(
                     sellerId,
                     "경매 종료",
-                    "등록하신 [" + safeName + "] 경매가 " + amountStr + "원에 낙찰되었습니다.",
+                    "등록하신 [" + safeName + "] 상품의 경매가 " + amountStr + "원에 낙찰되었습니다.",
                     Map.of(
                             "type", "AUCTION_ENDED",
                             "productId", String.valueOf(productId),
@@ -150,7 +151,7 @@ public class AuctionNotificationService {
         try {
             pushService.sendToUser(
                     winner.getUserId(),
-                    "축하합니다! 해당상품을 낙찰했습니다",
+                    "입찰 상품 낙찰",
                     "[" + safeName + "]을(를) " + amountStr + "원에 낙찰 받으셨습니다.",
                     Map.of(
                             "type", "AUCTION_WINNER",
