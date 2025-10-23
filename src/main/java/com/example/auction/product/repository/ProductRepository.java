@@ -16,4 +16,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	Optional<Product> findByProductIdAndDelYnAndBlocked(Long productId, DelYN delYn, Boolean blocked);
 	List<Product> findByBlockedAndDelYn(Boolean blocked, DelYN delYn);
+
+	// 최근 24시간 30분 내외 생성 경매 확인
+	List<Product> findBySellYNAndDelYnAndBlockedAndCreatedAtAfter(
+			SellYN sellYN, DelYN delYn, Boolean blocked, LocalDateTime createdAtAfter
+	);
+	List<Product> findBySellYNAndDelYnAndBlocked(SellYN sellYN, DelYN delYn, Boolean blocked);
 }

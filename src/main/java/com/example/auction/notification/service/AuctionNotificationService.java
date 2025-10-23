@@ -3,21 +3,22 @@ package com.example.auction.notification.service;
 import com.example.auction.bid.service.BidService;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.push.service.PushService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
+import java.text.NumberFormat;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class AuctionNotificationService {
 
@@ -26,6 +27,16 @@ public class AuctionNotificationService {
     private final ProductRepository productRepository;
     private final TaskScheduler taskScheduler;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
+
+    public AuctionNotificationService(PushService pushService, BidService bidService, ProductRepository productRepository, TaskScheduler taskScheduler, @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate
+    ) {
+        this.pushService = pushService;
+        this.bidService = bidService;
+        this.productRepository = productRepository;
+        this.taskScheduler = taskScheduler;
+        this.bidStringRedisTemplate = bidStringRedisTemplate;
+    }
+
 
     private String kStart(Long pid) {
         return "notify:auction:start:" + pid;
@@ -41,10 +52,9 @@ public class AuctionNotificationService {
         Boolean ok = bidStringRedisTemplate.opsForValue().setIfAbsent(key, "1", ttlSeconds, TimeUnit.SECONDS);
         return Boolean.TRUE.equals(ok);
     }
-
     private long ttlUntil(Instant when, long bufferSec) {
         long secs = Duration.between(Instant.now(), when).getSeconds();
-        return Math.max(secs + bufferSec, 60);
+        return Math.max(60, secs + bufferSec);
     }
 
     /* 판매자: 경매 시작 알림 */
@@ -102,41 +112,80 @@ public class AuctionNotificationService {
     }
 
     /* 상품 판매자&낙찰자 : 경매 종료 알림 */
-    public void notifyAuctionEnded(Long productId, Long winnerUserId, String productName) {
-        Product product = productRepository.findById(productId).orElse(null);
-        if (product == null) return;
+    public void notifyAuctionEndedWithWinner(Long productId, BidEvent winner, String productName) {
 
-        var endI = product.getAuctionEndTime().atZone(ZoneId.systemDefault()).toInstant();
-        if (!setOnce(kEnd(productId), ttlUntil(endI, 3600))) {
+        if (winner == null) {
+            log.warn("[AuctionNotify] 값이 null 으로 notifyAuctionEndedWithWinner 호출됨 productId={}", productId);
             return;
         }
 
-        // 판매자
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+
+        Long sellerId = product.getUser().getUserId();
+        String safeName = (productName != null && !productName.isBlank())
+                ? productName : product.getProductName();
+
+        String amountStr = NumberFormat.getInstance(Locale.KOREA)
+                .format(winner.getBidAmount());
+
+        // 판매자 알림
         try {
             pushService.sendToUser(
-                    product.getUser().getUserId(),
-                    "경매가 종료되었습니다",
-                    "등록하신 \"" + productName + "\" 경매가 종료됐어요.",
-                    Map.of("type","AUCTION_ENDED","productId", String.valueOf(productId))
+                    sellerId,
+                    "경매 종료",
+                    "등록하신 [" + safeName + "] 경매가 " + amountStr + "원에 낙찰되었습니다.",
+                    Map.of(
+                            "type", "AUCTION_ENDED",
+                            "productId", String.valueOf(productId),
+                            "winnerUserId", String.valueOf(winner.getUserId()),
+                            "amount", String.valueOf(winner.getBidAmount())
+                    )
             );
         } catch (Exception e) {
-            log.warn("[Notify] 종료 알림(판매자) 실패 pid={}", productId, e);
+            log.warn("[AuctionNotify] 판매자 알림 실패 productId={}, sellerId={}", productId, sellerId, e);
         }
 
-        // 낙찰자
-        if (winnerUserId != null) {
-            try {
-                pushService.sendToUser(
-                        winnerUserId,
-                        "축하합니다! 낙찰되셨습니다",
-                        "\"" + productName + "\" 경매를 낙찰 받으셨어요.",
-                        Map.of("type","AUCTION_WON","productId", String.valueOf(productId))
-                );
-            } catch (Exception e) {
-                log.warn("[Notify] 종료 알림(낙찰자) 실패 pid={}, uid={}", productId, winnerUserId, e);
-            }
+        // 낙찰자 알림
+        try {
+            pushService.sendToUser(
+                    winner.getUserId(),
+                    "축하합니다! 해당상품을 낙찰했습니다",
+                    "[" + safeName + "]을(를) " + amountStr + "원에 낙찰 받으셨습니다.",
+                    Map.of(
+                            "type", "AUCTION_WINNER",
+                            "productId", String.valueOf(productId),
+                            "amount", String.valueOf(winner.getBidAmount())
+                    )
+            );
+        } catch (Exception e) {
+            log.warn("[AuctionNotify] 낙찰자 알림 실패 productId={}, winnerUserId={}", productId, winner.getUserId(), e);
         }
     }
+
+    // 낙찰자가 없는 경우의 경매 종료 알림
+    public void notifyAuctionEndedNoWinner(Long productId, String productName) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("상품이 존재하지 않습니다."));
+        Long sellerId = product.getUser().getUserId();
+        String safeName = (productName != null && !productName.isBlank())
+                ? productName : product.getProductName();
+
+        try {
+            pushService.sendToUser(
+                    sellerId,
+                    "경매 종료",
+                    "등록하신 [" + safeName + "] 경매가 입찰자 없이 종료되었습니다.",
+                    Map.of(
+                            "type", "AUCTION_ENDED_NO_WINNER",
+                            "productId", String.valueOf(productId)
+                    )
+            );
+        } catch (Exception e) {
+            log.warn("[AuctionNotify] 판매자(무낙찰) 알림 실패 productId={}, sellerId={}", productId, sellerId, e);
+        }
+    }
+
 
     /* 종료 10분전 + 5분 전 알림 */
     public void scheduleEndingSoonJobs(Long productId, Instant endInstant) {
