@@ -330,27 +330,11 @@ public class ProductService {
 
     // 마이페이지 아이템 목록 조회
     @Transactional(readOnly = true)
-    public List<ProductListDto> readAllProductsByUser() {
+    public List<ProductWithBidDto> readAllProductsByUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        bidRepository
-
-        return productRepository.findAllByUser_Email(email).stream()
-                .filter(p -> p.getDelYn() == DelYN.N)
-                .filter(p -> !Boolean.TRUE.equals(p.getBlocked()))
-                .map(p -> {
-                    ProductListDto dto = ProductListDto.fromEntity(p);
-
-                    String previewUrl = productImageRepository
-                            .findByProduct_ProductIdOrderByPositionAsc(p.getProductId())
-                            .stream()
-                            .findFirst()
-                            .map(ProductImage::getUrl)
-                            .orElse(null);
-
-                    dto.setPreviewImageUrl(previewUrl);
-                    return dto;
-                })
+        return productRepository.findAllByUserEmailWithBidInfo(email)
+                .stream()
                 .collect(Collectors.toList());
     }
 	
