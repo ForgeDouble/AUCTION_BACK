@@ -12,11 +12,14 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
+
 @Getter
 @Setter
 @MappedSuperclass
 public abstract class BaseTimeEntity {
-
+    /*
+     * creationTimeStamp 와 localdateTime.now 혼용에 대한 자료 탐색 필요
+     * */
     @CreationTimestamp
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Column(name = "created_at", updatable = false, nullable = false)

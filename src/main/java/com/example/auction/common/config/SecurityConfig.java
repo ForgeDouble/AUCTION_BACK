@@ -52,12 +52,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/user/login",
                                 "/user/register",
-//                                웹소캣 테스트용
+                                "/user/verify-token",
+                                "/product/{productId}",
+                                "/product/all",
                                 "/bid/**",
                                 "/category/**",
-                                "/product/**",
-                                "/ws/**",
-                                "/user/**"
+                                "/ws/**"
 
 
                         ).permitAll()  // 로그인, 회원가입 경로는 인증x

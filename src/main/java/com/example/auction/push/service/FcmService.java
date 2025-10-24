@@ -8,6 +8,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static com.google.firebase.messaging.AndroidConfig.Priority.HIGH;
+
 // FCM 전송
 @Service
 @Slf4j
@@ -16,12 +18,24 @@ public class FcmService {
     public FcmService(FirebaseMessaging messaging) { this.messaging = messaging; }
 
     public String sendToToken(String token, String title, String body, Map<String, String> data) throws Exception {
+
+        var webPush = WebpushConfig.builder()
+                .setNotification(WebpushNotification.builder()
+                        .setTitle(title)
+                        .setBody(body)
+                        // .setIcon("https://.../icon.png")
+                        // .setClickAction("/notifications")
+                        .build())
+                .putAllData(data != null ? data : Map.of())
+                .putHeader("TTL", "3600")
+                .build();
+
         Message msg = Message.builder()
                 .setToken(token)
                 .setNotification(Notification.builder().setTitle(title).setBody(body).build())
                 .putAllData(data != null ? data : Map.of())
                 .setAndroidConfig(AndroidConfig.builder()
-                        .setPriority(AndroidConfig.Priority.HIGH)
+                        .setPriority(HIGH)
                         .setTtl(Duration.ofHours(1).toMillis())
                         .build())
                 .setApnsConfig(ApnsConfig.builder()
@@ -30,16 +44,25 @@ public class FcmService {
                         .build())
                 .build();
         String messageId = messaging.send(msg);
-        log.debug("[FCM] messageId 보낸 값 : ", messageId);
+        log.debug("[FCM] messageId 보낸 값 : {}", messageId);
         return messageId;
     }
 
     public BatchResponse sendMulticast(List<String> tokens, String title, String body, Map<String, String> data) throws Exception {
-        log.info("[FCM] 멀티케스트 사이즈 : ", tokens.size());
+        var webpush = WebpushConfig.builder()
+                .setNotification(WebpushNotification.builder().setTitle(title).setBody(body).build())
+                .putAllData(data != null ? data : Map.of())
+                .putHeader("TTL", "3600")
+                .build();
+
+        log.info("[FCM] 멀티케스트 사이즈 : {}", tokens.size());
         MulticastMessage msg = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(Notification.builder().setTitle(title).setBody(body).build())
                 .putAllData(data != null ? data : Map.of())
+                .setWebpushConfig(webpush)
+                .setAndroidConfig(AndroidConfig.builder().setPriority(HIGH).setTtl(Duration.ofHours(1).toMillis()).build())
+                .setApnsConfig(ApnsConfig.builder().putHeader("apns-priority","10").build())
                 .build();
         BatchResponse batchResponse = messaging.sendMulticast(msg);
         log.info("[FCM] multicast result success={}, failure={}", batchResponse.getSuccessCount(), batchResponse.getFailureCount());

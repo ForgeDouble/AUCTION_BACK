@@ -74,7 +74,7 @@ public class UserService {
         return token;
     }
 
-    @Transactional(readOnly = true)
+
     public void logout() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         customTokenExpiredStrategy.delete(email);

@@ -47,10 +47,21 @@ public class PushService {
         }
         User user = currentUser();
         String hash = TokenHash.hmacSha256B64(dto.getToken());
-        log.info("[Push] 가입 userID = {}, tokenHashPrefix = {}", user.getUserId(), hash.substring(0, 8));
+        String hashPrefix = hash.substring(0, 8);
 
-        DeviceToken token = deviceTokenRepository.findByTokenHash(hash)
-                .orElse(DeviceToken.builder().build());
+        DeviceToken existing = deviceTokenRepository.findByTokenHash(hash).orElse(null);
+        DeviceToken token;
+        if (existing != null) {
+            Long prevUserId = existing.getUser() != null ? existing.getUser().getUserId() : null;
+            if (prevUserId != null && !prevUserId.equals(user.getUserId())) {
+                log.warn("[Push] 토큰 전송 감지 hashPrefix={} fromUser={} -> toUser={}",
+                        hashPrefix, prevUserId, user.getUserId());
+            }
+            token = existing;
+        } else {
+            token = DeviceToken.builder().build();
+            log.info("[Push] 토큰 생성 hashPrefix={} userId={}", hashPrefix, user.getUserId());
+        }
 
         token.setUser(user);
         token.setToken(dto.getToken());
@@ -60,14 +71,18 @@ public class PushService {
         token.setDeviceModel(dto.getDeviceModel());
         token.setValid(true);
         deviceTokenRepository.save(token);
+
+        log.info("[Push] 토큰 저장값 hashPrefix={} userId={} platform={} valid={}",
+                hashPrefix, user.getUserId(), token.getPlatform(), token.isValid());
     }
 
     @Transactional
     public void unregisterToken(String tokenPlain) {
         if (tokenPlain == null || tokenPlain.isBlank()) return;
         String hash = TokenHash.hmacSha256B64(tokenPlain);
+        String hashPrefix = hash.substring(0, 8);
         deviceTokenRepository.deleteByTokenHash(hash);
-        log.info("[Push] 저장되지 않은 tokenHashPrefix={}", hash.substring(0, 8));
+        log.info("[Push] 저장되지 않은 tokenHashPrefix={}", hashPrefix);
     }
 
     /* 특정 유저의 모든 유효 토큰으로 전송 (실패 토큰 정리) */
