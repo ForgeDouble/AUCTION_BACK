@@ -5,10 +5,13 @@ import java.util.List;
 import java.util.Optional;
 
 import com.example.auction.product.domain.SellYN;
+import com.example.auction.product.dto.ProductWithBidDto;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.product.domain.Product;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 	Optional<Product> findByProductIdAndDelYn(Long productId, DelYN delYN);
@@ -17,9 +20,33 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	Optional<Product> findByProductIdAndDelYnAndBlocked(Long productId, DelYN delYn, Boolean blocked);
 	List<Product> findByBlockedAndDelYn(Boolean blocked, DelYN delYn);
 
+
 	// 최근 24시간 30분 내외 생성 경매 확인
 	List<Product> findBySellYNAndDelYnAndBlockedAndCreatedAtAfter(
 			SellYN sellYN, DelYN delYn, Boolean blocked, LocalDateTime createdAtAfter
 	);
 	List<Product> findBySellYNAndDelYnAndBlocked(SellYN sellYN, DelYN delYn, Boolean blocked);
+
+//    List<Product> findAllByUser_Email(String email);
+
+    @Query("SELECT new com.example.auction.product.dto.ProductWithBidDto(" +
+            "p.productId, " +
+            "p.productName, " +
+            "p.productContent, " +
+            "p.price, " +
+            "p.sellYN, " +
+            "COUNT(b.bidId), " +
+            "COALESCE(MAX(b.bidAmount), 0), " +
+            "(SELECT img.url FROM ProductImage img " +
+            " WHERE img.product.productId = p.productId " +
+            " ORDER BY img.position ASC " +
+            " LIMIT 1)) " +
+            "FROM Product p " +
+            "LEFT JOIN Bid b ON b.product = p " +
+            "WHERE p.user.email = :email " +
+            "  AND p.delYn = com.example.auction.common.domain.DelYN.N " +
+            "  AND (p.blocked = false OR p.blocked IS NULL) " +
+            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.sellYN " +
+            "ORDER BY p.createdAt DESC")
+    List<ProductWithBidDto> findAllByUserEmailWithBidInfo(@Param("email") String email);
 }
