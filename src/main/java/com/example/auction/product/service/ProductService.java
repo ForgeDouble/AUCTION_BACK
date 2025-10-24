@@ -153,8 +153,8 @@ public class ProductService {
         try {
             String uuid = UUID.randomUUID().toString();
             BidEvent bidEvent = BidEvent.builder()
-                    .userId(null)
-                    .userName("SYSTEM")
+                    .userId(product.getUser().getUserId())
+                    .userName(product.getUser().getNickname())
                     .productId(productId)
                     .bidAmount(product.getPrice())
                     .createdAt(product.getAuctionStartTime())
@@ -219,15 +219,16 @@ public class ProductService {
 
         auctionNotificationService.notifyAuctionStarted(productId);
 
-
-        Bid bid = new Bid();
-        bid.setProduct(savedProduct);
-        bid.setUser(user);
-        bid.setBidAmount(savedProduct.getPrice());
-        bid.setCreatedAt(savedProduct.getCreatedAt());
-        bid.setIsWinned(IsWinned.N);
-
-        bidRepository.save(bid);
+        // 실제 보관용 bid 데이터
+//        함수 반복 scheduler 수정되면 주석 푸시오
+//        Bid bid = new Bid();
+//        bid.setProduct(product);
+//        bid.setUser(product.getUser());
+//        bid.setBidAmount(product.getPrice());
+//        bid.setCreatedAt(product.getAuctionStartTime());
+//        bid.setIsWinned(IsWinned.N);
+//
+//        bidRepository.save(bid);
     }
 
 
