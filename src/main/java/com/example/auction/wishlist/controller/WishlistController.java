@@ -1,5 +1,6 @@
 package com.example.auction.wishlist.controller;
 
+import com.example.auction.wishlist.domain.Wishlist;
 import com.example.auction.wishlist.dto.WishlistAllDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,12 +27,12 @@ public class WishlistController {
 	@PostMapping("/create")
 	public ResponseEntity<CommonResDto> createWishlist(@ModelAttribute WishlistCreateDto wishlistCreateDto) {
 		wishlistService.createWishlist(wishlistCreateDto);
-		return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 생성 성공", wishlistCreateDto));
+		return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 생성 성공", null));
 	}
 
-//  위시리스트 목록 조회
+//  사용자의 위시리스트 목록 조회
     @PreAuthorize("isAuthenticated()")
-    @GetMapping("/all")
+    @GetMapping("/allByUser")
     public ResponseEntity<CommonResDto> getAllWishlist() {
         List<WishlistAllDto> wishlistAllDtos = wishlistService.getAllWishlist();
         return  ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 조회 성공", wishlistAllDtos));
@@ -42,6 +43,6 @@ public class WishlistController {
     @DeleteMapping("/delete/{wishlistId}")
     public ResponseEntity<CommonResDto> deleteWishlist(@PathVariable("wishlistId") Long wishlistId) {
         wishlistService.deleteWishlistById(wishlistId);
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 삭제 성공",  wishlistId));
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 삭제 성공", null));
     }
 }
