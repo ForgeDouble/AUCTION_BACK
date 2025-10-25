@@ -49,4 +49,26 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "GROUP BY p.productId, p.productName, p.productContent, p.price, p.sellYN " +
             "ORDER BY p.createdAt DESC")
     List<ProductWithBidDto> findAllByUserEmailWithBidInfo(@Param("email") String email);
+
+    @Query("SELECT new com.example.auction.product.dto.ProductWithBidDto(" +
+            "p.productId, " +
+            "p.productName, " +
+            "p.productContent, " +
+            "p.price, " +
+            "p.sellYN, " +
+            "COUNT(b.bidId), " +
+            "COALESCE(MAX(b.bidAmount), 0), " +
+            "(SELECT img.url FROM ProductImage img " +
+            " WHERE img.product.productId = p.productId " +
+            " ORDER BY img.position ASC " +
+            " LIMIT 1)) " +
+            "FROM Product p " +
+            "INNER JOIN Wishlist w ON w.product.productId = p.productId " +
+            "LEFT JOIN Bid b ON b.product = p " +
+            "WHERE w.user.email = :email " +
+            "  AND p.delYn = com.example.auction.common.domain.DelYN.N " +
+            "  AND (p.blocked = false OR p.blocked IS NULL) " +
+            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.sellYN " +
+            "ORDER BY p.createdAt DESC")
+    List<ProductWithBidDto> findWishlistByUserEmailWithBidInfo(@Param("email") String email);
 }

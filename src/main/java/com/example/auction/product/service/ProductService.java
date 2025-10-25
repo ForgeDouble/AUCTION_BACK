@@ -443,5 +443,12 @@ public class ProductService {
 		productRepository.save(product);
 	}
 
-
+    /* 마이페이지 - 찜한 목록들 조회 */
+    @Transactional(readOnly = true)
+    public List<ProductWithBidDto> readProductsByWishlist() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return productRepository.findWishlistByUserEmailWithBidInfo(email);
+//                .stream()
+//                .collect(Collectors.toList());
+    }
 }

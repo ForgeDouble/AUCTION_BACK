@@ -53,6 +53,13 @@ public class ProductController {
         List<ProductWithBidDto> dto = productService.readAllProductsByUser();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
     }
+
+    /* 로그인중인 유저의 찜한 상품 목록 조회 (마이페이지) */
+    @GetMapping("/allByWishlist")
+    public ResponseEntity<?> ReadAllProductsByWishlist() {
+        List<ProductWithBidDto> dto = productService.readProductsByWishlist();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "찜한 상품 목록 조회 성공", dto));
+    }
     
     // 상품 수정
     @PreAuthorize("isAuthenticated()")
