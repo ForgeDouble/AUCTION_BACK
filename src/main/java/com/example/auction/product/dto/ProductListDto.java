@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 public class ProductListDto {
 	private Long productId;
 	private Long categoryId;
+    private String userEmail;
 	private String productName;
     private String productContent;
     private Long price;
@@ -37,6 +38,7 @@ public class ProductListDto {
         return ProductListDto.builder()
                 .productId(product.getProductId())
                 .categoryId(product.getCategory().getCategoryId())
+                .userEmail(product.getUser().getEmail())
                 .productName(product.getProductName())
                 .productContent(product.getProductContent())
                 .price(product.getPrice())
