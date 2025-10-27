@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.example.auction.product.domain.SellYN;
+import com.example.auction.product.dto.ProductListDto;
 import com.example.auction.product.dto.ProductWithBidDto;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -28,6 +29,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	List<Product> findBySellYNAndDelYnAndBlocked(SellYN sellYN, DelYN delYn, Boolean blocked);
 
 //    List<Product> findAllByUser_Email(String email);
+
+    @Query("SELECT new com.example.auction.product.dto.ProductListDto(" +
+            "p.productId, " +
+            "p.productName, " +
+            "p.productContent, " +
+            "p.price, " +
+            "p.sellYN, " +
+            "(SELECT img.url FROM ProductImage img " +
+            " WHERE img.product.productId = p.productId " +
+            " ORDER BY img.position ASC " +
+            " LIMIT 1)) " +
+            "FROM Product p " +
+            "WHERE p.delYn = com.example.auction.common.domain.DelYN.N " +
+            "  AND (p.blocked = false OR p.blocked IS NULL) " +
+            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.sellYN " +
+            "ORDER BY p.createdAt DESC")
+    List<ProductListDto> findActiveProducts();
 
     @Query("SELECT new com.example.auction.product.dto.ProductWithBidDto(" +
             "p.productId, " +
