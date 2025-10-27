@@ -88,6 +88,11 @@ public class PushService {
     /* 특정 유저의 모든 유효 토큰으로 전송 (실패 토큰 정리) */
     @Transactional
     public int sendToUser(Long userId, String title, String body, Map<String,String> data) throws Exception {
+
+        if (userId == null) {
+            log.warn("[Push] userId 이 없습니다. 알림 전송 스킵. title={}, data={}", title, data);
+            return 0;
+        }
         User target = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User"));
         List<DeviceToken> tokens = deviceTokenRepository.findAllByUser_UserIdAndValidTrue(target.getUserId());
         if (tokens.isEmpty()) {

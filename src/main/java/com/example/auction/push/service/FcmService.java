@@ -34,6 +34,7 @@ public class FcmService {
                 .setToken(token)
                 .setNotification(Notification.builder().setTitle(title).setBody(body).build())
                 .putAllData(data != null ? data : Map.of())
+                .setWebpushConfig(webPush)
                 .setAndroidConfig(AndroidConfig.builder()
                         .setPriority(HIGH)
                         .setTtl(Duration.ofHours(1).toMillis())
