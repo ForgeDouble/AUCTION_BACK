@@ -7,6 +7,8 @@ import java.util.Optional;
 import com.example.auction.product.domain.SellYN;
 import com.example.auction.product.dto.ProductListDto;
 import com.example.auction.product.dto.ProductWithBidDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.auction.common.domain.DelYN;
@@ -39,13 +41,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "(SELECT img.url FROM ProductImage img " +
             " WHERE img.product.productId = p.productId " +
             " ORDER BY img.position ASC " +
-            " LIMIT 1)) " +
+            " LIMIT 1), " +
+            "p.category.categoryId, " +
+            "p.user.email) " +
             "FROM Product p " +
             "WHERE p.delYn = com.example.auction.common.domain.DelYN.N " +
-            "  AND (p.blocked = false OR p.blocked IS NULL) " +
-            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.sellYN " +
-            "ORDER BY p.createdAt DESC")
-    List<ProductListDto> findActiveProducts();
+            "  AND (p.blocked = false OR p.blocked IS NULL)")
+    Page<ProductListDto> findActiveProducts(Pageable pageable);
 
     @Query("SELECT new com.example.auction.product.dto.ProductWithBidDto(" +
             "p.productId, " +
