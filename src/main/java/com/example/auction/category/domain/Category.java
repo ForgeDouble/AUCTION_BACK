@@ -7,20 +7,15 @@ import com.example.auction.product.domain.Product;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.Fetch;
+
 
 @Getter
 @Setter
@@ -28,6 +23,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Entity
 @Builder
+@BatchSize(size = 100)
 public class Category {
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,8 +37,9 @@ public class Category {
 	private String categoryName;
 	
 	 // 부모 태그
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
+
 //    @JsonBackReference
     private Category parent;
 
