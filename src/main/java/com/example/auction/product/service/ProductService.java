@@ -4,10 +4,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.example.auction.bid.domain.Bid;
@@ -15,6 +12,7 @@ import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.bid.service.BidService;
+import com.example.auction.category.dto.CategoryDto;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.notification.service.AuctionNotificationService;
@@ -29,6 +27,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.TaskScheduler;
@@ -354,25 +354,66 @@ public class ProductService {
     }
 	
 	// 아이템 목록 조회
+//    @Transactional(readOnly = true)
+//    public List<ProductListDto> readAllProducts() {
+//        return productRepository.findAll().stream()
+//                .filter(p -> p.getDelYn() == DelYN.N)
+//                .filter(p -> !Boolean.TRUE.equals(p.getBlocked()))
+//                .map(p -> {
+//                    ProductListDto dto = ProductListDto.fromEntity(p);
+//
+//                    String previewUrl = productImageRepository
+//                            .findByProduct_ProductIdOrderByPositionAsc(p.getProductId())
+//                            .stream()
+//                            .findFirst()
+//                            .map(ProductImage::getUrl)
+//                            .orElse(null);
+//
+//                    dto.setPreviewImageUrl(previewUrl);
+//                    return dto;
+//                })
+//                .collect(Collectors.toList());
+//    }
+
+    // 아이템 목록 조회
     @Transactional(readOnly = true)
-    public List<ProductListDto> readAllProducts() {
-        return productRepository.findAll().stream()
-                .filter(p -> p.getDelYn() == DelYN.N)
-                .filter(p -> !Boolean.TRUE.equals(p.getBlocked()))
-                .map(p -> {
-                    ProductListDto dto = ProductListDto.fromEntity(p);
+    public Page<ProductListDto> readAllProducts(Pageable pageable) {
+        Page<ProductListDto> page = productRepository.findActiveProducts(pageable);
 
-                    String previewUrl = productImageRepository
-                            .findByProduct_ProductIdOrderByPositionAsc(p.getProductId())
-                            .stream()
-                            .findFirst()
-                            .map(ProductImage::getUrl)
-                            .orElse(null);
+        if (page.isEmpty()) {
+            return page;
+        }
 
-                    dto.setPreviewImageUrl(previewUrl);
-                    return dto;
-                })
-                .collect(Collectors.toList());
+        List<ProductListDto> dtos = page.getContent();
+
+        // categoryId 추출
+        Set<Long> categoryIds = dtos.stream()
+                .map(ProductListDto::getCategoryId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!categoryIds.isEmpty()) {
+            // Category 조회 (batch fetch로 parent들도 효율적으로 조회됨)
+            Map<Long, Category> categoryMap = categoryRepository
+                    .findAllById(categoryIds)
+                    .stream()
+                    .collect(Collectors.toMap(Category::getCategoryId, c -> c));
+
+            // path 설정
+            dtos.forEach(dto -> {
+                if (dto.getCategoryId() != null) {
+                    Category category = categoryMap.get(dto.getCategoryId());
+                    if (category != null) {
+                        List<CategoryDto> path = category.getPath().stream()
+                                .map(CategoryDto::fromEntity)
+                                .collect(Collectors.toList());
+                        dto.setPath(path);
+                    }
+                }
+            });
+        }
+
+        return page;
     }
 
     // 마이페이지 아이템 목록 조회
