@@ -1,7 +1,9 @@
 package com.example.auction.category.service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
+import com.example.auction.category.dto.CategoryReadWithChildrenDto;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
@@ -27,6 +29,8 @@ public class CategoryService {
 	
 	private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    // 카테고리 깊이
+    private static final int MAX_DEPTH = 3;
 	
 	// 카테고리 생성
     // 관리자
@@ -126,5 +130,14 @@ public class CategoryService {
         }
         Collections.reverse(names);
         return String.join(" > ", names);
+    }
+
+    // 전체 카테고리 트리 (자식 포함)
+    @Transactional(readOnly = true)
+    public List<CategoryReadWithChildrenDto> getAllCategoriesWithChildren() {
+        List<Category> parentCategories = categoryRepository.findAllParentCategoriesWithChildren();
+        return parentCategories.stream()
+                .map(category -> CategoryReadWithChildrenDto.fromWithChildren(category, 0, MAX_DEPTH))
+                .collect(Collectors.toList());
     }
 }
