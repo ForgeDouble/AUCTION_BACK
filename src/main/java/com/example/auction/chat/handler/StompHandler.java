@@ -23,9 +23,9 @@ public class StompHandler implements ChannelInterceptor {
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        StompHeaderAccessor acc = StompHeaderAccessor.wrap(message);
-        if (StompCommand.CONNECT == acc.getCommand()) {
-            String auth = acc.getFirstNativeHeader("Authorization");
+        StompHeaderAccessor stompHeaderAccessor = StompHeaderAccessor.wrap(message);
+        if (StompCommand.CONNECT == stompHeaderAccessor.getCommand()) {
+            String auth = stompHeaderAccessor.getFirstNativeHeader("Authorization");
             if (auth == null || !auth.startsWith("Bearer ")) {
                 throw new IllegalArgumentException("Missing Authorization header");
             }
