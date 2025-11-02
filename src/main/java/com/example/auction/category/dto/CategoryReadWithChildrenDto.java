@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,7 +45,7 @@ public class CategoryReadWithChildrenDto {
             builder.children(Collections.emptyList());
         } else {
             // 자식들을 재귀적으로 변환 (깊이 +1)
-            List<CategoryReadWithChildrenDto> childrenDTOs = category.getChildren().stream()
+            List<CategoryReadWithChildrenDto> childrenDTOs = new ArrayList<>(category.getChildren()).stream()
                     .map(child -> fromWithChildren(child, currentDepth + 1, maxDepth))
                     .collect(Collectors.toList());
             builder.children(childrenDTOs);
