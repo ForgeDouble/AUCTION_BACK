@@ -6,6 +6,13 @@ spring:
     redis:
       host: localhost
       port: 6379
+    mongodb:
+      # docker으로 mongodb 생성 root 이용으로 인해 authSource => admin 적합
+      # username : root , password 1234
+      # docker 명 : mongo_auction / 스키마 명 : auction
+      # mongodb://아이디:비번@호스트:포트/DB?authSource=인증DB
+      uri: mongodb://root:1234@mongo_auction:27017/auction?authSource=admin
+      auto-index-creation: true
   rabbitmq:
     host: localhost
     port: 5672
