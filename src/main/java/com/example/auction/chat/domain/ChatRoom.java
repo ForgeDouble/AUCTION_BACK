@@ -31,7 +31,7 @@ public class ChatRoom {
     private String recentText;
     private Instant recentTime;
 
-
+    private boolean adminChat;
     @CreatedDate
     private Instant createdAt;
 
