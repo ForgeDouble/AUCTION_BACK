@@ -1,7 +1,9 @@
 package com.example.auction.category.domain;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.example.auction.product.domain.Product;
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -45,9 +47,9 @@ public class Category {
 
     // 자식 태그들
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
-//    @JsonManagedReference
-//    @Builder.Default
-    private List<Category> children = new ArrayList<>();
+    @Builder.Default
+    private Set<Category> children = new HashSet<>();
+
 
     public List<Category> getPath() {
         List<Category> path = new ArrayList<>();
