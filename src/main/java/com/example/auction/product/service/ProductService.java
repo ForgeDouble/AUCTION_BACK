@@ -209,6 +209,7 @@ public class ProductService {
 
             if (Objects.equals(result, 1L)) {
                 log.info("Redis ZSET + Hash + 경매종료시간 초기 세팅 완료 - ProductId : {}, 입찰가 : {}", productId, product.getPrice());
+                auctionNotificationService.notifyAuctionStarted(productId);
             }
              else if (result == 2) {
                 throw new RuntimeException("Redis 초기 입찰 세팅 실패 - ZSET 입력을 실패했습니다.");
@@ -216,8 +217,8 @@ public class ProductService {
         } catch (JsonProcessingException e) {
             log.warn("[Auction] baseline 직렬화 실패 pid={}", productId, e);
         }
-
-        auctionNotificationService.notifyAuctionStarted(productId);
+//
+//        auctionNotificationService.notifyAuctionStarted(productId);
 
         // 실제 보관용 bid 데이터
 //        함수 반복 scheduler 수정되면 주석 푸시오
@@ -234,29 +235,29 @@ public class ProductService {
 
 //    만료된 옥션들 처리
     // 현 로직중 해당 코드가 30초마다 돌아서 풀 확인 및 제어가능시 제어 필요
-    @Scheduled(fixedRate = 30000)
-    @Transactional(readOnly = true)
-    public void checkExpiredAuctions() {
-        LocalDateTime cutoffTime = LocalDateTime.now().minusHours(AUCTION_DURATION_HOURS);
-
-        List<Product> expiredAuctions = productRepository
-                .findBySellYNAndCreatedAtBeforeOrderByCreatedAtAsc(SellYN.N, cutoffTime);
-
-        if (expiredAuctions.isEmpty()) {
-            return;
-        }
-
-        log.info("만료된 경매 발견 - 처리 대상: {}개", expiredAuctions.size());
-
-        // 배치로 처리 (대량 데이터 대비)
-
-        // 내부 컬럼 사용으로 SPRING AOP 정책 위반 -> 자기호출은  @Transaction 사용불가
-        // 이려면 checkExpiredAuctions() -> @Transactional 으로 인해서 MANAUAL 으로 바뀜 -> 여기서 호출된 endAuction() -> 트랜잭션 적용 불가 상태
-        // -> setSell / setIsWinned 커밋 flush 되지 않음 -> 반영이 안되거나 일부만 반영되는 원자성 보장 불가 문제 발생
-        // 해결방안 : endAuction을 별도 service 처리(@Bean 분리) 그 메서드에 @Transaction 처리를 하고 그 걸 불러와서 checkExpiredAuctions() 에서 호출
-        expiredAuctions.parallelStream()
-            .forEach(this::endAuctionSafely);
-    }
+//    @Scheduled(fixedRate = 30000)
+//    @Transactional(readOnly = true)
+//    public void checkExpiredAuctions() {
+//        LocalDateTime cutoffTime = LocalDateTime.now().minusHours(AUCTION_DURATION_HOURS);
+//
+//        List<Product> expiredAuctions = productRepository
+//                .findBySellYNAndCreatedAtBeforeOrderByCreatedAtAsc(SellYN.N, cutoffTime);
+//
+//        if (expiredAuctions.isEmpty()) {
+//            return;
+//        }
+//
+//        log.info("만료된 경매 발견 - 처리 대상: {}개", expiredAuctions.size());
+//
+//        // 배치로 처리 (대량 데이터 대비)
+//
+//        // 내부 컬럼 사용으로 SPRING AOP 정책 위반 -> 자기호출은  @Transaction 사용불가
+//        // 이려면 checkExpiredAuctions() -> @Transactional 으로 인해서 MANAUAL 으로 바뀜 -> 여기서 호출된 endAuction() -> 트랜잭션 적용 불가 상태
+//        // -> setSell / setIsWinned 커밋 flush 되지 않음 -> 반영이 안되거나 일부만 반영되는 원자성 보장 불가 문제 발생
+//        // 해결방안 : endAuction을 별도 service 처리(@Bean 분리) 그 메서드에 @Transaction 처리를 하고 그 걸 불러와서 checkExpiredAuctions() 에서 호출
+//        expiredAuctions.parallelStream()
+//            .forEach(this::endAuctionSafely);
+//    }
 
     private void endAuctionSafely(Product product) {
         try {
@@ -270,68 +271,93 @@ public class ProductService {
 //    경매 낙찰 처리
     @Transactional
     public void endAuction(Product product) {
+        Long pid = product.getProductId();
         try {
-
-            Product currentProduct = productRepository.findById(product.getProductId())
+            Product currentProduct = productRepository.findById(pid)
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
-            if (LocalDateTime.now().isBefore(currentProduct.getAuctionEndTime())) {
-                log.info("조기 종료 방지 - pid={}, now<end", currentProduct.getProductId());
+            // 이미 종료된 건이면 중복 종료 방지
+            if (currentProduct.getSellYN() != SellYN.N) {
+                log.debug("[Auction] 이미 종료된 상품 pid={}", pid);
                 return;
             }
-            // 1. 상품 상태를 SellYN.Y 변경
-            currentProduct.setSellYN(SellYN.Y);
-
-
-            //  DB의 Bid.isWinned를 Y로 바꾸지 않음
-            // findByProduct_ProductIdAndIsWinned(..., Y)가 없어서 404(ResourceNotFoundException).
-
-            // redis 에 정보를 받아올 때
-            // 잔존 키 제거에 대한 코드가 부재
-            // 의구심 : 우리 서비스가 입찰 취소 기능의 여부가 있나? (기능을 제공하나)
-            // 요약 : 종료 시점에 ZSET/HASH/TIME 모두 정리가 들어가야 하고, 현재 코드는 그 부분이 빠져 있습니다.
-            productRepository.save(currentProduct);
-
-            // 2. Redis에서 최고 입찰자 확인
-            String bidZSetKey = "product_bid_zset_" + currentProduct.getProductId();
-            String bidHashKey = "product_bid_hash_" + currentProduct.getProductId();
-
-            // 최고 입찰가 조회 (ZSET에서 가장 높은 스코어)
-            Set<String> winners = bidStringRedisTemplate.opsForZSet()
-                    .reverseRange(bidZSetKey, 0, 0); // 최고가 1개만
-
-            if (winners != null && !winners.isEmpty()) {
-                String winnerUuid = winners.iterator().next();
-                String bidEventJson = bidStringRedisTemplate.opsForHash()
-                        .get(bidHashKey, winnerUuid).toString();
-
-                BidEvent winnerBid = objectMapper.readValue(bidEventJson, BidEvent.class);
-
-                log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
-                        currentProduct.getProductId(), winnerBid.getUserName(), winnerBid.getBidAmount());
-
-                // 낙찰자/판매자 알림
-                auctionNotificationService.notifyAuctionEndedWithWinner(
-                        currentProduct.getProductId(), winnerBid, currentProduct.getProductName()
-                );
-                // 3. 낙찰 처리 로직 (결제, 알림 등)
-//                processWinningBid(product, winnerBid);
-            } else {
-                log.info("경매 종료 - ProductId: {}, 입찰자 없음", product.getProductId());
-
-                // 판매자에게만 "입찰자 없음" 알림
-                auctionNotificationService.notifyAuctionEndedNoWinner(
-                        currentProduct.getProductId(), currentProduct.getProductName()
-                );
+            // 조기 종료 방지
+            if (LocalDateTime.now().isBefore(currentProduct.getAuctionEndTime())) {
+                log.info("조기 종료 방지 - pid={}, now<end", pid);
+                return;
             }
 
+            // 2. Redis에서 최고 입찰자 확인
+            String bidZSetKey = "product_bid_zset_" + pid;
+            String bidHashKey = "product_bid_hash_" + pid;
+
+            Long zcount = bidStringRedisTemplate.opsForZSet().size(bidZSetKey);
+            if (zcount == null) zcount = 0L;
+
+            // 최고 입찰가 조회 (ZSET에서 가장 높은 스코어 1개)
+            Set<String> winners = bidStringRedisTemplate.opsForZSet().reverseRange(bidZSetKey, 0, 0);
+
+            BidEvent winnerBid = null;
+            String winnerUuid = null;
+
+            if (winners != null && !winners.isEmpty()) {
+                winnerUuid = winners.iterator().next();
+                Object raw = bidStringRedisTemplate.opsForHash().get(bidHashKey, winnerUuid);
+                if (raw != null) {
+                    try {
+                        winnerBid = objectMapper.readValue(raw.toString(), BidEvent.class);
+                    } catch (Exception parseEx) {
+                        log.warn("[Auction] 낙찰 이벤트 파싱 실패 pid={}, uuid={}, err={}", pid, winnerUuid, parseEx.toString());
+                    }
+                }
+            }
+
+            // "실제 낙찰" 판단:
+            // - 엔트리가 2개 이상(zcount >= 2) => 베이스라인 외 실제 입찰 존재
+            // - winnerBid가 있고 userId가 null 아님
+            boolean hasRealWinner = (zcount >= 2) && (winnerBid != null) && (winnerBid.getUserId() != null);
+
+            // 1. 상품 상태를 SellYN.Y 변경 (항상 종료로 마킹)
+            currentProduct.setSellYN(SellYN.Y);
+            productRepository.save(currentProduct);
+
+            if (hasRealWinner) {
+                log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
+                        pid, winnerBid.getUserName(), winnerBid.getBidAmount());
+                try {
+                    auctionNotificationService.notifyAuctionEndedWithWinner(
+                            currentProduct.getProductId(), winnerBid, currentProduct.getProductName()
+                    );
+                } catch (Exception ex) {
+                    log.warn("[AuctionNotify] 낙찰자 알림 실패 productId={}, winnerUserId={}",
+                            pid, winnerBid.getUserId(), ex);
+                }
+            } else {
+                log.info("경매 종료 - ProductId: {}, 입찰자 없음(또는 기본가만 존재)", pid);
+                try {
+                    auctionNotificationService.notifyAuctionEndedNoWinner(
+                            currentProduct.getProductId(), currentProduct.getProductName()
+                    );
+                } catch (Exception ex) {
+                    log.warn("[AuctionNotify] '입찰자 없음' 알림 실패 productId={}", pid, ex);
+                }
+            }
 
         } catch (Exception e) {
             log.error("경매 종료 처리 중 오류 발생 - ProductId: {}", product.getProductId(), e);
+        } finally {
+            // 안전 차원에서 Redis 키 정리 (tick에서도 지우지만 중복 삭제 무해)
+            try {
+                String zsetKey = "product_bid_zset_" + pid;
+                String hashKey = "product_bid_hash_" + pid;
+                String timeKey = "auction_end_time_" + pid;
+                bidStringRedisTemplate.delete(zsetKey);
+                bidStringRedisTemplate.delete(hashKey);
+                bidStringRedisTemplate.delete(timeKey);
+            } catch (Exception ignore) { }
         }
-
-
     }
+
 
     // DelYN.N 인것을 조회
 	// 아이템 상세 조회

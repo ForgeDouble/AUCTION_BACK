@@ -1,0 +1,24 @@
+version: "3.9"
+services:
+  mongo_auction:
+    image: mongo:7
+    container_name: mongo_auction
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 1234
+      MONGO_INITDB_DATABASE: auction
+    command: ["--auth"]
+    volumes:
+      - mongo_auction_data:/data/db
+      - ./mongo/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - auction-net
+
+volumes:
+  mongo_auction_data:
+
+networks:
+  auction-net:
