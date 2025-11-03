@@ -21,17 +21,29 @@ public class StompHandler implements ChannelInterceptor {
 
     private final JwtTokenProvider jwtTokenProvider;
 
+    // 이 코드가 웹소켓 실행 되기 전에 header 으로 전달해야하는 코드
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor stompHeaderAccessor = StompHeaderAccessor.wrap(message);
-        if (StompCommand.CONNECT == stompHeaderAccessor.getCommand()) {
-            String auth = stompHeaderAccessor.getFirstNativeHeader("Authorization");
-            if (auth == null || !auth.startsWith("Bearer ")) {
-                throw new IllegalArgumentException("Missing Authorization header");
+        if (StompCommand.CONNECT == stompHeaderAccessor.getCommand()) { // websocket 연결 요청
+
+            // chatState
+            String raw = firstNonNull(
+                    stompHeaderAccessor.getFirstNativeHeader("Authorization"),
+                    stompHeaderAccessor.getFirstNativeHeader("authorization"),
+                    stompHeaderAccessor.getFirstNativeHeader("token")
+            );
+            if (raw == null || raw.isBlank()) {
+                throw new IllegalArgumentException("인증 헤더가 없습니다.");
             }
-            String token = auth.substring(7);
+            String token = raw.startsWith("Bearer ") ? raw.substring(7) : raw.trim();
             jwtTokenProvider.validateToken(token);
         }
         return message;
+    }
+
+    private String firstNonNull(String... xs){
+        for (String x : xs) if (x != null) return x;
+        return null;
     }
 }

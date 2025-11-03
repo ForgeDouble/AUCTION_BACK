@@ -23,9 +23,8 @@ public class ChatRoomService {
     }
 
     // 방생성관련 user1 의 userId user2의 userId
-    private String keyOf(String a, String b){
-        if (a.compareTo(b) <= 0) return a+"_"+b;
-        return b+"_"+a;
+    private String keyOf(String a, String b) {
+        return (a.compareTo(b) <= 0) ? a + "_" + b : b + "_" + a;
     }
 
     public ChatRoom openRoom(ChatRoomOpenRequest request){
@@ -41,34 +40,34 @@ public class ChatRoomService {
             return chatRoomRepository.save(chatRoom);
         });
     }
-
-    public List<ChatRoomResponse> listMyRooms(String userId){
+    // 내 채팅방 목록
+    public List<ChatRoomResponse> listMyRooms(String userId) {
         List<ChatRoom> rooms = chatRoomRepository.findByParticipantIdsContains(userId);
         rooms.sort(Comparator.comparing(ChatRoom::getRecentTime, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
-        List<ChatRoomResponse> chatRoomResponseList = new ArrayList<>();
-        for (ChatRoom r : rooms){
-            int unread = chatStateService.getUnread(r.getId(), userId);
-            chatRoomResponseList.add(ChatRoomResponse.builder()
-                    .roomId(r.getId())
-                    .participantIds(r.getParticipantIds())
-                    .recentText(r.getRecentText())
-                    .recentTime(r.getRecentTime())
+
+
+        List<ChatRoomResponse> result = new ArrayList<>();
+        for (ChatRoom chatRoom : rooms) {
+            int unread = chatStateService.getUnread(chatRoom.getId(), userId);
+            result.add(ChatRoomResponse.builder()
+                    .roomId(chatRoom.getId())
+                    .participantIds(chatRoom.getParticipantIds())
+                    .recentText(chatRoom.getRecentText())
+                    .recentTime(chatRoom.getRecentTime())
                     .unread(unread)
                     .build());
         }
-        return chatRoomResponseList;
+        return result;
     }
 
-    public void enter(String userId, String roomId){
+    public void enter(String userId, String roomId) {
         chatStateService.enterRoom(userId, roomId);
         int alarm = Math.max(0, chatStateService.getAlarm(userId) - chatStateService.getUnread(roomId, userId));
         chatStateService.setAlarm(userId, alarm);
         chatStateService.clearUnread(roomId, userId);
     }
 
-    public void exit(String myId){
-        chatStateService.exitRoom(myId);
+    public void exit(String userId) {
+        chatStateService.exitRoom(userId);
     }
-
-
 }
