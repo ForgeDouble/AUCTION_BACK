@@ -2,11 +2,8 @@ package com.example.auction.bid.controller;
 
 
 import com.example.auction.bid.domain.Bid;
-import com.example.auction.bid.dto.BidAllDto;
-import com.example.auction.bid.dto.BidCreateDto;
+import com.example.auction.bid.dto.*;
 
-import com.example.auction.bid.dto.BidEvent;
-import com.example.auction.bid.dto.BidWinnerDto;
 import com.example.auction.bid.service.BidService;
 import com.example.auction.common.dto.CommonResDto;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +59,13 @@ public class BidController {
     public ResponseEntity<?> getWinnerByProductId(@PathVariable("productId") Long productId) {
         BidWinnerDto bidWinnerDto = bidService.readWinner(productId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "입찰자 조회 성공", bidWinnerDto));
+    }
+
+    /* 마이페이지 user 입찰 내역 조회 */
+    @GetMapping("/allByUser")
+    public ResponseEntity<?> getBidAllByUser() {
+        List<BidAllByUserDto> bidAllByUserDtos = bidService.readBidAllByUser();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "입찰 목록 조회 성공", bidAllByUserDtos));
     }
 
 }

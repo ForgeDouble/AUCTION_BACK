@@ -23,20 +23,20 @@ import java.util.stream.Collectors;
 @Builder
 public class ProductListDto {
 	private Long productId;
-	private Long categoryId;
-	private String productName;
+    private String productName;
     private String productContent;
     private Long price;
     private SellYN sellYN;
-
 	private String previewImageUrl;
-
+    private Long categoryId;
     private List<CategoryDto> path;
+    private String userEmail;
 
     public static ProductListDto fromEntity(Product product) {
         return ProductListDto.builder()
                 .productId(product.getProductId())
                 .categoryId(product.getCategory().getCategoryId())
+                .userEmail(product.getUser().getEmail())
                 .productName(product.getProductName())
                 .productContent(product.getProductContent())
                 .price(product.getPrice())
@@ -45,5 +45,17 @@ public class ProductListDto {
                         .map(CategoryDto::fromEntity)
                         .collect(Collectors.toList()))
                 .build();
+    }
+    public ProductListDto(Long productId, String productName, String productContent,
+                          Long price, SellYN sellYN, String previewImageUrl,
+                          Long categoryId, String userEmail) {
+        this.productId = productId;
+        this.productName = productName;
+        this.productContent = productContent;
+        this.price = price;
+        this.sellYN = sellYN;
+        this.previewImageUrl = previewImageUrl;
+        this.categoryId = categoryId;
+        this.userEmail = userEmail;
     }
 }

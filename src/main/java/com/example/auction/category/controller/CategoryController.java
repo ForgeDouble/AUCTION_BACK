@@ -2,6 +2,7 @@ package com.example.auction.category.controller;
 
 import java.util.List;
 
+import com.example.auction.category.dto.CategoryReadWithChildrenDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +62,13 @@ public class CategoryController {
     public ResponseEntity<?> getNullCategories() {
         List<CategoryReadDto> categoryReadDtos = categoryService.getNullParentCategories();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadDtos));
+    }
+
+    // 전체 트리 카테고리 목록 조회 (자식 포함)
+    @GetMapping("/with_children")
+    public ResponseEntity<?> getCategoryTree() {
+        List<CategoryReadWithChildrenDto> categoryReadWithChildrenDtos = categoryService.getAllCategoriesWithChildren();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadWithChildrenDtos));
     }
 
     // 부모 카테고리로 목록 조회

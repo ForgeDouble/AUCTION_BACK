@@ -3,6 +3,10 @@ package com.example.auction.product.controller;
 import java.util.List;
 
 import com.example.auction.product.dto.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -42,8 +46,9 @@ public class ProductController {
     
     /* 상품 목록 조회 */
     @GetMapping("/all")
-    public ResponseEntity<?> ReadAllProducts() {
-    	List<ProductListDto> dto = productService.readAllProducts();
+    public ResponseEntity<?> ReadAllProducts(
+            @PageableDefault(size = 18, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+    	Page<ProductListDto> dto = productService.readAllProducts(pageable);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
     }
 
@@ -52,6 +57,13 @@ public class ProductController {
     public ResponseEntity<?> ReadAllProductsByUser() {
         List<ProductWithBidDto> dto = productService.readAllProductsByUser();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
+    }
+
+    /* 로그인중인 유저의 찜한 상품 목록 조회 (마이페이지) */
+    @GetMapping("/allByWishlist")
+    public ResponseEntity<?> ReadAllProductsByWishlist() {
+        List<ProductWithBidDto> dto = productService.readProductsByWishlist();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "찜한 상품 목록 조회 성공", dto));
     }
     
     // 상품 수정

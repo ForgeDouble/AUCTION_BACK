@@ -12,6 +12,5 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class WishlistCreateDto {
-	private Long userId;
 	private Long productId;
 }

@@ -32,12 +32,17 @@ public class WishlistService {
 //  위시리스트 생성
 	@Transactional
 	public Wishlist createWishlist(WishlistCreateDto dto) {
+        System.out.println(dto.getProductId());
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
 
 		Product product = productRepository.findByProductIdAndDelYn(dto.getProductId(), DelYN.N)
-				.orElseThrow(() -> new ResourceNotFoundException("Wishlist"));
+				.orElseThrow(() -> new ResourceNotFoundException("Product"));
+
+        if(product.getUser().getEmail().equals(email)) {
+            throw new IllegalStateException("본인 상품에는 위시리스트를 추가 할 수 없습니다.");
+        }
 
         boolean exists = wishlistRepository.existsByUser_UserIdAndProduct_ProductId(user.getUserId(), product.getProductId());
         if (exists) {
@@ -66,13 +71,13 @@ public class WishlistService {
 
 //  사용자의 위시리스트 삭제
     @Transactional
-    public void deleteWishlistById(Long id) {
+    public void deleteWishlistById(Long wishlistId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
 
-        Wishlist wishlist = wishlistRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Wishlist", id));
+        Wishlist wishlist = wishlistRepository.findByWishlistId(wishlistId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wishlist", wishlistId));
 
         if (!wishlist.getUser().getUserId().equals(user.getUserId())) {
             throw new UnauthorizedAccessException("해당 위시리스트를 삭제할 권한이 없습니다.");

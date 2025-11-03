@@ -2,15 +2,12 @@ package com.example.auction.bid.service;
 
 import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.domain.IsWinned;
-import com.example.auction.bid.dto.BidAllDto;
-import com.example.auction.bid.dto.BidEvent;
-import com.example.auction.bid.dto.BidWinnerDto;
+import com.example.auction.bid.dto.*;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.Product;
-import com.example.auction.bid.dto.BidCreateDto;
 import com.example.auction.product.domain.SellYN;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.user.domain.User;
@@ -307,5 +304,19 @@ public class BidService {
         BidWinnerDto bidWinnerDto = BidWinnerDto.fromEntity(bid);
         return bidWinnerDto;
     }
+
+    /* 마이페이지 user 입찰 내역 조회 */
+    @Transactional(readOnly = true)
+    public List<BidAllByUserDto> readBidAllByUser() {
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        List<BidAllByUserDto> bidListDto = bidRepository.findBidAllByUser(email);
+//                .stream()
+//                .collect(Collectors.toList());
+
+        return bidListDto;
+    }
+
 
 }
