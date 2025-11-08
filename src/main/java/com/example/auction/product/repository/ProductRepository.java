@@ -46,8 +46,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "p.user.email) " +
             "FROM Product p " +
             "WHERE p.delYn = com.example.auction.common.domain.DelYN.N " +
-            "  AND (p.blocked = false OR p.blocked IS NULL)")
-    Page<ProductListDto> findActiveProducts(Pageable pageable);
+            "  AND (p.blocked = false OR p.blocked IS NULL) " +
+            "  AND (:categoryIds IS NULL OR p.category.categoryId IN :categoryIds) " +
+            "  AND (:search IS NULL OR :search = '' OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "  AND (:minPrice IS NULL OR p.price >= :minPrice) " +
+            "  AND (:maxPrice IS NULL OR p.price <= :maxPrice)")
+    Page<ProductListDto> findActiveProducts(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("search") String search,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            Pageable pageable
+    );
 
     @Query("SELECT new com.example.auction.product.dto.ProductWithBidDto(" +
             "p.productId, " +
