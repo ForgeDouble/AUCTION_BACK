@@ -402,44 +402,83 @@ public class ProductService {
 //    }
 
     // 아이템 목록 조회
-    @Transactional(readOnly = true)
-    public Page<ProductListDto> readAllProducts(Pageable pageable) {
-        Page<ProductListDto> page = productRepository.findActiveProducts(pageable);
+//    @Transactional(readOnly = true)
+//    public Page<ProductListDto> readAllProducts(Pageable pageable) {
+//        Page<ProductListDto> page = productRepository.findActiveProducts(pageable);
+//
+//        if (page.isEmpty()) {
+//            return page;
+//        }
+//
+//        List<ProductListDto> dtos = page.getContent();
+//
+//        // categoryId 추출
+//        Set<Long> categoryIds = dtos.stream()
+//                .map(ProductListDto::getCategoryId)
+//                .filter(Objects::nonNull)
+//                .collect(Collectors.toSet());
+//
+//        if (!categoryIds.isEmpty()) {
+//            // Category 조회 (batch fetch로 parent들도 효율적으로 조회됨)
+//            Map<Long, Category> categoryMap = categoryRepository
+//                    .findAllById(categoryIds)
+//                    .stream()
+//                    .collect(Collectors.toMap(Category::getCategoryId, c -> c));
+//
+//            // path 설정
+//            dtos.forEach(dto -> {
+//                if (dto.getCategoryId() != null) {
+//                    Category category = categoryMap.get(dto.getCategoryId());
+//                    if (category != null) {
+//                        List<CategoryDto> path = category.getPath().stream()
+//                                .map(CategoryDto::fromEntity)
+//                                .collect(Collectors.toList());
+//                        dto.setPath(path);
+//                    }
+//                }
+//            });
+//        }
+//
+//        return page;
+//    }
 
-        if (page.isEmpty()) {
-            return page;
+    public Page<ProductListDto> getProducts(
+            Long categoryId,
+            String search,
+            Long minPrice,
+            Long maxPrice,
+            Pageable pageable
+    ) {
+        // 카테고리 ID 리스트 생성 (부모 선택 시 모든 자식 포함)
+        List<Long> categoryIds = null;
+
+        if (categoryId != null && categoryId != 0) {
+            Category category = categoryRepository.findById(categoryId)
+                    .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+            categoryIds = getAllChildCategoryIds(category);
         }
 
-        List<ProductListDto> dtos = page.getContent();
+        return productRepository.findActiveProducts(
+                categoryIds,
+                search,
+                minPrice,
+                maxPrice,
+                pageable
+        );
+    }
 
-        // categoryId 추출
-        Set<Long> categoryIds = dtos.stream()
-                .map(ProductListDto::getCategoryId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+    // 재귀적으로 모든 하위 카테고리 ID 수집
+    private List<Long> getAllChildCategoryIds(Category category) {
+        List<Long> ids = new ArrayList<>();
+        ids.add(category.getCategoryId());
 
-        if (!categoryIds.isEmpty()) {
-            // Category 조회 (batch fetch로 parent들도 효율적으로 조회됨)
-            Map<Long, Category> categoryMap = categoryRepository
-                    .findAllById(categoryIds)
-                    .stream()
-                    .collect(Collectors.toMap(Category::getCategoryId, c -> c));
-
-            // path 설정
-            dtos.forEach(dto -> {
-                if (dto.getCategoryId() != null) {
-                    Category category = categoryMap.get(dto.getCategoryId());
-                    if (category != null) {
-                        List<CategoryDto> path = category.getPath().stream()
-                                .map(CategoryDto::fromEntity)
-                                .collect(Collectors.toList());
-                        dto.setPath(path);
-                    }
-                }
-            });
+        if (category.getChildren() != null && !category.getChildren().isEmpty()) {
+            for (Category child : category.getChildren()) {
+                ids.addAll(getAllChildCategoryIds(child));
+            }
         }
 
-        return page;
+        return ids;
     }
 
     // 마이페이지 아이템 목록 조회
