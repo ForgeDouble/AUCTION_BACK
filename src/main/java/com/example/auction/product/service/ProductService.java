@@ -401,47 +401,7 @@ public class ProductService {
 //                .collect(Collectors.toList());
 //    }
 
-    // 아이템 목록 조회
-//    @Transactional(readOnly = true)
-//    public Page<ProductListDto> readAllProducts(Pageable pageable) {
-//        Page<ProductListDto> page = productRepository.findActiveProducts(pageable);
-//
-//        if (page.isEmpty()) {
-//            return page;
-//        }
-//
-//        List<ProductListDto> dtos = page.getContent();
-//
-//        // categoryId 추출
-//        Set<Long> categoryIds = dtos.stream()
-//                .map(ProductListDto::getCategoryId)
-//                .filter(Objects::nonNull)
-//                .collect(Collectors.toSet());
-//
-//        if (!categoryIds.isEmpty()) {
-//            // Category 조회 (batch fetch로 parent들도 효율적으로 조회됨)
-//            Map<Long, Category> categoryMap = categoryRepository
-//                    .findAllById(categoryIds)
-//                    .stream()
-//                    .collect(Collectors.toMap(Category::getCategoryId, c -> c));
-//
-//            // path 설정
-//            dtos.forEach(dto -> {
-//                if (dto.getCategoryId() != null) {
-//                    Category category = categoryMap.get(dto.getCategoryId());
-//                    if (category != null) {
-//                        List<CategoryDto> path = category.getPath().stream()
-//                                .map(CategoryDto::fromEntity)
-//                                .collect(Collectors.toList());
-//                        dto.setPath(path);
-//                    }
-//                }
-//            });
-//        }
-//
-//        return page;
-//    }
-
+    @Transactional(readOnly = true)
     public Page<ProductListDto> getProducts(
             Long categoryId,
             String search,
@@ -449,7 +409,7 @@ public class ProductService {
             Long maxPrice,
             Pageable pageable
     ) {
-        // 카테고리 ID 리스트 생성 (부모 선택 시 모든 자식 포함)
+        // 1. 카테고리 ID 리스트 생성 (부모 선택 시 모든 자식 포함)
         List<Long> categoryIds = null;
 
         if (categoryId != null && categoryId != 0) {
@@ -458,13 +418,51 @@ public class ProductService {
             categoryIds = getAllChildCategoryIds(category);
         }
 
-        return productRepository.findActiveProducts(
+        // 2. 상품 조회
+        Page<ProductListDto> page = productRepository.findActiveProducts(
                 categoryIds,
                 search,
                 minPrice,
                 maxPrice,
                 pageable
         );
+
+        // 3. 비어있으면 바로 반환
+        if (page.isEmpty()) {
+            return page;
+        }
+
+        // 4. 카테고리 path 설정
+        List<ProductListDto> dtos = page.getContent();
+
+        // categoryId 추출
+        Set<Long> productCategoryIds = dtos.stream()
+                .map(ProductListDto::getCategoryId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (!productCategoryIds.isEmpty()) {
+            // Category 조회 (batch fetch로 parent들도 효율적으로 조회됨)
+            Map<Long, Category> categoryMap = categoryRepository
+                    .findAllById(productCategoryIds)
+                    .stream()
+                    .collect(Collectors.toMap(Category::getCategoryId, c -> c));
+
+            // path 설정
+            dtos.forEach(dto -> {
+                if (dto.getCategoryId() != null) {
+                    Category cat = categoryMap.get(dto.getCategoryId());
+                    if (cat != null) {
+                        List<CategoryDto> path = cat.getPath().stream()
+                                .map(CategoryDto::fromEntity)
+                                .collect(Collectors.toList());
+                        dto.setPath(path);
+                    }
+                }
+            });
+        }
+
+        return page;
     }
 
     // 재귀적으로 모든 하위 카테고리 ID 수집
