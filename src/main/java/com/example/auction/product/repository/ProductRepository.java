@@ -43,7 +43,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             " ORDER BY img.position ASC " +
             " LIMIT 1), " +
             "p.category.categoryId, " +
-            "p.user.email) " +
+            "p.user.email, " +
+            "(SELECT b.bidAmount FROM Bid b " +
+            " WHERE b.product.productId = p.productId " +
+            " ORDER BY b.createdAt DESC " +
+            " LIMIT 1)) " +
             "FROM Product p " +
             "WHERE p.delYn = com.example.auction.common.domain.DelYN.N " +
             "  AND (p.blocked = false OR p.blocked IS NULL) " +
