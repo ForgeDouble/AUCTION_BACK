@@ -32,6 +32,7 @@ public class ProductListDto {
     private List<CategoryDto> path;
     private String userEmail;
     private Long latestBidAmount;
+    private Long bidCount;
 
     public static ProductListDto fromEntity(Product product) {
         return ProductListDto.builder()
@@ -49,7 +50,7 @@ public class ProductListDto {
     }
     public ProductListDto(Long productId, String productName, String productContent,
                           Long price, SellYN sellYN, String previewImageUrl,
-                          Long categoryId, String userEmail, Long latestBidAmount) {
+                          Long categoryId, String userEmail, Long latestBidAmount, Long bidCount) {
         this.productId = productId;
         this.productName = productName;
         this.productContent = productContent;
@@ -59,5 +60,6 @@ public class ProductListDto {
         this.categoryId = categoryId;
         this.userEmail = userEmail;
         this.latestBidAmount = latestBidAmount;
+        this.bidCount = bidCount;
     }
 }

@@ -47,7 +47,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "(SELECT b.bidAmount FROM Bid b " +
             " WHERE b.product.productId = p.productId " +
             " ORDER BY b.createdAt DESC " +
-            " LIMIT 1)) " +
+            " LIMIT 1), " +
+            "(SELECT COUNT(b) FROM Bid b " +
+            " WHERE b.product.productId = p.productId)) " +
             "FROM Product p " +
             "WHERE p.delYn = com.example.auction.common.domain.DelYN.N " +
             "  AND (p.blocked = false OR p.blocked IS NULL) " +
