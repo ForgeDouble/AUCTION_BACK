@@ -17,6 +17,10 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @Configuration
 @EnableCaching
@@ -150,15 +154,22 @@ public class RedisConfig {
     @Bean
     @Qualifier("chatRoom")
     public RedisTemplate<String, Object> chatPubSubTemplate(
-            @Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory
+            @Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory,
+            @Qualifier("chatJson") GenericJackson2JsonRedisSerializer chatJson
     ){
-        RedisTemplate<String, Object> t = new RedisTemplate<>();
-        t.setConnectionFactory(lettuceConnectionFactory);
-        t.setKeySerializer(new StringRedisSerializer());
-        t.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        t.setHashKeySerializer(new StringRedisSerializer());
-        t.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
-        return t;
+        RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
+        redisTemplate.setConnectionFactory(lettuceConnectionFactory);
+
+        StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
+        redisTemplate.setKeySerializer(stringRedisSerializer);
+        redisTemplate.setHashKeySerializer(stringRedisSerializer);
+
+        // 핵심: Instant 직렬화 가능한 JSON 시리얼라이저로 교체
+        redisTemplate.setValueSerializer(chatJson);
+        redisTemplate.setHashValueSerializer(chatJson);
+
+        redisTemplate.afterPropertiesSet();
+        return redisTemplate;
     }
 
 
@@ -179,5 +190,23 @@ public class RedisConfig {
         container.setConnectionFactory(lettuceConnectionFactory);
         container.addMessageListener(new MessageListenerAdapter(chatSubscriber, "onMessage"), chatTopic);
         return container;
+    }
+
+    @Bean
+    @Qualifier("chatObjectMapper")
+    public ObjectMapper chatObjectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
+        return mapper;
+    }
+
+    @Bean
+    @Qualifier("chatJson")
+    public GenericJackson2JsonRedisSerializer chatJsonSerializer(
+            @Qualifier("chatObjectMapper") ObjectMapper om
+    ) {
+        return new GenericJackson2JsonRedisSerializer(om);
     }
 }
