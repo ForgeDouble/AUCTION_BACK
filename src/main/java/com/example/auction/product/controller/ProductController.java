@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.example.auction.product.dto.*;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -45,11 +46,43 @@ public class ProductController {
     }
     
     /* 상품 목록 조회 */
+//    @GetMapping("/all")
+//    public ResponseEntity<?> ReadAllProducts(
+//            @PageableDefault(size = 18, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+//    	Page<ProductListDto> dto = productService.readAllProducts(pageable);
+//        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
+//    }
+
     @GetMapping("/all")
-    public ResponseEntity<?> ReadAllProducts(
-            @PageableDefault(size = 18, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-    	Page<ProductListDto> dto = productService.readAllProducts(pageable);
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
+    public ResponseEntity<?> getAllProducts(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long minPrice,
+            @RequestParam(required = false) Long maxPrice,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "3") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort
+    ) {
+        // Sort 파라미터 파싱
+        String[] sortParams = sort.split(",");
+        Sort sortOrder = Sort.by(
+                sortParams.length > 1 && sortParams[1].equals("asc")
+                        ? Sort.Direction.ASC
+                        : Sort.Direction.DESC,
+                sortParams[0]  // createdAt, price 등 (camelCase)
+        );
+
+        Pageable pageable = PageRequest.of(page, size, sortOrder);
+
+        Page<ProductListDto> products = productService.getProducts(
+                categoryId,
+                search,
+                minPrice,
+                maxPrice,
+                pageable
+        );
+
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", products));
     }
 
     /* 로그인중인 유저의 상품 목록 조회 (마이페이지) */
