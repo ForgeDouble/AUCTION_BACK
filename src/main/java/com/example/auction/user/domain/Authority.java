@@ -2,5 +2,5 @@ package com.example.auction.user.domain;
 
 public enum Authority {
     USER,
-    ADMIN
+    ADMIN,  // 관리자
 }

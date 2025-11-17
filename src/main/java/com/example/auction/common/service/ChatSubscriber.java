@@ -14,12 +14,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ChatSubscriber implements MessageListener {
     private final SimpMessageSendingOperations messaging;
-    private final GenericJackson2JsonRedisSerializer des = new GenericJackson2JsonRedisSerializer();
+    private final GenericJackson2JsonRedisSerializer genericJackson2JsonRedisSerializer = new GenericJackson2JsonRedisSerializer();
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
         try {
-            Object obj = des.deserialize(message.getBody());
+            Object obj = genericJackson2JsonRedisSerializer.deserialize(message.getBody());
             if (obj instanceof ChatMessageResponse chatMessageResponse) {
                     messaging.convertAndSend("/topic/chat/room/" + chatMessageResponse.getRoomId(), chatMessageResponse);
                 } else {

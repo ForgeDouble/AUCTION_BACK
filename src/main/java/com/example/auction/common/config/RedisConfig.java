@@ -129,40 +129,53 @@ public class RedisConfig {
     @Qualifier("chatState")
     LettuceConnectionFactory chatStateConnectionFactory() { return redisConnectionFactory(4); }
 
+
     @Bean
     @Qualifier("chatState")
     public StringRedisTemplate chatStateStringRedisTemplate(
             @Qualifier("chatState") LettuceConnectionFactory lettuceConnectionFactory
     ){
-        StringRedisTemplate redisTemplate = new StringRedisTemplate();
-        redisTemplate.setConnectionFactory(lettuceConnectionFactory);
-        return redisTemplate;
+        StringRedisTemplate t = new StringRedisTemplate();
+        t.setConnectionFactory(lettuceConnectionFactory);
+        return t;
     }
 
+
+    // DB5: 채팅 Pub/Sub 및 (현재 코드 기준) 상태/미읽음 키 저장 템플릿
     @Bean
     @Qualifier("chatRoom")
     LettuceConnectionFactory chatPubSubConnectionFactory() { return redisConnectionFactory(5); }
 
+
     @Bean
     @Qualifier("chatRoom")
-    public RedisTemplate<String, Object> chatPubSubTemplate(@Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory){
-        var redisTemplate = new RedisTemplate<String, Object>();
-        redisTemplate.setConnectionFactory(lettuceConnectionFactory);
-        redisTemplate.setKeySerializer(new StringRedisSerializer());
-        redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
-        return redisTemplate;
+    public RedisTemplate<String, Object> chatPubSubTemplate(
+            @Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory
+    ){
+        RedisTemplate<String, Object> t = new RedisTemplate<>();
+        t.setConnectionFactory(lettuceConnectionFactory);
+        t.setKeySerializer(new StringRedisSerializer());
+        t.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        t.setHashKeySerializer(new StringRedisSerializer());
+        t.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        return t;
     }
+
+
+    // 채팅 이벤트 토픽 (Pub/Sub)
     @Bean
     @Qualifier("chat")
     public ChannelTopic chatEventsTopic(){ return new ChannelTopic("chat:events"); }
 
+
+    // 멀티 인스턴스용 Redis Pub/Sub 리스너 컨테이너
     @Bean
     public RedisMessageListenerContainer chatMessageListenerContainer(
-        @Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory,
-        ChatSubscriber chatSubscriber,
-        @Qualifier("chat") ChannelTopic chatTopic
+            @Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory,
+            ChatSubscriber chatSubscriber,
+            @Qualifier("chat") ChannelTopic chatTopic
     ){
-        var container = new RedisMessageListenerContainer();
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(lettuceConnectionFactory);
         container.addMessageListener(new MessageListenerAdapter(chatSubscriber, "onMessage"), chatTopic);
         return container;
