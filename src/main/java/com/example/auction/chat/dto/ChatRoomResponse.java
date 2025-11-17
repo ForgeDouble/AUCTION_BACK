@@ -14,4 +14,5 @@ public class ChatRoomResponse {
     private String recentText;
     private Instant recentTime;
     private int unread;
+    private boolean adminChat;
 }

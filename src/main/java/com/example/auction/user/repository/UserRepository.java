@@ -17,5 +17,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findAllByAuthorityAndDelYn(Authority authority, DelYN delYn);
 
     Optional<User> findFirstByAuthorityOrderByCreatedAtDesc(Authority authority);
-    Optional<User> findById(String id);
+
 }

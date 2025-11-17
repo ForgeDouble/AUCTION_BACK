@@ -4,7 +4,10 @@ import com.example.auction.chat.domain.ChatRoom;
 import com.example.auction.chat.dto.ChatRoomOpenRequest;
 import com.example.auction.chat.dto.ChatRoomResponse;
 import com.example.auction.chat.repository.ChatRoomRepository;
+import com.example.auction.user.domain.User;
+import com.example.auction.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -16,10 +19,14 @@ public class ChatRoomService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatStateService chatStateService;
+    private final UserRepository userRepository;
+    private final InquiryResolver inquiryResolver;
 
-    public ChatRoomService(ChatRoomRepository chatRoomRepository, ChatStateService chatStateService) {
+    public ChatRoomService(ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, UserRepository userRepository, InquiryResolver inquiryResolver) {
         this.chatRoomRepository = chatRoomRepository;
         this.chatStateService = chatStateService;
+        this.userRepository = userRepository;
+        this.inquiryResolver = inquiryResolver;
     }
 
     // 방생성관련 user1 의 userId user2의 userId
@@ -40,6 +47,38 @@ public class ChatRoomService {
             return chatRoomRepository.save(chatRoom);
         });
     }
+
+    @Transactional
+    public ChatRoom openInquiryRoom(ChatRoomOpenRequest request) {
+        String meId = request.getUserId();
+        if (meId == null || meId.isBlank()) {
+            throw new IllegalArgumentException("userId가 필요합니다.");
+        }
+
+        // 담당자 선택: 설정 이메일 우선, 없으면 Authority.INQUIRY 최신 사용자
+        User inquirer = inquiryResolver.resolve();
+
+        String inquirerId = String.valueOf(inquirer.getUserId());
+
+        if (meId.equals(inquirerId)) {
+            throw new IllegalStateException("담당자 본인은 문의방을 열 수 없습니다.");
+        }
+
+        String key = keyOf(meId, inquirerId);
+
+        return chatRoomRepository.findByRoomKey(key).orElseGet(() -> {
+            ChatRoom chatRoom = ChatRoom.builder()
+                    .roomKey(key)
+                    .participantIds(List.of(meId, inquirerId))
+                    .adminChat(true)
+                    .recentTime(Instant.now())
+                    .recentText("문의방이 생성되었습니다.")
+                    .build();
+            return chatRoomRepository.save(chatRoom);
+        });
+    }
+
+
     // 내 채팅방 목록
     public List<ChatRoomResponse> listMyRooms(String userId) {
         List<ChatRoom> rooms = chatRoomRepository.findByParticipantIdsContains(userId);
@@ -55,6 +94,7 @@ public class ChatRoomService {
                     .recentText(chatRoom.getRecentText())
                     .recentTime(chatRoom.getRecentTime())
                     .unread(unread)
+                    .adminChat(chatRoom.isAdminChat())
                     .build());
         }
         return result;

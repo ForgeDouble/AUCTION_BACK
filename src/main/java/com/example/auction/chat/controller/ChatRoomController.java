@@ -52,4 +52,12 @@ public class ChatRoomController {
         chatRoomService.exit(userId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "퇴장 처리", null));
     }
+
+    // 문의하기 기능 구현
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/inquire")
+    public ResponseEntity<CommonResDto> inquire(@RequestBody ChatRoomOpenRequest req) {
+        var room = chatRoomService.openInquiryRoom(req);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "문의방 생성/조회 성공", room.getId()));
+    }
 }
