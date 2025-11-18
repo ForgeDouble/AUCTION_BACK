@@ -32,7 +32,7 @@ public class UserController {
     /* 로그인 */
     @PostMapping("/login")
     public ResponseEntity<CommonResDto> login(@RequestBody UserLoginDto loginDto) {
-        String token = userService.login(loginDto); // 예외 발생 시 전역 핸들러로 위임
+        String token = userService.login(loginDto);
         Map<String, String> result = new HashMap<>();
         result.put("token", token);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "로그인 성공", result));

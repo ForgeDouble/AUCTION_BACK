@@ -164,7 +164,6 @@ public class RedisConfig {
         redisTemplate.setKeySerializer(stringRedisSerializer);
         redisTemplate.setHashKeySerializer(stringRedisSerializer);
 
-        // 핵심: Instant 직렬화 가능한 JSON 시리얼라이저로 교체
         redisTemplate.setValueSerializer(chatJson);
         redisTemplate.setHashValueSerializer(chatJson);
 
@@ -188,25 +187,36 @@ public class RedisConfig {
     ){
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(lettuceConnectionFactory);
-        container.addMessageListener(new MessageListenerAdapter(chatSubscriber, "onMessage"), chatTopic);
+
+        container.addMessageListener(chatSubscriber, chatTopic);
         return container;
     }
 
     @Bean
     @Qualifier("chatObjectMapper")
     public ObjectMapper chatObjectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.registerModule(new JavaTimeModule());
-        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        mapper.disable(DeserializationFeature.ADJUST_DATES_TO_CONTEXT_TIME_ZONE);
-        return mapper;
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        return objectMapper;
     }
 
     @Bean
     @Qualifier("chatJson")
-    public GenericJackson2JsonRedisSerializer chatJsonSerializer(
-            @Qualifier("chatObjectMapper") ObjectMapper om
+    public GenericJackson2JsonRedisSerializer chatJson(
+            @Qualifier("chatObjectMapper") ObjectMapper chatObjectMapper
     ) {
-        return new GenericJackson2JsonRedisSerializer(om);
+        return new GenericJackson2JsonRedisSerializer(chatObjectMapper);
+    }
+
+    @Bean
+    @Qualifier("chatRoomPub")
+    public StringRedisTemplate chatRoomPubStringRedisTemplate(
+            @Qualifier("chatRoom") LettuceConnectionFactory chatRoomLettuce
+    ) {
+        StringRedisTemplate t = new StringRedisTemplate();
+        t.setConnectionFactory(chatRoomLettuce);
+        return t;
     }
 }

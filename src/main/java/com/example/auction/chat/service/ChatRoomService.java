@@ -55,10 +55,9 @@ public class ChatRoomService {
             throw new IllegalArgumentException("userId가 필요합니다.");
         }
 
-        // 담당자 선택: 설정 이메일 우선, 없으면 Authority.INQUIRY 최신 사용자
         User inquirer = inquiryResolver.resolve();
 
-        String inquirerId = String.valueOf(inquirer.getUserId());
+        String inquirerId = inquirer.getEmail();
 
         if (meId.equals(inquirerId)) {
             throw new IllegalStateException("담당자 본인은 문의방을 열 수 없습니다.");
@@ -69,7 +68,7 @@ public class ChatRoomService {
         return chatRoomRepository.findByRoomKey(key).orElseGet(() -> {
             ChatRoom chatRoom = ChatRoom.builder()
                     .roomKey(key)
-                    .participantIds(List.of(meId, inquirerId))
+                    .participantIds(List.of(meId, inquirerId))  // 둘 다 email
                     .adminChat(true)
                     .recentTime(Instant.now())
                     .recentText("문의방이 생성되었습니다.")
