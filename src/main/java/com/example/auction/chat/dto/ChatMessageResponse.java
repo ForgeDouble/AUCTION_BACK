@@ -17,6 +17,8 @@ public class ChatMessageResponse {
     private String id;
     private String roomId;
     private String senderId;
+    private String senderNickname;
+    private String senderProfileImageUrl;
     private MessageType messageType;
     private String message;
     private List<ChatFileRequest> files;

@@ -3,12 +3,13 @@ package com.example.auction.chat.service;
 import com.example.auction.chat.domain.ChatFile;
 import com.example.auction.chat.domain.ChatMessage;
 import com.example.auction.chat.domain.ChatRoom;
-import com.example.auction.chat.domain.MessageType;
 import com.example.auction.chat.dto.ChatFileRequest;
 import com.example.auction.chat.dto.ChatMessageRequest;
 import com.example.auction.chat.dto.ChatMessageResponse;
 import com.example.auction.chat.repository.ChatMessageRepository;
 import com.example.auction.chat.repository.ChatRoomRepository;
+import com.example.auction.user.domain.User;
+import com.example.auction.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -30,14 +31,16 @@ public class ChatMessageService {
     private final RedisTemplate<String, Object> redisTemplate;
     @Qualifier("chat")
     private final ChannelTopic chatTopic;
+    private final UserRepository userRepository;
 
-    public ChatMessageService(ChatMessageRepository chatMessageRepository, ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, SimpMessageSendingOperations messaging, @Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate, @Qualifier("chat") ChannelTopic chatTopic) {
+    public ChatMessageService(ChatMessageRepository chatMessageRepository, ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, SimpMessageSendingOperations messaging, @Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate, @Qualifier("chat") ChannelTopic chatTopic, UserRepository userRepository) {
         this.chatMessageRepository = chatMessageRepository;
         this.chatRoomRepository = chatRoomRepository;
         this.chatStateService = chatStateService;
         this.messaging = messaging;
         this.redisTemplate = redisTemplate;
         this.chatTopic = chatTopic;
+        this.userRepository = userRepository;
     }
 
 
@@ -92,6 +95,7 @@ public class ChatMessageService {
     }
 
     private ChatMessageResponse chatMessageResponse(ChatMessage m){
+
         List<ChatFileRequest> chatFileRequests = m.getFiles().stream().map(file -> {
             ChatFileRequest request = new ChatFileRequest();
             request.setFileName(file.getFileName());
@@ -99,10 +103,20 @@ public class ChatMessageService {
             return request;
         }).toList();
 
+        User sender = null;
+        try {
+            sender = userRepository.findByEmail(m.getSenderId()).orElse(null);
+        } catch (Exception e) {
+        }
+        String nickname = (sender != null) ? sender.getNickname() : null;
+        String profileImageUrl = (sender != null) ? sender.getProfileImageUrl() : null;
+
         return ChatMessageResponse.builder()
                 .id(m.getId())
                 .roomId(m.getRoomId())
                 .senderId(m.getSenderId())
+                .senderNickname(nickname)
+                .senderProfileImageUrl(profileImageUrl)
                 .messageType(m.getMessageType())
                 .message(m.getMessage())
                 .files(chatFileRequests)

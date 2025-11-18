@@ -15,4 +15,5 @@ public class ChatRoomResponse {
     private Instant recentTime;
     private int unread;
     private boolean adminChat;
+    private String roomName;
 }
