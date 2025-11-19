@@ -3,8 +3,8 @@ package com.example.auction.notification.scheduler;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.notification.service.AuctionNotificationService;
 import com.example.auction.product.domain.Product;
+import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
-import com.example.auction.product.domain.SellYN;
 import com.example.auction.product.service.ProductService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -64,8 +64,8 @@ public class AuctionTickScheduler {
     public void repairToStartIndex() {
         LocalDateTime localDateTime = LocalDateTime.now();
         LocalDateTime createdAfter = localDateTime.minusMinutes(INDEX_WINDOW_MIN);
-        List<Product> recent = productRepository.findBySellYNAndDelYnAndBlockedAndCreatedAtAfter(
-                SellYN.N, DelYN.N, false, createdAfter
+        List<Product> recent = productRepository.findByStatusAndDelYnAndBlockedAndCreatedAtAfter(
+                Status.PROCESSING, DelYN.N, false, createdAfter
         );
         if (recent.isEmpty()) return;
 

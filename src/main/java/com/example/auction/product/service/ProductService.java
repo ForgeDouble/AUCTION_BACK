@@ -1,23 +1,21 @@
 package com.example.auction.product.service;
 
-import java.time.Instant;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.example.auction.bid.domain.Bid;
+
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.bid.repository.BidRepository;
-import com.example.auction.bid.service.BidService;
 import com.example.auction.category.dto.CategoryDto;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.notification.service.AuctionNotificationService;
-import com.example.auction.product.domain.ProductImage;
-import com.example.auction.product.domain.SellYN;
+import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.*;
 import com.example.auction.product.repository.ProductImageRepository;
 import com.example.auction.user.domain.Authority;
@@ -32,7 +30,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -137,7 +134,7 @@ public class ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다."));
         // 종료(판매) 여부 확인
-        if (product.getSellYN() != SellYN.N) return;
+        if (product.getStatus() != Status.PROCESSING) return;
         // 경매가 시작된 상품인지 확인
         if (LocalDateTime.now().isBefore(product.getAuctionStartTime())) return;
 
@@ -277,7 +274,7 @@ public class ProductService {
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
             // 이미 종료된 건이면 중복 종료 방지
-            if (currentProduct.getSellYN() != SellYN.N) {
+            if (currentProduct.getStatus() != Status.PROCESSING) {
                 log.debug("[Auction] 이미 종료된 상품 pid={}", pid);
                 return;
             }
@@ -317,8 +314,8 @@ public class ProductService {
             // - winnerBid가 있고 userId가 null 아님
             boolean hasRealWinner = (zcount >= 2) && (winnerBid != null) && (winnerBid.getUserId() != null);
 
-            // 1. 상품 상태를 SellYN.Y 변경 (항상 종료로 마킹)
-            currentProduct.setSellYN(SellYN.Y);
+            // 1. 상품 상태를 Status.SELLED 변경 (항상 종료로 마킹) --> 이부분 필요시 수정
+            currentProduct.setStatus(Status.SELLED);
             productRepository.save(currentProduct);
 
             if (hasRealWinner) {

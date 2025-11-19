@@ -1,10 +1,8 @@
 package com.example.auction.product.dto;
 
-import com.example.auction.category.domain.Category;
 import com.example.auction.category.dto.CategoryDto;
 import com.example.auction.product.domain.Product;
-import com.example.auction.product.domain.SellYN;
-
+import com.example.auction.product.domain.Status;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,7 +24,7 @@ public class ProductListDto {
     private String productName;
     private String productContent;
     private Long price;
-    private SellYN sellYN;
+    private Status status;
 	private String previewImageUrl;
     private Long categoryId;
     private List<CategoryDto> path;
@@ -42,20 +40,20 @@ public class ProductListDto {
                 .productName(product.getProductName())
                 .productContent(product.getProductContent())
                 .price(product.getPrice())
-                .sellYN(product.getSellYN())
+                .status(product.getStatus())
                 .path(product.getCategory().getPath().stream()
                         .map(CategoryDto::fromEntity)
                         .collect(Collectors.toList()))
                 .build();
     }
     public ProductListDto(Long productId, String productName, String productContent,
-                          Long price, SellYN sellYN, String previewImageUrl,
+                          Long price, Status status, String previewImageUrl,
                           Long categoryId, String userEmail, Long latestBidAmount, Long bidCount) {
         this.productId = productId;
         this.productName = productName;
         this.productContent = productContent;
         this.price = price;
-        this.sellYN = sellYN;
+        this.status = status;
         this.previewImageUrl = previewImageUrl;
         this.categoryId = categoryId;
         this.userEmail = userEmail;

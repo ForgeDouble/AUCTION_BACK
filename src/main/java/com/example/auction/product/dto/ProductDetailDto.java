@@ -1,8 +1,7 @@
 package com.example.auction.product.dto;
 
 import com.example.auction.product.domain.Product;
-import com.example.auction.product.domain.SellYN;
-
+import com.example.auction.product.domain.Status;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,7 +22,7 @@ public class ProductDetailDto {
 	private String productName;
     private String productContent;
     private Long price;
-    private SellYN sellYN;
+    private Status status;
 	private List<ProductImageDto> images;
     
     public static ProductDetailDto fromEntity(Product product) {
@@ -33,7 +32,7 @@ public class ProductDetailDto {
     			.productName(product.getProductName())
     			.productContent(product.getProductContent())
     			.price(product.getPrice())
-    			.sellYN(product.getSellYN())
+    			.status(product.getStatus())
     			.build();
     }
 

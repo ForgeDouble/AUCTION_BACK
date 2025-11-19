@@ -1,8 +1,7 @@
 package com.example.auction.product.dto;
 
 import com.example.auction.product.domain.Product;
-import com.example.auction.product.domain.SellYN;
-import com.example.auction.user.domain.Gender;
+import com.example.auction.product.domain.Status;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,14 +19,14 @@ public class ProductCreateDto {
 	private String productName;
     private String productContent;
     private Long price;
-    private SellYN sellYN;
+    private Status status;
     
     public Product toProduct() {
     	return Product.builder()
     			.productName(productName)
     			.productContent(productContent)
     			.price(price)
-    			.sellYN(sellYN)
+    			.status(status)
     			.build();
     }
 }

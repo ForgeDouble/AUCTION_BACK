@@ -52,9 +52,9 @@ public class Product extends BaseTimeEntity{
     @Column(nullable = false)
     private Long price;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private SellYN sellYN;
+//    @Enumerated(EnumType.STRING)
+//    @Column(nullable = false)
+//    private SellYN sellYN;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -104,13 +104,15 @@ public class Product extends BaseTimeEntity{
     // 경매 상태 체크
     public boolean isAuctionActive() {
         LocalDateTime now = LocalDateTime.now();
-        return sellYN == SellYN.N
+        return status == Status.PROCESSING
                 && now.isAfter(getAuctionStartTime())
                 && now.isBefore(getAuctionEndTime());
     }
 
+    
     public boolean isAuctionEnded() {
-        return sellYN == SellYN.Y ||
+        // 이부분 필요시 수정
+        return status == Status.SELLED ||
                 LocalDateTime.now().isAfter(getAuctionEndTime());
     }
 
