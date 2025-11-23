@@ -3,6 +3,7 @@ package com.example.auction.chat.service;
 import com.example.auction.chat.domain.ChatFile;
 import com.example.auction.chat.domain.ChatMessage;
 import com.example.auction.chat.domain.ChatRoom;
+import com.example.auction.chat.domain.MessageType;
 import com.example.auction.chat.dto.ChatFileRequest;
 import com.example.auction.chat.dto.ChatMessageRequest;
 import com.example.auction.chat.dto.ChatMessageResponse;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -54,32 +56,26 @@ public class ChatMessageService {
     }
 
     public void send(ChatMessageRequest chatMessageRequest){
+        // securitycontextholder 을 사용해도 되나 이거? 일단 sender email 추출을 위한 코드 적용
+        String senderEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
         ChatRoom room = chatRoomRepository.findById(chatMessageRequest.getRoomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다"));
 
-        ChatMessage chatMessage = ChatMessage.builder()
-                .roomId(chatMessageRequest.getRoomId())
-                .senderId(chatMessageRequest.getSenderId())
-                .messageType(chatMessageRequest.getMessageType())
-                .message(chatMessageRequest.getMessage())
-                .files(chatMessageRequest.getFiles().stream()
-                        .map(f -> ChatFile.builder()
-                                .fileName(f.getFileName())
-                                .fileUrl(f.getFileUrl())
-                                .build())
-                        .toList())
-                .build();
+        if (!room.getParticipantIds().contains(senderEmail)) {
+            throw new IllegalStateException("해당 채팅방 참가자만 메시지를 보낼 수 있습니다.");
+        }
 
+        ChatMessage chatMessage = chatMessageRequest.toEntity(senderEmail);
         chatMessage = chatMessageRepository.save(chatMessage);
 
-        // 채팅방 최근 미리보기/시간 갱신
-        room.setRecentText(previewText(chatMessageRequest));
-        room.setRecentTime(Instant.now());
+        String preview = previewText(chatMessageRequest);
+        room.updateRecent(preview, Instant.now());
         chatRoomRepository.save(room);
 
         // 상대방 읽음 / 알림 처리
         for (String uid : room.getParticipantIds()){
-            if (uid.equals(chatMessageRequest.getSenderId())) continue;
+            if (uid.equals(senderEmail)) continue;
             String presentRoom = chatStateService.currentRoomOf(uid);
             if (presentRoom == null || !presentRoom.equals(room.getId())) {
                 chatStateService.incUnread(room.getId(), uid);
@@ -94,39 +90,22 @@ public class ChatMessageService {
         redisTemplate.convertAndSend(chatTopic.getTopic(), payload);
     }
 
-    private ChatMessageResponse chatMessageResponse(ChatMessage m){
-
-        List<ChatFileRequest> chatFileRequests = m.getFiles().stream().map(file -> {
-            ChatFileRequest request = new ChatFileRequest();
-            request.setFileName(file.getFileName());
-            request.setFileUrl(file.getFileUrl());
-            return request;
-        }).toList();
+    private ChatMessageResponse chatMessageResponse(ChatMessage chatMessage){
 
         User sender = null;
         try {
-            sender = userRepository.findByEmail(m.getSenderId()).orElse(null);
-        } catch (Exception e) {
-        }
-        String nickname = (sender != null) ? sender.getNickname() : null;
-        String profileImageUrl = (sender != null) ? sender.getProfileImageUrl() : null;
+            sender = userRepository.findByEmail(chatMessage.getSenderId()).orElse(null);
+        } catch (Exception ignored) {}
 
-        return ChatMessageResponse.builder()
-                .id(m.getId())
-                .roomId(m.getRoomId())
-                .senderId(m.getSenderId())
-                .senderNickname(nickname)
-                .senderProfileImageUrl(profileImageUrl)
-                .messageType(m.getMessageType())
-                .message(m.getMessage())
-                .files(chatFileRequests)
-                .createdAt(m.getCreatedAt())
-                .build();
+        return ChatMessageResponse.fromEntity(chatMessage, sender);
     }
 
-    // 최근 미리보기 셋팅(rule)
+    // 최근 채팅 미리보기 셋팅
     private String previewText(ChatMessageRequest chatMessageRequest){
-        return switch (chatMessageRequest.getMessageType()){
+        MessageType type = chatMessageRequest.getMessageType();
+        if (type == null) return chatMessageRequest.getMessage();
+
+        return switch (type){
             case FILE -> "파일을 보냈습니다.";
             case IMAGE -> "이미지를 보냈습니다.";
             case SYSTEM -> chatMessageRequest.getMessage() == null ? "시스템 메시지" : chatMessageRequest.getMessage();

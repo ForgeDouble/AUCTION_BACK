@@ -22,8 +22,8 @@ public class ChatMessageController {
     // 메시지 전송(REST 경유)
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/send")
-    public ResponseEntity<CommonResDto> send(@RequestBody ChatMessageRequest req) {
-        chatMessageService.send(req);
+    public ResponseEntity<CommonResDto> send(@RequestBody ChatMessageRequest chatMessageRequest) {
+        chatMessageService.send(chatMessageRequest);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "메시지 전송", null));
     }
 
