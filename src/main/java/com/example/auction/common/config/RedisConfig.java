@@ -215,8 +215,26 @@ public class RedisConfig {
     public StringRedisTemplate chatRoomPubStringRedisTemplate(
             @Qualifier("chatRoom") LettuceConnectionFactory chatRoomLettuce
     ) {
-        StringRedisTemplate t = new StringRedisTemplate();
-        t.setConnectionFactory(chatRoomLettuce);
-        return t;
+        StringRedisTemplate redisTemplate = new StringRedisTemplate();
+        redisTemplate.setConnectionFactory(chatRoomLettuce);
+        return redisTemplate;
+    }
+
+    // presence 전용 (상태 체크)
+    @Bean
+    @Qualifier("presence")
+    LettuceConnectionFactory presenceConnectionFactory() {
+        return redisConnectionFactory(6);
+    }
+
+
+    @Bean
+    @Qualifier("presence")
+    public StringRedisTemplate presenceStringRedisTemplate(
+            @Qualifier("presence") LettuceConnectionFactory presenceConnectionFactory
+    ) {
+        StringRedisTemplate redisTemplate = new StringRedisTemplate();
+        redisTemplate.setConnectionFactory(presenceConnectionFactory);
+        return redisTemplate;
     }
 }
