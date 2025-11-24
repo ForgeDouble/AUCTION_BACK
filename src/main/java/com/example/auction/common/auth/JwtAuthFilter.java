@@ -3,6 +3,7 @@ package com.example.auction.common.auth;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.service.CustomUserService;
 import com.example.auction.user.service.UserService;
+import com.example.auction.user.service.UserStatusService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +24,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserService customUserService;
     private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
+    private final UserStatusService userStatusService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -58,6 +60,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                    userStatusService.touch(email);
                 }
             }
             chain.doFilter(request, response);

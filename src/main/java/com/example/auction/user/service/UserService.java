@@ -5,6 +5,7 @@ import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
+import com.example.auction.user.domain.UserStatus;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -235,6 +236,14 @@ public class UserService {
 
         user.changeNickname(newNickname);
         userRepository.save(user);
+    }
+
+    /* 타 유저 상태 조회 */
+    @Transactional(readOnly = true)
+    public UserStatus getStatusByUserId(Long userId) {
+        User user = userRepository.findByUserIdAndDelYn(userId, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+        return userStatusService.getStatus(user.getEmail());
     }
 }
 

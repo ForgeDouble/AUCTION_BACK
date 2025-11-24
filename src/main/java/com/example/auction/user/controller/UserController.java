@@ -1,9 +1,11 @@
 package com.example.auction.user.controller;
 
 import com.example.auction.common.dto.CommonResDto;
+import com.example.auction.user.domain.UserStatus;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.service.UserImageService;
 import com.example.auction.user.service.UserService;
+import com.example.auction.user.service.UserStatusService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +25,12 @@ public class UserController {
 
     private final UserService userService;
     private final UserImageService userImageService;
+    private final UserStatusService userStatusService;
 
-    public UserController(UserService userService, UserImageService userImageService) {
+    public UserController(UserService userService, UserImageService userImageService, UserStatusService userStatusService) {
         this.userService = userService;
         this.userImageService = userImageService;
+        this.userStatusService = userStatusService;
     }
 
     /* 로그인 */
@@ -119,11 +123,27 @@ public class UserController {
     }
 
     /* 접속중인 유저 확인 */
-    /* 근데 이 코드라면 jwt -> bear 헤더로 전달하고 자기만 판단하는 코드같은디;?*/
+    /* 근데 이 코드라면 jwt -> bearer 헤더로 전달하고 자기만 판단하는 코드같은디;?*/
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/verify-token")
     public ResponseEntity<?> verifyToken() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "계정 조회 성공", email));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/status/me")
+    public ResponseEntity<?> myStatus() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserStatus status = userStatusService.getStatus(email);
+        UserStatusDto dto = new UserStatusDto(email, status);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상태 조회 성공", dto));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/status/{userId}")
+    public ResponseEntity<?> userStatus(@PathVariable Long userId) {
+        UserStatus status = userService.getStatusByUserId(userId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상태 조회 성공", status));
     }
 }
