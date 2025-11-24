@@ -25,11 +25,13 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy) {
+    private final UserStatusService userStatusService;
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy, UserStatusService userStatusService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.customTokenExpiredStrategy = customTokenExpiredStrategy;
+        this.userStatusService = userStatusService;
     }
 
     /* 회원가입 */
@@ -71,13 +73,17 @@ public class UserService {
         long ttl = jwtTokenProvider.getRemainingSeconds(token);
         customTokenExpiredStrategy.save(user.getEmail(), token, ttl);
 
+        // 로그인 시점부터 접속중 처리
+        userStatusService.touch(user.getEmail());
+
         return token;
     }
 
-
+    /* 로그아웃 */
     public void logout() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         customTokenExpiredStrategy.delete(email);
+        userStatusService.clear(email);
     }
 
 
