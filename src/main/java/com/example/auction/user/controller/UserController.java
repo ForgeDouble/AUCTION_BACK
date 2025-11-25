@@ -162,4 +162,13 @@ public class UserController {
         UserStatus status = userService.getStatusByUserId(userId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상태 조회 성공", status));
     }
+
+    /* 일일 접속 현황 통계 제공 */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/status/daily")
+    public ResponseEntity<?> dailyStatus(@RequestParam(required = false) String date) {
+        DailyActiveUserStatsDto dto = userStatusService.getDailyActiveUserStats(date);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "일일 접속 현황", dto));
+    }
+
 }
