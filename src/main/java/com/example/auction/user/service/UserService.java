@@ -48,6 +48,33 @@ public class UserService {
         return userRepository.save(newUser);
     }
 
+    // 관리자 계정 생성 - ADMIN / INQUIRY
+    @Transactional
+    public User createSpecialUser(AdminUserRegisterDto adminUserRegisterDto, Authority authority) {
+        if (userRepository.findByEmail(adminUserRegisterDto.getEmail()).isPresent()) {
+            throw new RuntimeException("이미 존재하는 이메일입니다.");
+        }
+
+        String encodedPassword = passwordEncoder.encode(adminUserRegisterDto.getPassword());
+        User newUser = adminUserRegisterDto.toEntity(authority);
+        newUser.setPassword(encodedPassword);
+
+        return userRepository.save(newUser);
+
+    }
+
+    // ADMIN 계정 생성
+    @Transactional
+    public User createAdminUser(AdminUserRegisterDto dto) {
+        return createSpecialUser(dto, Authority.ADMIN);
+    }
+
+    // INQUIRY 계정 생성
+    @Transactional
+    public User createInquiryUser(AdminUserRegisterDto dto) {
+        return createSpecialUser(dto, Authority.INQUIRY);
+    }
+
     /* 로그인 */
     @Transactional(readOnly = true)
     public String login(UserLoginDto dto) {
@@ -111,10 +138,22 @@ public class UserService {
         User targetUser = userRepository.findById(deleteDto.getUserId())
                 .orElseThrow(() -> new RuntimeException("삭제하려는 유저가 존재하지 않습니다."));
 
-        if (!user.getUserId().equals(targetUser.getUserId()) && user.getAuthority() != Authority.ADMIN) {
-            throw new RuntimeException("본인 또는 관리자만 탈퇴할 수 있습니다.");
-        }
+        //  본인 탈퇴 허용
+        if (user.getUserId().equals(targetUser.getUserId())) {
+        // 자기 자신 삭제는 허용
+        } else {
+            // 본인이 ADMIN 이 아니면, 남을 지울 수 없음
+            if (user.getAuthority() != Authority.ADMIN) {
+                throw new RuntimeException("본인 또는 관리자만 탈퇴할 수 있습니다.");
+            }
 
+            // 타겟이 ADMIN 인 경우, 상위 ADMIN 만 삭제 가능 -> USERID 가 더 작은 쪽으로 셋팅
+            if (targetUser.getAuthority() == Authority.ADMIN) {
+                if (user.getUserId() >= targetUser.getUserId()) {
+                    throw new RuntimeException("상위 ADMIN만 하위 ADMIN 계정을 삭제할 수 있습니다.");
+                }
+            }
+        }
         targetUser.softDelete();
         userRepository.save(targetUser);
     }

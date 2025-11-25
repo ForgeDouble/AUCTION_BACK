@@ -56,6 +56,22 @@ public class UserController {
         userService.register(registerDto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원가입 성공", null));
     }
+    /* [관리자 기능] 새로운 ADMIN 계정 생성 */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/admin/create")
+    public ResponseEntity<?> createAdmin(@RequestBody AdminUserRegisterDto dto) {
+        userService.createAdminUser(dto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "ADMIN 계정 생성 성공", null));
+    }
+
+    /* [관리자 기능] 새로운 INQUIRY(문의 담당자) 계정 생성 */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/inquiry/create")
+    public ResponseEntity<?> createInquiry(@RequestBody AdminUserRegisterDto dto) {
+        userService.createInquiryUser(dto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "INQUIRY 계정 생성 성공", null));
+    }
+
 
     /* 닉네임 변경 */
     @PreAuthorize("isAuthenticated()")
