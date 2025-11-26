@@ -8,6 +8,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 
+import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.bid.repository.BidRepository;
@@ -129,6 +130,7 @@ public class ProductService {
                 savedProduct.getAuctionEndTime());
         return savedProduct;
     }
+
     @Transactional
     public void startAuction(Long productId) {
         Product product = productRepository.findById(productId)
@@ -219,14 +221,14 @@ public class ProductService {
 
         // 실제 보관용 bid 데이터
 //        함수 반복 scheduler 수정되면 주석 푸시오
-//        Bid bid = new Bid();
-//        bid.setProduct(product);
-//        bid.setUser(product.getUser());
-//        bid.setBidAmount(product.getPrice());
-//        bid.setCreatedAt(product.getAuctionStartTime());
-//        bid.setIsWinned(IsWinned.N);
-//
-//        bidRepository.save(bid);
+        Bid bid = new Bid();
+        bid.setProduct(product);
+        bid.setUser(product.getUser());
+        bid.setBidAmount(product.getPrice());
+        bid.setCreatedAt(product.getAuctionStartTime());
+        bid.setIsWinned(IsWinned.N);
+
+        bidRepository.save(bid);
     }
 
 
