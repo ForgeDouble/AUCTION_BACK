@@ -38,6 +38,12 @@ public class InitialDataLoader implements CommandLineRunner {
                 Gender.W, "1995.05.05", "01098765432",
                 "서울시 강남구 어딘가", "유저임", Authority.USER
         );
+        // 문의 직원 생성
+        createUserIfNotExists(
+                "admin2@auction.test", "문의직원", "1234",
+                Gender.W, "2000.01.01", "01012341234",
+                "서울시 중구 어딘가", "문의직원", Authority.INQUIRY
+        );
     }
 
     private void createUserIfNotExists(

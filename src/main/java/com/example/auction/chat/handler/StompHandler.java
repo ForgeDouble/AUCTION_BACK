@@ -1,6 +1,8 @@
 package com.example.auction.chat.handler;
 
 import com.example.auction.common.auth.JwtTokenProvider;
+import com.example.auction.common.service.CustomTokenExpiredStrategy;
+import com.example.auction.user.service.UserStatusService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
@@ -20,29 +22,67 @@ import org.springframework.stereotype.Component;
 public class StompHandler implements ChannelInterceptor {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
+    private final UserStatusService userStatusService;
 
-    // 이 코드가 웹소켓 실행 되기 전에 header 으로 전달해야하는 코드
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
-        StompHeaderAccessor stompHeaderAccessor = StompHeaderAccessor.wrap(message);
-        if (StompCommand.CONNECT == stompHeaderAccessor.getCommand()) { // websocket 연결 요청
+        StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
+        StompCommand command = accessor.getCommand();
+        if (command == null) {
+            return message;
+        }
 
-            // chatState
+        // CONNECT 시에만 토큰 헤더에서 검증
+        if (StompCommand.CONNECT.equals(command)) {
             String raw = firstNonNull(
-                    stompHeaderAccessor.getFirstNativeHeader("Authorization"),
-                    stompHeaderAccessor.getFirstNativeHeader("authorization"),
-                    stompHeaderAccessor.getFirstNativeHeader("token")
+                    accessor.getFirstNativeHeader("Authorization"),
+                    accessor.getFirstNativeHeader("authorization"),
+                    accessor.getFirstNativeHeader("token")
             );
             if (raw == null || raw.isBlank()) {
                 throw new IllegalArgumentException("인증 헤더가 없습니다.");
             }
-            String token = raw.startsWith("Bearer ") ? raw.substring(7) : raw.trim();
-            jwtTokenProvider.validateToken(token);
+
+            String token = raw.startsWith("Bearer ")
+                    ? raw.substring(7).trim()
+                    : raw.trim();
+
+            // 토큰 형식/서명 검증
+            if (!jwtTokenProvider.validateToken(token)) {
+                throw new IllegalArgumentException("유효하지 않은 JWT 토큰입니다.");
+            }
+
+            String email = jwtTokenProvider.getEmailFromToken(token);
+
+            // 단일 세션(로그인 Redis) 체크
+            String current = customTokenExpiredStrategy.get(email);
+            if (current == null || !current.equals(token)) {
+                throw new IllegalArgumentException("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
+            }
+
+            // presence 기록하기
+            userStatusService.touch(email);
+
+            // 세션에 email 저장해두기
+            accessor.getSessionAttributes().put("email", email);
         }
+
+        // SUBSCRIBE / SEND 에서는 세션에 저장된 email 로만 presence 갱신
+        if (StompCommand.SUBSCRIBE.equals(command)
+                || StompCommand.SEND.equals(command)) {
+
+            Object emailObj = accessor.getSessionAttributes().get("email");
+            if (emailObj instanceof String email && !email.isBlank()) {
+                userStatusService.touch(email);
+            }
+
+        }
+
         return message;
     }
 
-    private String firstNonNull(String... xs){
+    private String firstNonNull(String... xs) {
         for (String x : xs) if (x != null) return x;
         return null;
     }

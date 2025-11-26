@@ -17,6 +17,10 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @Configuration
 @EnableCaching
@@ -129,42 +133,108 @@ public class RedisConfig {
     @Qualifier("chatState")
     LettuceConnectionFactory chatStateConnectionFactory() { return redisConnectionFactory(4); }
 
+
     @Bean
     @Qualifier("chatState")
     public StringRedisTemplate chatStateStringRedisTemplate(
             @Qualifier("chatState") LettuceConnectionFactory lettuceConnectionFactory
     ){
-        StringRedisTemplate redisTemplate = new StringRedisTemplate();
-        redisTemplate.setConnectionFactory(lettuceConnectionFactory);
-        return redisTemplate;
+        StringRedisTemplate t = new StringRedisTemplate();
+        t.setConnectionFactory(lettuceConnectionFactory);
+        return t;
     }
 
+
+    // DB5: 채팅 Pub/Sub 및 (현재 코드 기준) 상태/미읽음 키 저장 템플릿
     @Bean
     @Qualifier("chatRoom")
     LettuceConnectionFactory chatPubSubConnectionFactory() { return redisConnectionFactory(5); }
 
+
     @Bean
     @Qualifier("chatRoom")
-    public RedisTemplate<String, Object> chatPubSubTemplate(@Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory){
-        var redisTemplate = new RedisTemplate<String, Object>();
+    public RedisTemplate<String, Object> chatPubSubTemplate(
+            @Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory,
+            @Qualifier("chatJson") GenericJackson2JsonRedisSerializer chatJson
+    ){
+        RedisTemplate<String, Object> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(lettuceConnectionFactory);
-        redisTemplate.setKeySerializer(new StringRedisSerializer());
-        redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+
+        StringRedisSerializer stringRedisSerializer = new StringRedisSerializer();
+        redisTemplate.setKeySerializer(stringRedisSerializer);
+        redisTemplate.setHashKeySerializer(stringRedisSerializer);
+
+        redisTemplate.setValueSerializer(chatJson);
+        redisTemplate.setHashValueSerializer(chatJson);
+
+        redisTemplate.afterPropertiesSet();
         return redisTemplate;
     }
+
+
+    // 채팅 이벤트 토픽 (Pub/Sub)
     @Bean
     @Qualifier("chat")
     public ChannelTopic chatEventsTopic(){ return new ChannelTopic("chat:events"); }
 
+
+    // 멀티 인스턴스용 Redis Pub/Sub 리스너 컨테이너
     @Bean
     public RedisMessageListenerContainer chatMessageListenerContainer(
-        @Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory,
-        ChatSubscriber chatSubscriber,
-        @Qualifier("chat") ChannelTopic chatTopic
+            @Qualifier("chatRoom") LettuceConnectionFactory lettuceConnectionFactory,
+            ChatSubscriber chatSubscriber,
+            @Qualifier("chat") ChannelTopic chatTopic
     ){
-        var container = new RedisMessageListenerContainer();
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(lettuceConnectionFactory);
-        container.addMessageListener(new MessageListenerAdapter(chatSubscriber, "onMessage"), chatTopic);
+
+        container.addMessageListener(chatSubscriber, chatTopic);
         return container;
+    }
+
+    @Bean
+    @Qualifier("chatObjectMapper")
+    public ObjectMapper chatObjectMapper() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+        return objectMapper;
+    }
+
+    @Bean
+    @Qualifier("chatJson")
+    public GenericJackson2JsonRedisSerializer chatJson(
+            @Qualifier("chatObjectMapper") ObjectMapper chatObjectMapper
+    ) {
+        return new GenericJackson2JsonRedisSerializer(chatObjectMapper);
+    }
+
+    @Bean
+    @Qualifier("chatRoomPub")
+    public StringRedisTemplate chatRoomPubStringRedisTemplate(
+            @Qualifier("chatRoom") LettuceConnectionFactory chatRoomLettuce
+    ) {
+        StringRedisTemplate redisTemplate = new StringRedisTemplate();
+        redisTemplate.setConnectionFactory(chatRoomLettuce);
+        return redisTemplate;
+    }
+
+    // presence 전용 (상태 체크)
+    @Bean
+    @Qualifier("presence")
+    LettuceConnectionFactory presenceConnectionFactory() {
+        return redisConnectionFactory(6);
+    }
+
+
+    @Bean
+    @Qualifier("presence")
+    public StringRedisTemplate presenceStringRedisTemplate(
+            @Qualifier("presence") LettuceConnectionFactory presenceConnectionFactory
+    ) {
+        StringRedisTemplate redisTemplate = new StringRedisTemplate();
+        redisTemplate.setConnectionFactory(presenceConnectionFactory);
+        return redisTemplate;
     }
 }

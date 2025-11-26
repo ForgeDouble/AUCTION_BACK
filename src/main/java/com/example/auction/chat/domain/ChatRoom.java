@@ -20,7 +20,6 @@ public class ChatRoom {
     @Id
     private String id;
 
-    // 1:1 방 고정 키(두 사용자 ID 정렬 -> A_B 형태로 제공
     @Indexed(unique = true)
     private String roomKey;
 
@@ -37,4 +36,9 @@ public class ChatRoom {
 
     @LastModifiedDate
     private Instant updatedAt;
+
+    public void updateRecent(String text, Instant time) {
+        this.recentText = text;
+        this.recentTime = time;
+    }
 }

@@ -1,9 +1,11 @@
 package com.example.auction.user.controller;
 
 import com.example.auction.common.dto.CommonResDto;
+import com.example.auction.user.domain.UserStatus;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.service.UserImageService;
 import com.example.auction.user.service.UserService;
+import com.example.auction.user.service.UserStatusService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,16 +25,18 @@ public class UserController {
 
     private final UserService userService;
     private final UserImageService userImageService;
+    private final UserStatusService userStatusService;
 
-    public UserController(UserService userService, UserImageService userImageService) {
+    public UserController(UserService userService, UserImageService userImageService, UserStatusService userStatusService) {
         this.userService = userService;
         this.userImageService = userImageService;
+        this.userStatusService = userStatusService;
     }
 
     /* 로그인 */
     @PostMapping("/login")
     public ResponseEntity<CommonResDto> login(@RequestBody UserLoginDto loginDto) {
-        String token = userService.login(loginDto); // 예외 발생 시 전역 핸들러로 위임
+        String token = userService.login(loginDto);
         Map<String, String> result = new HashMap<>();
         result.put("token", token);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "로그인 성공", result));
@@ -52,6 +56,22 @@ public class UserController {
         userService.register(registerDto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원가입 성공", null));
     }
+    /* [관리자 기능] 새로운 ADMIN 계정 생성 */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/admin/create")
+    public ResponseEntity<?> createAdmin(@RequestBody AdminUserRegisterDto dto) {
+        userService.createAdminUser(dto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "ADMIN 계정 생성 성공", null));
+    }
+
+    /* [관리자 기능] 새로운 INQUIRY(문의 담당자) 계정 생성 */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/inquiry/create")
+    public ResponseEntity<?> createInquiry(@RequestBody AdminUserRegisterDto dto) {
+        userService.createInquiryUser(dto);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "INQUIRY 계정 생성 성공", null));
+    }
+
 
     /* 닉네임 변경 */
     @PreAuthorize("isAuthenticated()")
@@ -119,11 +139,36 @@ public class UserController {
     }
 
     /* 접속중인 유저 확인 */
-    /* 근데 이 코드라면 jwt -> bear 헤더로 전달하고 자기만 판단하는 코드같은디;?*/
+    /* 근데 이 코드라면 jwt -> bearer 헤더로 전달하고 자기만 판단하는 코드같은디;?*/
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/verify-token")
     public ResponseEntity<?> verifyToken() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "계정 조회 성공", email));
     }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/status/me")
+    public ResponseEntity<?> myStatus() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserStatus status = userStatusService.getStatus(email);
+        UserStatusDto dto = new UserStatusDto(email, status);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상태 조회 성공", dto));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/status/{userId}")
+    public ResponseEntity<?> userStatus(@PathVariable Long userId) {
+        UserStatus status = userService.getStatusByUserId(userId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상태 조회 성공", status));
+    }
+
+    /* 일일 접속 현황 통계 제공 */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/status/daily")
+    public ResponseEntity<?> dailyStatus(@RequestParam(required = false) String date) {
+        DailyActiveUserStatsDto dto = userStatusService.getDailyActiveUserStats(date);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "일일 접속 현황", dto));
+    }
+
 }
