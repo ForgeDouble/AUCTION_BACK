@@ -15,4 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByNicknameAndDelYn(String nickname, DelYN delYn);
 
     List<User> findAllByAuthorityAndDelYn(Authority authority, DelYN delYn);
+
+    Optional<User> findFirstByAuthorityOrderByCreatedAtDesc(Authority authority);
+
 }

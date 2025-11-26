@@ -5,6 +5,7 @@ import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
+import com.example.auction.user.domain.UserStatus;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,11 +26,13 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy) {
+    private final UserStatusService userStatusService;
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy, UserStatusService userStatusService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.customTokenExpiredStrategy = customTokenExpiredStrategy;
+        this.userStatusService = userStatusService;
     }
 
     /* 회원가입 */
@@ -43,6 +46,33 @@ public class UserService {
         newUser.setPassword(encodedPassword);
 
         return userRepository.save(newUser);
+    }
+
+    // 관리자 계정 생성 - ADMIN / INQUIRY
+    @Transactional
+    public User createSpecialUser(AdminUserRegisterDto adminUserRegisterDto, Authority authority) {
+        if (userRepository.findByEmail(adminUserRegisterDto.getEmail()).isPresent()) {
+            throw new RuntimeException("이미 존재하는 이메일입니다.");
+        }
+
+        String encodedPassword = passwordEncoder.encode(adminUserRegisterDto.getPassword());
+        User newUser = adminUserRegisterDto.toEntity(authority);
+        newUser.setPassword(encodedPassword);
+
+        return userRepository.save(newUser);
+
+    }
+
+    // ADMIN 계정 생성
+    @Transactional
+    public User createAdminUser(AdminUserRegisterDto dto) {
+        return createSpecialUser(dto, Authority.ADMIN);
+    }
+
+    // INQUIRY 계정 생성
+    @Transactional
+    public User createInquiryUser(AdminUserRegisterDto dto) {
+        return createSpecialUser(dto, Authority.INQUIRY);
     }
 
     /* 로그인 */
@@ -71,13 +101,17 @@ public class UserService {
         long ttl = jwtTokenProvider.getRemainingSeconds(token);
         customTokenExpiredStrategy.save(user.getEmail(), token, ttl);
 
+        // 로그인 시점부터 접속중 처리
+        userStatusService.touch(user.getEmail());
+
         return token;
     }
 
-
+    /* 로그아웃 */
     public void logout() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         customTokenExpiredStrategy.delete(email);
+        userStatusService.clear(email);
     }
 
 
@@ -104,10 +138,22 @@ public class UserService {
         User targetUser = userRepository.findById(deleteDto.getUserId())
                 .orElseThrow(() -> new RuntimeException("삭제하려는 유저가 존재하지 않습니다."));
 
-        if (!user.getUserId().equals(targetUser.getUserId()) && user.getAuthority() != Authority.ADMIN) {
-            throw new RuntimeException("본인 또는 관리자만 탈퇴할 수 있습니다.");
-        }
+        //  본인 탈퇴 허용
+        if (user.getUserId().equals(targetUser.getUserId())) {
+        // 자기 자신 삭제는 허용
+        } else {
+            // 본인이 ADMIN 이 아니면, 남을 지울 수 없음
+            if (user.getAuthority() != Authority.ADMIN) {
+                throw new RuntimeException("본인 또는 관리자만 탈퇴할 수 있습니다.");
+            }
 
+            // 타겟이 ADMIN 인 경우, 상위 ADMIN 만 삭제 가능 -> USERID 가 더 작은 쪽으로 셋팅
+            if (targetUser.getAuthority() == Authority.ADMIN) {
+                if (user.getUserId() >= targetUser.getUserId()) {
+                    throw new RuntimeException("상위 ADMIN만 하위 ADMIN 계정을 삭제할 수 있습니다.");
+                }
+            }
+        }
         targetUser.softDelete();
         userRepository.save(targetUser);
     }
@@ -229,6 +275,14 @@ public class UserService {
 
         user.changeNickname(newNickname);
         userRepository.save(user);
+    }
+
+    /* 타 유저 상태 조회 */
+    @Transactional(readOnly = true)
+    public UserStatus getStatusByUserId(Long userId) {
+        User user = userRepository.findByUserIdAndDelYn(userId, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+        return userStatusService.getStatus(user.getEmail());
     }
 }
 
