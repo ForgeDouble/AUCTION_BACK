@@ -8,7 +8,7 @@ import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.Product;
-import com.example.auction.product.domain.SellYN;
+import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
@@ -78,7 +78,7 @@ public class BidService {
         Product product = productRepository.findByProductIdAndDelYn(bidCreateDto.getProductId(), DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("Product"));
 
-        if (product.getSellYN() != SellYN.N) {
+        if (product.getStatus() != Status.PROCESSING) {
             throw new RuntimeException("경매중인 상품이 아닙니다.");
         } 
 //        접속중인 유저가 판매자일 경우 입찰 불가능

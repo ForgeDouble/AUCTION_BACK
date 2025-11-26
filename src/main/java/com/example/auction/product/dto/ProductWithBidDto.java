@@ -1,6 +1,6 @@
 package com.example.auction.product.dto;
 
-import com.example.auction.product.domain.SellYN;
+import com.example.auction.product.domain.Status;
 import lombok.*;
 
 // 마이페이지 조회용 Dto
@@ -13,7 +13,7 @@ public class ProductWithBidDto {
     private String productName;
     private String productContent;
     private Long price;
-    private SellYN sellYN;
+    private Status status;
     private Long bidCount;
     private Long latestBidAmount;
     private String previewImageUrl;

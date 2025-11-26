@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import com.example.auction.product.domain.SellYN;
+import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.ProductListDto;
 import com.example.auction.product.dto.ProductWithBidDto;
 import org.springframework.data.domain.Page;
@@ -18,17 +18,17 @@ import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 	Optional<Product> findByProductIdAndDelYn(Long productId, DelYN delYN);
-    List<Product> findBySellYNAndCreatedAtBeforeOrderByCreatedAtAsc(SellYN sellYN, LocalDateTime createdBefore);
+    List<Product> findByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(Status status, LocalDateTime createdBefore);
 
 	Optional<Product> findByProductIdAndDelYnAndBlocked(Long productId, DelYN delYn, Boolean blocked);
 	List<Product> findByBlockedAndDelYn(Boolean blocked, DelYN delYn);
 
 
 	// 최근 24시간 30분 내외 생성 경매 확인
-	List<Product> findBySellYNAndDelYnAndBlockedAndCreatedAtAfter(
-			SellYN sellYN, DelYN delYn, Boolean blocked, LocalDateTime createdAtAfter
+	List<Product> findByStatusAndDelYnAndBlockedAndCreatedAtAfter(
+			Status status, DelYN delYn, Boolean blocked, LocalDateTime createdAtAfter
 	);
-	List<Product> findBySellYNAndDelYnAndBlocked(SellYN sellYN, DelYN delYn, Boolean blocked);
+	List<Product> findByStatusAndDelYnAndBlocked(Status status, DelYN delYn, Boolean blocked);
 
 //    List<Product> findAllByUser_Email(String email);
 
@@ -37,7 +37,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "p.productName, " +
             "p.productContent, " +
             "p.price, " +
-            "p.sellYN, " +
+            "p.status, " +
             "(SELECT img.url FROM ProductImage img " +
             " WHERE img.product.productId = p.productId " +
             " ORDER BY img.position ASC " +
@@ -70,7 +70,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "p.productName, " +
             "p.productContent, " +
             "p.price, " +
-            "p.sellYN, " +
+            "p.status, " +
             "COUNT(b.bidId), " +
             "COALESCE(MAX(b.bidAmount), 0), " +
             "(SELECT img.url FROM ProductImage img " +
@@ -82,7 +82,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "WHERE p.user.email = :email " +
             "  AND p.delYn = com.example.auction.common.domain.DelYN.N " +
             "  AND (p.blocked = false OR p.blocked IS NULL) " +
-            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.sellYN " +
+            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.status " +
             "ORDER BY p.createdAt DESC")
     List<ProductWithBidDto> findAllByUserEmailWithBidInfo(@Param("email") String email);
 
@@ -91,7 +91,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "p.productName, " +
             "p.productContent, " +
             "p.price, " +
-            "p.sellYN, " +
+            "p.status, " +
             "COUNT(b.bidId), " +
             "COALESCE(MAX(b.bidAmount), 0), " +
             "(SELECT img.url FROM ProductImage img " +
@@ -104,7 +104,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "WHERE w.user.email = :email " +
             "  AND p.delYn = com.example.auction.common.domain.DelYN.N " +
             "  AND (p.blocked = false OR p.blocked IS NULL) " +
-            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.sellYN " +
+            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.status " +
             "ORDER BY p.createdAt DESC")
     List<ProductWithBidDto> findWishlistByUserEmailWithBidInfo(@Param("email") String email);
 }
