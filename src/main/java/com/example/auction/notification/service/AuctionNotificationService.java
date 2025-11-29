@@ -18,6 +18,7 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+// 경매 관련 알림 서비스
 @Service
 @Slf4j
 public class AuctionNotificationService {
@@ -202,6 +203,48 @@ public class AuctionNotificationService {
             taskScheduler.schedule(() -> {
                 try { notifyEndingSoon(productId, 5); } catch (Exception ignore) {}
             }, five);
+        }
+    }
+
+    /* 직전 최고 입찰자가 다른 유저에게 밀렸을 때 알림 */
+    public void notifyOutbid(Long productId, Long previousUserId, Long lastAmount, Long newAmount, String productName) {
+
+        if (previousUserId == null) {
+            log.warn("[AuctionNotify] previousUserId 가 null 입니다. Outbid 알림 스킵 productId={}", productId);
+            return;
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("상품이 존재하지 않습니다."));
+
+        String safeName = (productName != null && !productName.isBlank())
+                ? productName
+                : product.getProductName();
+
+
+        if (Objects.equals(product.getUser().getUserId(), previousUserId)) {
+
+        }
+
+        String lastStr = NumberFormat.getInstance(Locale.KOREA).format(lastAmount);
+        String newStr  = NumberFormat.getInstance(Locale.KOREA).format(newAmount);
+
+        String title = "입찰가가 추월되었습니다";
+        String body  = "[" + safeName + "] 경매에서 "
+                + newStr + "원으로 새로운 최고 입찰가가 등록되어 "
+                + lastStr + "원 입찰이 밀렸습니다.";
+
+        Map<String,String> data = Map.of(
+                "type", "BID_OUTBID",
+                "productId", String.valueOf(productId),
+                "lastAmount", String.valueOf(lastAmount),
+                "newAmount", String.valueOf(newAmount)
+        );
+
+        try {
+            pushService.sendToUser(previousUserId, title, body, data);
+        } catch (Exception e) {
+            log.warn("[AuctionNotify] Outbid 알림 실패 productId={}, previousUserId={}", productId, previousUserId, e);
         }
     }
 }
