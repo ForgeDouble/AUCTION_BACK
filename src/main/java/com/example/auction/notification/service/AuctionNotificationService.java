@@ -207,6 +207,7 @@ public class AuctionNotificationService {
     }
 
     /* 직전 최고 입찰자가 다른 유저에게 밀렸을 때 알림 */
+    // 현 사용x
     public void notifyOutbid(Long productId, Long previousUserId, Long lastAmount, Long newAmount, String productName) {
 
         if (previousUserId == null) {

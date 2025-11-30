@@ -40,8 +40,8 @@ public class FcmService {
                         .setTtl(Duration.ofHours(1).toMillis())
                         .build())
                 .setApnsConfig(ApnsConfig.builder()
-                        .putHeader("apns-priority", "10")
-                        .setAps(Aps.builder().setContentAvailable(true).build())
+//                        .putHeader("apns-priority", "10")
+//                        .setAps(Aps.builder().setContentAvailable(true).build())
                         .build())
                 .build();
         String messageId = messaging.send(msg);
@@ -63,9 +63,10 @@ public class FcmService {
                 .putAllData(data != null ? data : Map.of())
                 .setWebpushConfig(webpush)
                 .setAndroidConfig(AndroidConfig.builder().setPriority(HIGH).setTtl(Duration.ofHours(1).toMillis()).build())
-                .setApnsConfig(ApnsConfig.builder().putHeader("apns-priority","10").build())
+//                .setApnsConfig(ApnsConfig.builder().putHeader("apns-priority","10").build())
+//                .setApnsConfig(apnsConfig)
                 .build();
-        BatchResponse batchResponse = messaging.sendMulticast(msg);
+        BatchResponse batchResponse = messaging.sendEachForMulticast(msg);
         log.info("[FCM] multicast result success={}, failure={}", batchResponse.getSuccessCount(), batchResponse.getFailureCount());
         return batchResponse;
     }

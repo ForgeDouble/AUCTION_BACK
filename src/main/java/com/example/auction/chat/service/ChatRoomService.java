@@ -6,6 +6,7 @@ import com.example.auction.chat.dto.ChatRoomOpenRequest;
 import com.example.auction.chat.dto.ChatRoomResponse;
 import com.example.auction.chat.repository.ChatRoomRepository;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.notification.service.InquiryNotificationService;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
@@ -26,12 +27,14 @@ public class ChatRoomService {
     private final ChatStateService chatStateService;
     private final UserRepository userRepository;
     private final InquiryResolver inquiryResolver;
+    private final InquiryNotificationService inquiryNotificationService;
 
-    public ChatRoomService(ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, UserRepository userRepository, InquiryResolver inquiryResolver) {
+    public ChatRoomService(ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, UserRepository userRepository, InquiryResolver inquiryResolver, InquiryNotificationService inquiryNotificationService) {
         this.chatRoomRepository = chatRoomRepository;
         this.chatStateService = chatStateService;
         this.userRepository = userRepository;
         this.inquiryResolver = inquiryResolver;
+        this.inquiryNotificationService = inquiryNotificationService;
     }
 
     // 방생성관련 user1 의 userId user2의 userId
@@ -92,7 +95,12 @@ public class ChatRoomService {
                     inquirerEmail,
                     Instant.now()
             );
-            return chatRoomRepository.save(chatRoom);
+            ChatRoom saved = chatRoomRepository.save(chatRoom);
+
+            // 새 문의방 생성 → 담당자에게 푸시
+            inquiryNotificationService.notifyNewInquiryRoom(saved, me, inquirer);
+
+            return saved;
         });
     }
 
