@@ -100,7 +100,7 @@ public class ChatMessageService {
                 chatStateService.incAlarm(uid);
             }
         }
-        sendInquiryPushIfNeeded(room, chatMessage, preview);
+//        sendInquiryPushIfNeeded(room, chatMessage, preview);
 
         ChatMessageResponse payload = chatMessageResponse(chatMessage);
         // 단일 인스턴스용 STOMP 전송
@@ -134,80 +134,80 @@ public class ChatMessageService {
 
 
 
-    private void sendInquiryPushIfNeeded(ChatRoom room, ChatMessage chatMessage, String preview) {
-        try {
-            // 1) 운영 채팅방이 아니면 푸시 안 보냄
-            if (!room.isAdminChat()) {
-                return;
-            }
-
-            // 2) 발신자 정보
-            User sender = userRepository.findByEmailAndDelYn(chatMessage.getSenderId(), DelYN.N)
-                    .orElse(null);
-            if (sender == null) return;
-
-            // 3) 참가자 목록 조회 (이메일 → User)
-            List<User> participants = room.getParticipantIds().stream()
-                    .map(email -> userRepository.findByEmailAndDelYn(email, DelYN.N).orElse(null))
-                    .filter(Objects::nonNull)
-                    .toList();
-
-            if (participants.isEmpty()) return;
-
-            // 고객(USER) 1명
-            User customer = participants.stream()
-                    .filter(u -> u.getAuthority() == Authority.USER)
-                    .findFirst()
-                    .orElse(null);
-
-            // 문의 담당자/관리자(INQUIRY, ADMIN)
-            List<User> staffList = participants.stream()
-                    .filter(u -> u.getAuthority() == Authority.INQUIRY || u.getAuthority() == Authority.ADMIN)
-                    .toList();
-
-            if (customer == null || staffList.isEmpty()) {
-                // 문의 구조가 아닌 방
-                return;
-            }
-
-            String title;
-            String body;
-
-            // FCM data payload (Service Worker / FcmNotificationCenter 에서 사용)
-            Map<String, String> data = new java.util.HashMap<>();
-            data.put("type", "INQUIRY_NEW_MESSAGE");
-            data.put("roomId", room.getId());
-            data.put("senderEmail", sender.getEmail());
-            data.put("senderNickname", sender.getNickname() != null ? sender.getNickname() : "");
-            data.put("preview", preview != null ? preview : "");
-
-            // 4) 누가 보냈냐에 따라 대상 분기
-            if (sender.getAuthority() == Authority.USER) {
-                // 고객이 보낸 메시지 → 모든 문의 담당자에게 푸시
-                title = "새 문의 메시지 도착";
-                body = (sender.getNickname() != null ? sender.getNickname() : sender.getEmail()) + " : " + preview;
-
-                for (User staff : staffList) {
-                    try {
-                        pushService.sendToUser(staff.getUserId(), title, body, data);
-                    } catch (Exception e) {
-                        log.warn("[ChatPush] INQUIRY_NEW_MESSAGE to staff 실패 userId={}", staff.getUserId(), e);
-                    }
-                }
-            } else if (sender.getAuthority() == Authority.INQUIRY || sender.getAuthority() == Authority.ADMIN) {
-                // 문의 담당자/관리자 답변 → 고객에게 푸시
-                title = "문의 답변이 도착했습니다";
-                body = preview;
-
-                try {
-                    pushService.sendToUser(customer.getUserId(), title, body, data);
-                } catch (Exception e) {
-                    log.warn("[ChatPush] INQUIRY_NEW_MESSAGE to customer 실패 userId={}", customer.getUserId(), e);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("[ChatPush] sendInquiryPushIfNeeded 처리 중 예외", e);
-        }
-
-    }
+//    private void sendInquiryPushIfNeeded(ChatRoom room, ChatMessage chatMessage, String preview) {
+//        try {
+//            // 1) 운영 채팅방이 아니면 푸시 안 보냄
+//            if (!room.isAdminChat()) {
+//                return;
+//            }
+//
+//            // 2) 발신자 정보
+//            User sender = userRepository.findByEmailAndDelYn(chatMessage.getSenderId(), DelYN.N)
+//                    .orElse(null);
+//            if (sender == null) return;
+//
+//            // 3) 참가자 목록 조회 (이메일 → User)
+//            List<User> participants = room.getParticipantIds().stream()
+//                    .map(email -> userRepository.findByEmailAndDelYn(email, DelYN.N).orElse(null))
+//                    .filter(Objects::nonNull)
+//                    .toList();
+//
+//            if (participants.isEmpty()) return;
+//
+//            // 고객(USER) 1명
+//            User customer = participants.stream()
+//                    .filter(u -> u.getAuthority() == Authority.USER)
+//                    .findFirst()
+//                    .orElse(null);
+//
+//            // 문의 담당자/관리자(INQUIRY, ADMIN)
+//            List<User> staffList = participants.stream()
+//                    .filter(u -> u.getAuthority() == Authority.INQUIRY || u.getAuthority() == Authority.ADMIN)
+//                    .toList();
+//
+//            if (customer == null || staffList.isEmpty()) {
+//                // 문의 구조가 아닌 방
+//                return;
+//            }
+//
+//            String title;
+//            String body;
+//
+//            // FCM data payload (Service Worker / FcmNotificationCenter 에서 사용)
+//            Map<String, String> data = new java.util.HashMap<>();
+//            data.put("type", "INQUIRY_NEW_MESSAGE");
+//            data.put("roomId", room.getId());
+//            data.put("senderEmail", sender.getEmail());
+//            data.put("senderNickname", sender.getNickname() != null ? sender.getNickname() : "");
+//            data.put("preview", preview != null ? preview : "");
+//
+//            // 4) 누가 보냈냐에 따라 대상 분기
+//            if (sender.getAuthority() == Authority.USER) {
+//                // 고객이 보낸 메시지 → 모든 문의 담당자에게 푸시
+//                title = "새 문의 메시지 도착";
+//                body = (sender.getNickname() != null ? sender.getNickname() : sender.getEmail()) + " : " + preview;
+//
+//                for (User staff : staffList) {
+//                    try {
+//                        pushService.sendToUser(staff.getUserId(), title, body, data);
+//                    } catch (Exception e) {
+//                        log.warn("[ChatPush] INQUIRY_NEW_MESSAGE to staff 실패 userId={}", staff.getUserId(), e);
+//                    }
+//                }
+//            } else if (sender.getAuthority() == Authority.INQUIRY || sender.getAuthority() == Authority.ADMIN) {
+//                // 문의 담당자/관리자 답변 → 고객에게 푸시
+//                title = "문의 답변이 도착했습니다";
+//                body = preview;
+//
+//                try {
+//                    pushService.sendToUser(customer.getUserId(), title, body, data);
+//                } catch (Exception e) {
+//                    log.warn("[ChatPush] INQUIRY_NEW_MESSAGE to customer 실패 userId={}", customer.getUserId(), e);
+//                }
+//            }
+//        } catch (Exception e) {
+//            log.warn("[ChatPush] sendInquiryPushIfNeeded 처리 중 예외", e);
+//        }
+//
+//    }
 }
