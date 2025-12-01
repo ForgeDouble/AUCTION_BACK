@@ -99,6 +99,15 @@ public class ProductService {
 		}
 	}
 
+
+//    @Transactional
+//    public void controllProduct(ProductCreateDto dto, List<MultipartFile> files) {
+//        // 실제 DataBase에 Product 생성
+//        Product savedProduct = createProduct(dto, files);
+//        // 생성된 Product를 기준으로 bid Redis data, 실제 DataBase bid data 삽입
+//        startAuction(savedProduct.getProductId());
+//    }
+
     // 아이템 생성
     @Transactional
     public Product createProduct(ProductCreateDto dto, List<MultipartFile> files) {
@@ -135,6 +144,7 @@ public class ProductService {
     public void startAuction(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다."));
+
         // 종료(판매) 여부 확인
         if (product.getStatus() != Status.PROCESSING) return;
         // 경매가 시작된 상품인지 확인
@@ -216,7 +226,7 @@ public class ProductService {
         } catch (JsonProcessingException e) {
             log.warn("[Auction] baseline 직렬화 실패 pid={}", productId, e);
         }
-//
+
 //        auctionNotificationService.notifyAuctionStarted(productId);
 
         // 실제 보관용 bid 데이터
