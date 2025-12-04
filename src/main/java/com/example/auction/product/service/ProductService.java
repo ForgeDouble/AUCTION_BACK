@@ -367,6 +367,12 @@ public class ProductService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public Product getProduct(Long productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productId));
+    }
+
 
     // DelYN.N 인것을 조회
 	// 아이템 상세 조회
