@@ -60,69 +60,71 @@ public class AuctionTickScheduler {
     }
 
     // Repair / Index: 최근 생성 상품을 toStart ZSET에 인덱싱
-    @Scheduled(fixedDelay = 60_000L, initialDelay = 20_000L)
-    public void repairToStartIndex() {
-        LocalDateTime localDateTime = LocalDateTime.now();
-        LocalDateTime createdAfter = localDateTime.minusMinutes(INDEX_WINDOW_MIN);
-        List<Product> recent = productRepository.findByStatusAndDelYnAndBlockedAndCreatedAtAfter(
-                Status.PROCESSING, DelYN.N, false, createdAfter
-        );
-        if (recent.isEmpty()) return;
+//    @Scheduled(fixedDelay = 60_000L, initialDelay = 20_000L)
+//    public void repairToStartIndex() {
+//        LocalDateTime localDateTime = LocalDateTime.now();
+//        LocalDateTime createdAfter = localDateTime.minusMinutes(INDEX_WINDOW_MIN);
+//        List<Product> recent = productRepository.findByStatusAndDelYnAndBlockedAndCreatedAtAfter(
+//                Status.PROCESSING, DelYN.N, false, createdAfter
+//        );
+//        if (recent.isEmpty()) return;
+//
+//        int added = 0;
+//        for (Product product : recent) {
+//            LocalDateTime start = product.getAuctionStartTime();
+//            LocalDateTime end = product.getAuctionEndTime();
+//            if (localDateTime.isAfter(end)) continue;
+//            // toStart에 등록
+//            bidRedisTemplate.opsForZSet().add(Z_TO_START, String.valueOf(product.getProductId()), toEpochMs(start));
+//            added++;
+//        }
+//        if (added > 0) log.debug("[AuctionIndex] toStart 업데이트 + 수정 count={}", added);
+//    }
+//
+//    // start tick 관련 -> toStart 을 통한 now 도달 피드 확인 -> startAuction -> active 인덱싱
+//    @Scheduled(fixedDelay = 5_000L, initialDelay = 30_000L)
+//    public void startTick() {
+//        long now = nowMs();
+//        // due set 가져오기 (LIMIT)
+//        Set<String> due = bidRedisTemplate.opsForZSet().rangeByScore(Z_TO_START, 0, now, 0, CHUNK_SIZE);
+//        if (due == null || due.isEmpty()) return;
+//
+//        for (String pidStr : due) {
+//            long pid = Long.parseLong(pidStr);
+//            // lock -> 분산 중복 방지
+//            Boolean ok = bidRedisTemplate.opsForValue().setIfAbsent(lockStart(pid), "1", Duration.ofSeconds(LOCK_SEC));
+//            if (!Boolean.TRUE.equals(ok)) continue;
+//
+//            try {
+//                productService.startAuction(pid);
+//
+//                // baseline in 종료시각 Redis 키
+//                String endEpochStr = bidRedisTemplate.opsForValue().get(kEndTime(pid));
+//                long endEpochMs;
+//                if (endEpochStr != null && !endEpochStr.isBlank()) {
+//                    endEpochMs = Long.parseLong(endEpochStr);
+//                } else {
+//                    Product product = productRepository.findById(pid).orElse(null);
+//                    if (product == null) {
+//                        bidRedisTemplate.opsForZSet().remove(Z_TO_START, pidStr);
+//                        continue;
+//                    }
+//                    endEpochMs = toEpochMs(product.getAuctionEndTime());
+//                }
+//
+//                // active/notify 인덱싱 관련 코드
+//                bidRedisTemplate.opsForZSet().add(Z_ACTIVE, pidStr, endEpochMs);
+//                bidRedisTemplate.opsForZSet().add(Z_NOTIFY_10, pidStr, endEpochMs - 10 * 60_000L);
+//                bidRedisTemplate.opsForZSet().add(Z_NOTIFY_5,  pidStr, endEpochMs -  5 * 60_000L);
+//
+//                bidRedisTemplate.opsForZSet().remove(Z_TO_START, pidStr);
+//            } catch (Exception e) {
+//                log.warn("[AuctionTick] startAuction 실패 pid={}", pid, e);
+//            }
+//        }
+//    }
 
-        int added = 0;
-        for (Product product : recent) {
-            LocalDateTime start = product.getAuctionStartTime();
-            LocalDateTime end = product.getAuctionEndTime();
-            if (localDateTime.isAfter(end)) continue;
-            // toStart에 등록
-            bidRedisTemplate.opsForZSet().add(Z_TO_START, String.valueOf(product.getProductId()), toEpochMs(start));
-            added++;
-        }
-        if (added > 0) log.debug("[AuctionIndex] toStart 업데이트 + 수정 count={}", added);
-    }
 
-    // start tick 관련 -> toStart 을 통한 now 도달 피드 확인 -> startAuction -> active 인덱싱
-    @Scheduled(fixedDelay = 5_000L, initialDelay = 30_000L)
-    public void startTick() {
-        long now = nowMs();
-        // due set 가져오기 (LIMIT)
-        Set<String> due = bidRedisTemplate.opsForZSet().rangeByScore(Z_TO_START, 0, now, 0, CHUNK_SIZE);
-        if (due == null || due.isEmpty()) return;
-
-        for (String pidStr : due) {
-            long pid = Long.parseLong(pidStr);
-            // lock -> 분산 중복 방지
-            Boolean ok = bidRedisTemplate.opsForValue().setIfAbsent(lockStart(pid), "1", Duration.ofSeconds(LOCK_SEC));
-            if (!Boolean.TRUE.equals(ok)) continue;
-
-            try {
-                productService.startAuction(pid);
-
-                // baseline in 종료시각 Redis 키
-                String endEpochStr = bidRedisTemplate.opsForValue().get(kEndTime(pid));
-                long endEpochMs;
-                if (endEpochStr != null && !endEpochStr.isBlank()) {
-                    endEpochMs = Long.parseLong(endEpochStr);
-                } else {
-                    Product product = productRepository.findById(pid).orElse(null);
-                    if (product == null) {
-                        bidRedisTemplate.opsForZSet().remove(Z_TO_START, pidStr);
-                        continue;
-                    }
-                    endEpochMs = toEpochMs(product.getAuctionEndTime());
-                }
-
-                // active/notify 인덱싱 관련 코드
-                bidRedisTemplate.opsForZSet().add(Z_ACTIVE, pidStr, endEpochMs);
-                bidRedisTemplate.opsForZSet().add(Z_NOTIFY_10, pidStr, endEpochMs - 10 * 60_000L);
-                bidRedisTemplate.opsForZSet().add(Z_NOTIFY_5,  pidStr, endEpochMs -  5 * 60_000L);
-
-                bidRedisTemplate.opsForZSet().remove(Z_TO_START, pidStr);
-            } catch (Exception e) {
-                log.warn("[AuctionTick] startAuction 실패 pid={}", pid, e);
-            }
-        }
-    }
 
     // 종료 틱 관련 -> 만기 pid 드레인하여 성공 / 실패 무관 active 에서 제거 + lock 을 통한 중복 방지
     @Scheduled(fixedDelay = 5_000L, initialDelay = 35_000L)

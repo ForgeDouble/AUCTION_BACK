@@ -2,17 +2,21 @@ package com.example.auction.common.config;
 
 
 import com.example.auction.common.service.ChatSubscriber;
+import com.example.auction.product.service.AuctionKeyExpirationListener;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.listener.ChannelTopic;
+import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
@@ -22,6 +26,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+@Slf4j
 @Configuration
 @EnableCaching
 public class RedisConfig {
@@ -38,6 +43,28 @@ public class RedisConfig {
         redisStandaloneConfiguration.setPort(port);
         redisStandaloneConfiguration.setDatabase(index);
         return new LettuceConnectionFactory(redisStandaloneConfiguration);
+    }
+
+    @Bean
+    public RedisMessageListenerContainer redisMessageListenerContainer(
+            RedisConnectionFactory connectionFactory,
+            AuctionKeyExpirationListener expirationListener) {
+
+        log.info("========================================");
+        log.info("RedisMessageListenerContainer 초기화");
+        log.info("========================================");
+
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+
+        // "__keyevent@0__:expired" 채널 구독
+        // DB 0번의 키 만료 이벤트를 수신
+        container.addMessageListener(
+                expirationListener,
+                new PatternTopic("__keyevent@3__:expired")
+        );
+
+        return container;
     }
 
     @Bean

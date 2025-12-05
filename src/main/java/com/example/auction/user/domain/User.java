@@ -47,7 +47,7 @@ public class User extends BaseTimeEntity {
     private Long warning = 0L;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private Authority authority;
 
     @Column(unique = true, length = 30)
