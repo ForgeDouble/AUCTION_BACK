@@ -55,6 +55,7 @@ firebase:
 crypto:
   aes-gcm-key-b64: ${AES_GCM_KEY_B64:}
   aes-gcm-key-file: ${AES_GCM_KEY_FILE:}
+  token-hash-secret: ${TOKEN_HASH_SECRET:local-dev-token-hash-secret-32bytes-long}
 
 cloud:
   aws:

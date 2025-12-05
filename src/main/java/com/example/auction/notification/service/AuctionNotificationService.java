@@ -7,6 +7,7 @@ import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.push.service.PushService;
+import com.example.auction.notification.domain.NotificationCategory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -18,6 +19,8 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+// 경매 관련 알림 서비스
 @Service
 @Slf4j
 public class AuctionNotificationService {
@@ -71,7 +74,9 @@ public class AuctionNotificationService {
                     product.getUser().getUserId(),
                     "경매가 시작되었습니다",
                     "등록하신 \"" + product.getProductName() + "\" 상품의 경매가 시작했습니다.",
-                    Map.of("type","AUCTION_STARTED","productId", String.valueOf(product.getProductId()))
+                    Map.of("type","AUCTION_STARTED","productId", String.valueOf(product.getProductId())),
+                    NotificationCategory.AUCTION,
+                    true
             );
         } catch (Exception e) {
             log.warn("[Notify] 시작 알림 실패 pid={}", productId, e);
@@ -103,9 +108,14 @@ public class AuctionNotificationService {
         for (Long uid : bidderIds) {
             try {
                 pushService.sendToUser(uid, title, body,
-                        Map.of("type","AUCTION_ENDING_SOON",
+                        Map.of(
+                                "type","AUCTION_ENDING_SOON",
                                 "productId", String.valueOf(product.getProductId()),
-                                "minutes", String.valueOf(minutes)));
+                                "minutes", String.valueOf(minutes)
+                        ),
+                        NotificationCategory.AUCTION,
+                        true
+                );
             } catch (Exception e) {
                 log.warn("[Notify] 임박({}분) 알림 실패 pid={}, uid={}", minutes, productId, uid, e);
             }
@@ -133,15 +143,15 @@ public class AuctionNotificationService {
         // 판매자 알림
         try {
             pushService.sendToUser(
-                    sellerId,
-                    "경매 종료",
-                    "등록하신 [" + safeName + "] 상품의 경매가 " + amountStr + "원에 낙찰되었습니다.",
+                    sellerId, "경매 종료", "등록하신 [" + safeName + "] 상품의 경매가 " + amountStr + "원에 낙찰되었습니다.",
                     Map.of(
                             "type", "AUCTION_ENDED",
                             "productId", String.valueOf(productId),
                             "winnerUserId", String.valueOf(winner.getUserId()),
                             "amount", String.valueOf(winner.getBidAmount())
-                    )
+                    ),
+                    NotificationCategory.AUCTION,
+                    true
             );
         } catch (Exception e) {
             log.warn("[AuctionNotify] 판매자 알림 실패 productId={}, sellerId={}", productId, sellerId, e);
@@ -150,14 +160,14 @@ public class AuctionNotificationService {
         // 낙찰자 알림
         try {
             pushService.sendToUser(
-                    winner.getUserId(),
-                    "입찰 상품 낙찰",
-                    "[" + safeName + "]을(를) " + amountStr + "원에 낙찰 받으셨습니다.",
+                    winner.getUserId(), "입찰 상품 낙찰", "[" + safeName + "]을(를) " + amountStr + "원에 낙찰 받으셨습니다.",
                     Map.of(
                             "type", "AUCTION_WINNER",
                             "productId", String.valueOf(productId),
                             "amount", String.valueOf(winner.getBidAmount())
-                    )
+                    ),
+                    NotificationCategory.AUCTION,
+                    true
             );
         } catch (Exception e) {
             log.warn("[AuctionNotify] 낙찰자 알림 실패 productId={}, winnerUserId={}", productId, winner.getUserId(), e);
@@ -174,13 +184,13 @@ public class AuctionNotificationService {
 
         try {
             pushService.sendToUser(
-                    sellerId,
-                    "경매 종료",
-                    "등록하신 [" + safeName + "] 경매가 입찰자 없이 종료되었습니다.",
+                    sellerId, "경매 종료", "등록하신 [" + safeName + "] 경매가 입찰자 없이 종료되었습니다.",
                     Map.of(
                             "type", "AUCTION_ENDED_NO_WINNER",
                             "productId", String.valueOf(productId)
-                    )
+                    ),
+                    NotificationCategory.AUCTION,
+                    true
             );
         } catch (Exception e) {
             log.warn("[AuctionNotify] 판매자(무낙찰) 알림 실패 productId={}, sellerId={}", productId, sellerId, e);
@@ -202,6 +212,49 @@ public class AuctionNotificationService {
             taskScheduler.schedule(() -> {
                 try { notifyEndingSoon(productId, 5); } catch (Exception ignore) {}
             }, five);
+        }
+    }
+
+    /* 직전 최고 입찰자가 다른 유저에게 밀렸을 때 알림 */
+    // 현 사용x
+    public void notifyOutbid(Long productId, Long previousUserId, Long lastAmount, Long newAmount, String productName) {
+
+        if (previousUserId == null) {
+            log.warn("[AuctionNotify] previousUserId 가 null 입니다. Outbid 알림 스킵 productId={}", productId);
+            return;
+        }
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("상품이 존재하지 않습니다."));
+
+        String safeName = (productName != null && !productName.isBlank())
+                ? productName
+                : product.getProductName();
+
+
+        if (Objects.equals(product.getUser().getUserId(), previousUserId)) {
+
+        }
+
+        String lastStr = NumberFormat.getInstance(Locale.KOREA).format(lastAmount);
+        String newStr  = NumberFormat.getInstance(Locale.KOREA).format(newAmount);
+
+        String title = "입찰가가 추월되었습니다";
+        String body  = "[" + safeName + "] 경매에서 "
+                + newStr + "원으로 새로운 최고 입찰가가 등록되어 "
+                + lastStr + "원 입찰이 밀렸습니다.";
+
+        Map<String,String> data = Map.of(
+                "type", "BID_OUTBID",
+                "productId", String.valueOf(productId),
+                "lastAmount", String.valueOf(lastAmount),
+                "newAmount", String.valueOf(newAmount)
+        );
+
+        try {
+            pushService.sendToUser(previousUserId, title, body, data, NotificationCategory.AUCTION, true);
+        } catch (Exception e) {
+            log.warn("[AuctionNotify] Outbid 알림 실패 productId={}, previousUserId={}", productId, previousUserId, e);
         }
     }
 }
