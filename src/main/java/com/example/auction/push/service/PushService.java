@@ -3,6 +3,8 @@ package com.example.auction.push.service;
 import com.example.auction.common.crypto.TokenHash;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.notification.domain.NotificationCategory;
+import com.example.auction.notification.service.NotificationService;
 import com.example.auction.push.domain.DevicePlatform;
 import com.example.auction.push.domain.DeviceToken;
 import com.example.auction.push.dto.TokenRegisterDto;
@@ -33,6 +35,7 @@ public class PushService {
     private final DeviceTokenRepository deviceTokenRepository;
     private final UserRepository userRepository;
     private final FcmService fcmService;
+    private final NotificationService notificationService;
 
     private User currentUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -84,11 +87,8 @@ public class PushService {
         deviceTokenRepository.deleteByTokenHash(hash);
         log.info("[Push] 저장되지 않은 tokenHashPrefix={}", hashPrefix);
     }
-
     /* 특정 유저의 모든 유효 토큰으로 전송 (실패 토큰 정리) */
-    @Transactional
-    public int sendToUser(Long userId, String title, String body, Map<String,String> data) throws Exception {
-
+    private int doSendToUser(Long userId, String title, String body, Map<String,String> data) throws Exception {
         if (userId == null) {
             log.warn("[Push] userId 이 없습니다. 알림 전송 스킵. title={}, data={}", title, data);
             return 0;
@@ -113,7 +113,6 @@ public class PushService {
                 if (!r.isSuccessful()) {
                     FirebaseMessagingException fme = r.getException();
                     if (fme != null) {
-                        // 비정상 토큰 정리
                         MessagingErrorCode code = fme.getMessagingErrorCode();
                         if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.INVALID_ARGUMENT) {
                             deviceTokenRepository.deleteByTokenHash(TokenHash.hmacSha256B64(chunk.get(idx)));
@@ -129,5 +128,34 @@ public class PushService {
         log.info("[Push] 발송받은 userId={}, 성공 = {}", userId, success);
         return success;
     }
+
+    @Transactional
+    public int sendToUser(Long userId,
+                          String title,
+                          String body,
+                          Map<String, String> data) throws Exception {
+        return doSendToUser(userId, title, body, data);
+    }
+
+    //  웹 알림 리스트에도 남기고 싶은 경우 사용하는 오버로드
+    @Transactional
+    public int sendToUser(Long userId,
+                          String title,
+                          String body,
+                          Map<String, String> data,
+                          NotificationCategory category,
+                          boolean storeWebNotification) throws Exception {
+
+        if (storeWebNotification && userId != null && category != null) {
+            try {
+                notificationService.createAndSend(userId, category, title, body);
+            } catch (Exception e) {
+                log.warn("[Push] 웹 알림 저장/브로드캐스트 실패 userId={}", userId, e);
+            }
+        }
+        return doSendToUser(userId, title, body, data);
+    }
+
+
 }
 

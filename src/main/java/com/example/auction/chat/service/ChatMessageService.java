@@ -1,16 +1,19 @@
 package com.example.auction.chat.service;
 
-import com.example.auction.chat.domain.ChatFile;
 import com.example.auction.chat.domain.ChatMessage;
 import com.example.auction.chat.domain.ChatRoom;
 import com.example.auction.chat.domain.MessageType;
-import com.example.auction.chat.dto.ChatFileRequest;
 import com.example.auction.chat.dto.ChatMessageRequest;
 import com.example.auction.chat.dto.ChatMessageResponse;
 import com.example.auction.chat.repository.ChatMessageRepository;
 import com.example.auction.chat.repository.ChatRoomRepository;
+import com.example.auction.common.domain.DelYN;
+import com.example.auction.notification.service.InquiryNotificationService;
+import com.example.auction.push.service.PushService;
+import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -20,9 +23,14 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ChatMessageService {
 
     private final ChatMessageRepository chatMessageRepository;
@@ -34,8 +42,10 @@ public class ChatMessageService {
     @Qualifier("chat")
     private final ChannelTopic chatTopic;
     private final UserRepository userRepository;
+    private final InquiryNotificationService inquiryNotificationService;
+    private final PushService pushService;
 
-    public ChatMessageService(ChatMessageRepository chatMessageRepository, ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, SimpMessageSendingOperations messaging, @Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate, @Qualifier("chat") ChannelTopic chatTopic, UserRepository userRepository) {
+    public ChatMessageService(ChatMessageRepository chatMessageRepository, ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, SimpMessageSendingOperations messaging, @Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate, @Qualifier("chat") ChannelTopic chatTopic, UserRepository userRepository, InquiryNotificationService inquiryNotificationService, PushService pushService) {
         this.chatMessageRepository = chatMessageRepository;
         this.chatRoomRepository = chatRoomRepository;
         this.chatStateService = chatStateService;
@@ -43,21 +53,44 @@ public class ChatMessageService {
         this.redisTemplate = redisTemplate;
         this.chatTopic = chatTopic;
         this.userRepository = userRepository;
+        this.inquiryNotificationService = inquiryNotificationService;
+        this.pushService = pushService;
     }
 
 
     // 최신 메시지 조회
     public List<ChatMessageResponse> getRecent(String roomId, int size){
-        return chatMessageRepository
-                .findByRoomIdOrderByCreatedAtDesc(roomId, PageRequest.of(0, size))
-                .stream()
-                .map(this::chatMessageResponse)
+        List<ChatMessage> messages = chatMessageRepository
+                .findByRoomIdOrderByCreatedAtDesc(roomId, PageRequest.of(0, size));
+
+        List<String> senderEmails = messages.stream()
+                .map(ChatMessage::getSenderId)
+                .filter(Objects::nonNull)
+                .distinct()
                 .toList();
+
+        Map<String, User> senderMap = senderEmails.isEmpty()
+                ? Collections.emptyMap()
+                : userRepository.findAllByEmailInAndDelYn(senderEmails, DelYN.N)
+                .stream()
+                .collect(Collectors.toMap(User::getEmail, u -> u));
+
+        return messages.stream()
+                .map(m -> {
+                    User sender = senderMap.get(m.getSenderId());
+                    return ChatMessageResponse.fromEntity(m, sender);
+                })
+                .toList();
+
+
     }
 
-    public void send(ChatMessageRequest chatMessageRequest){
-        // securitycontextholder 을 사용해도 되나 이거? 일단 sender email 추출을 위한 코드 적용
+    public void send(ChatMessageRequest chatMessageRequest) {
         String senderEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User sender = userRepository.findByEmailAndDelYn(senderEmail, DelYN.N)
+                .orElseThrow(() -> new IllegalArgumentException("발신자를 찾을 수 없습니다."));
+
 
         ChatRoom room = chatRoomRepository.findById(chatMessageRequest.getRoomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다"));
@@ -73,6 +106,12 @@ public class ChatMessageService {
         room.updateRecent(preview, Instant.now());
         chatRoomRepository.save(room);
 
+        try {
+            inquiryNotificationService.notifyOnNewMessage(room, sender, preview);
+        } catch (Exception e) {
+            log.warn("[ChatNotify] 문의 메시지 알림 처리 중 예외 roomId={}", room.getId(), e);
+        }
+
         // 상대방 읽음 / 알림 처리
         for (String uid : room.getParticipantIds()){
             if (uid.equals(senderEmail)) continue;
@@ -82,6 +121,7 @@ public class ChatMessageService {
                 chatStateService.incAlarm(uid);
             }
         }
+//        sendInquiryPushIfNeeded(room, chatMessage, preview);
 
         ChatMessageResponse payload = chatMessageResponse(chatMessage);
         // 단일 인스턴스용 STOMP 전송
@@ -112,4 +152,81 @@ public class ChatMessageService {
             default -> chatMessageRequest.getMessage();
         };
     }
+
+
+
+//    private void sendInquiryPushIfNeeded(ChatRoom room, ChatMessage chatMessage, String preview) {
+//        try {
+//            // 운영 채팅방이 아니면 푸시 안 보냄
+//            if (!room.isAdminChat()) {
+//                return;
+//            }
+//
+//            // 2) 발신자 정보
+//            User sender = userRepository.findByEmailAndDelYn(chatMessage.getSenderId(), DelYN.N)
+//                    .orElse(null);
+//            if (sender == null) return;
+//
+//            List<User> participants = room.getParticipantIds().stream()
+//                    .map(email -> userRepository.findByEmailAndDelYn(email, DelYN.N).orElse(null))
+//                    .filter(Objects::nonNull)
+//                    .toList();
+//
+//            if (participants.isEmpty()) return;
+//
+//            // 고객(USER) 1명
+//            User customer = participants.stream()
+//                    .filter(u -> u.getAuthority() == Authority.USER)
+//                    .findFirst()
+//                    .orElse(null);
+//
+//            // 문의 담당자/관리자(INQUIRY, ADMIN)
+//            List<User> staffList = participants.stream()
+//                    .filter(u -> u.getAuthority() == Authority.INQUIRY || u.getAuthority() == Authority.ADMIN)
+//                    .toList();
+//
+//            if (customer == null || staffList.isEmpty()) {
+//                // 문의 구조가 아닌 방
+//                return;
+//            }
+//
+//            String title;
+//            String body;
+//
+//            // FCM data payload (Service Worker / FcmNotificationCenter 에서 사용)
+//            Map<String, String> data = new java.util.HashMap<>();
+//            data.put("type", "INQUIRY_NEW_MESSAGE");
+//            data.put("roomId", room.getId());
+//            data.put("senderEmail", sender.getEmail());
+//            data.put("senderNickname", sender.getNickname() != null ? sender.getNickname() : "");
+//            data.put("preview", preview != null ? preview : "");
+//
+//            if (sender.getAuthority() == Authority.USER) {
+//                // 고객이 보낸 메시지 → 모든 문의 담당자에게 푸시
+//                title = "새 문의 메시지 도착";
+//                body = (sender.getNickname() != null ? sender.getNickname() : sender.getEmail()) + " : " + preview;
+//
+//                for (User staff : staffList) {
+//                    try {
+//                        pushService.sendToUser(staff.getUserId(), title, body, data);
+//                    } catch (Exception e) {
+//                        log.warn("[ChatPush] INQUIRY_NEW_MESSAGE to staff 실패 userId={}", staff.getUserId(), e);
+//                    }
+//                }
+//            } else if (sender.getAuthority() == Authority.INQUIRY || sender.getAuthority() == Authority.ADMIN) {
+//                // 문의 담당자/관리자 답변 → 고객에게 푸시
+//                title = "문의 답변이 도착했습니다";
+//                body = preview;
+//
+//                try {
+//                    pushService.sendToUser(customer.getUserId(), title, body, data);
+//                } catch (Exception e) {
+//                    log.warn("[ChatPush] INQUIRY_NEW_MESSAGE to customer 실패 userId={}", customer.getUserId(), e);
+//                }
+//            }
+//        } catch (Exception e) {
+//            log.warn("[ChatPush] sendInquiryPushIfNeeded 처리 중 예외", e);
+//        }
+//
+//    }
 }

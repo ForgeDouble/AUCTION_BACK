@@ -6,17 +6,15 @@ import com.example.auction.bid.dto.*;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
-import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
+import com.example.auction.push.service.PushService;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -25,6 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -42,6 +41,7 @@ public class BidService {
     private final BidEventProducer bidEventProducer;
     private final ObjectMapper objectMapper;
     private final BidWebsocketService bidWebsocketService;
+    private final PushService pushService;
 
     public BidService(
             @Qualifier("bidRedisson") RedissonClient bidRedissonClient,
@@ -52,7 +52,7 @@ public class BidService {
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
             BidEventProducer bidEventProducer,
             ObjectMapper objectMapper,
-            BidWebsocketService bidWebsocketService) {
+            BidWebsocketService bidWebsocketService, PushService pushService) {
         this.bidRedissonClient = bidRedissonClient;
         this.bidRepository = bidRepository;
         this.productRepository = productRepository;
@@ -62,6 +62,7 @@ public class BidService {
         this.bidEventProducer = bidEventProducer;
         this.objectMapper = objectMapper;
         this.bidWebsocketService = bidWebsocketService;
+        this.pushService = pushService;
     }
 
     // 입찰 서비스
@@ -102,7 +103,7 @@ public class BidService {
 //                log.info("락 해제 성공 - Key: {}", lockKey);
 //            }
 //        }
-        BidEvent bidEvent = bidHotAuction(bidCreateDto, user);
+        BidEvent bidEvent = bidHotAuction(bidCreateDto, user, product);
 
         bidWebsocketService.broadcastBidEvent(bidEvent);
 
@@ -132,7 +133,7 @@ public class BidService {
 //    }
 
     // 핫 경매
-    private BidEvent bidHotAuction(BidCreateDto bidDto, User user) {
+    private BidEvent bidHotAuction(BidCreateDto bidDto, User user, Product product) {
         String bidZSetKey = "product_bid_zset_" + bidDto.getProductId();
         String bidHashKey = "product_bid_hash_" + bidDto.getProductId();
         String auctionTimeKey = "auction_end_time_" + bidDto.getProductId();
@@ -213,7 +214,13 @@ public class BidService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("BidEvent JSON 변환 실패", e);
         }
+        // 직전 최고 입찰자에게 푸시
+        try {
+            handleOutbid(bidEvent, product);
+        } catch (Exception e) {
 
+            log.warn("[BidOutbid] Outbid 처리 중 예외 productId={}", bidDto.getProductId(), e);
+        }
         // 비동기 DB 저장 (정합성 보장용)
         bidEventProducer.publishBidEvent(bidEvent);
 
@@ -318,5 +325,69 @@ public class BidService {
         return bidListDto;
     }
 
+    private void handleOutbid(BidEvent currentBid, Product product) {
+        Long productId = currentBid.getProductId();
+
+        List<BidEvent> history = getAllBidHistory(productId, true);
+        if (history == null || history.size() < 2) {
+            return;
+        }
+
+        BidEvent top = history.get(0);
+        BidEvent previous = history.get(1);
+
+        // 혹시 동시에 다른 입찰이 더 들어와서 top이 바뀐 경우 방어
+        if (!Objects.equals(top.getUserId(), currentBid.getUserId())
+                || !Objects.equals(top.getBidAmount(), currentBid.getBidAmount())) {
+            // 지금 우리가 처리 중인 currentBid 가 실제 최고 입찰이 아니면 Outbid 처리 안 함
+            return;
+        }
+
+        if (Objects.equals(previous.getUserId(), currentBid.getUserId())) {
+            return;
+        }
+
+        sendOutbidNotification(previous, currentBid, product);
+    }
+
+    private void sendOutbidNotification(BidEvent previous, BidEvent current, Product product) {
+        Long loserUserId = previous.getUserId();
+        if (loserUserId == null) {
+            log.warn("[BidOutbid] previous userId 가 null 입니다. productId={}", current.getProductId());
+            return;
+        }
+
+        String productName = (product != null && product.getProductName() != null && !product.getProductName().isBlank())
+                ? product.getProductName()
+                : "경매 상품";
+
+        String lastStr = NumberFormat.getInstance(Locale.KOREA)
+                .format(previous.getBidAmount());
+        String newStr  = NumberFormat.getInstance(Locale.KOREA)
+                .format(current.getBidAmount());
+
+        String title = "입찰가가 추월되었습니다";
+        String body  = "[" + productName + "] 경매에서 "
+                + lastStr + "원 입찰이 "
+                + newStr + "원에 의해 추월되었습니다.";
+
+        Map<String,String> data = Map.of(
+                "type", "BID_OUTBID",
+                "productId", String.valueOf(current.getProductId()),
+                "previousAmount", String.valueOf(previous.getBidAmount()),
+                "newAmount", String.valueOf(current.getBidAmount())
+        );
+
+        try {
+            int success = pushService.sendToUser(loserUserId, title, body, data);
+            log.info("[BidOutbid] outbid 푸시 전송 완료 productId={}, loserId={}, success={}",
+                    current.getProductId(), loserUserId, success);
+        } catch (Exception e) {
+            log.warn("[BidOutbid] outbid 푸시 전송 실패 productId={}, loserId={}",
+                    current.getProductId(), loserUserId, e);
+        }
+
+
+    }
 
 }
