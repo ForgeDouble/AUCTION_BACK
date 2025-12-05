@@ -61,10 +61,8 @@ public class InquiryNotificationService {
         }
 
         // room.participantIds (이메일 리스트) → User 리스트
-        List<User> participants = room.getParticipantIds().stream()
-                .map(email -> userRepository.findByEmail(email).orElse(null))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        List<User> participants = userRepository
+                .findAllByEmailInAndDelYn(room.getParticipantIds(), DelYN.N);
 
         List<User> customers = participants.stream()
                 .filter(u -> u.getAuthority() == Authority.USER)
@@ -105,7 +103,7 @@ public class InquiryNotificationService {
                 }
             }
         } else if (senderIsHandler) {
-            // 담당자/ADMIN 이 보낸 메시지 → 고객에게
+            // 담당자/ADMIN 이 보낸 메시지 → 고객
             if (customers.isEmpty()) {
                 return;
             }

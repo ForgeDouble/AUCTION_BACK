@@ -23,9 +23,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -58,15 +60,37 @@ public class ChatMessageService {
 
     // 최신 메시지 조회
     public List<ChatMessageResponse> getRecent(String roomId, int size){
-        return chatMessageRepository
-                .findByRoomIdOrderByCreatedAtDesc(roomId, PageRequest.of(0, size))
-                .stream()
-                .map(this::chatMessageResponse)
+        List<ChatMessage> messages = chatMessageRepository
+                .findByRoomIdOrderByCreatedAtDesc(roomId, PageRequest.of(0, size));
+
+        List<String> senderEmails = messages.stream()
+                .map(ChatMessage::getSenderId)
+                .filter(Objects::nonNull)
+                .distinct()
                 .toList();
+
+        Map<String, User> senderMap = senderEmails.isEmpty()
+                ? Collections.emptyMap()
+                : userRepository.findAllByEmailInAndDelYn(senderEmails, DelYN.N)
+                .stream()
+                .collect(Collectors.toMap(User::getEmail, u -> u));
+
+        return messages.stream()
+                .map(m -> {
+                    User sender = senderMap.get(m.getSenderId());
+                    return ChatMessageResponse.fromEntity(m, sender);
+                })
+                .toList();
+
+
     }
 
     public void send(ChatMessageRequest chatMessageRequest) {
         String senderEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User sender = userRepository.findByEmailAndDelYn(senderEmail, DelYN.N)
+                .orElseThrow(() -> new IllegalArgumentException("발신자를 찾을 수 없습니다."));
+
 
         ChatRoom room = chatRoomRepository.findById(chatMessageRequest.getRoomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다"));
@@ -83,10 +107,7 @@ public class ChatMessageService {
         chatRoomRepository.save(room);
 
         try {
-            User sender = userRepository.findByEmail(senderEmail).orElse(null);
-            if (sender != null) {
-                inquiryNotificationService.notifyOnNewMessage(room, sender, preview);
-            }
+            inquiryNotificationService.notifyOnNewMessage(room, sender, preview);
         } catch (Exception e) {
             log.warn("[ChatNotify] 문의 메시지 알림 처리 중 예외 roomId={}", room.getId(), e);
         }
