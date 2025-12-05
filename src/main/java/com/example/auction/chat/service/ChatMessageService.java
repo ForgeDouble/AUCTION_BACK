@@ -136,7 +136,7 @@ public class ChatMessageService {
 
 //    private void sendInquiryPushIfNeeded(ChatRoom room, ChatMessage chatMessage, String preview) {
 //        try {
-//            // 1) 운영 채팅방이 아니면 푸시 안 보냄
+//            // 운영 채팅방이 아니면 푸시 안 보냄
 //            if (!room.isAdminChat()) {
 //                return;
 //            }
@@ -146,7 +146,6 @@ public class ChatMessageService {
 //                    .orElse(null);
 //            if (sender == null) return;
 //
-//            // 3) 참가자 목록 조회 (이메일 → User)
 //            List<User> participants = room.getParticipantIds().stream()
 //                    .map(email -> userRepository.findByEmailAndDelYn(email, DelYN.N).orElse(null))
 //                    .filter(Objects::nonNull)
@@ -181,7 +180,6 @@ public class ChatMessageService {
 //            data.put("senderNickname", sender.getNickname() != null ? sender.getNickname() : "");
 //            data.put("preview", preview != null ? preview : "");
 //
-//            // 4) 누가 보냈냐에 따라 대상 분기
 //            if (sender.getAuthority() == Authority.USER) {
 //                // 고객이 보낸 메시지 → 모든 문의 담당자에게 푸시
 //                title = "새 문의 메시지 도착";
