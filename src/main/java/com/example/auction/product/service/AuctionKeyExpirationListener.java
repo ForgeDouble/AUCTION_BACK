@@ -110,6 +110,7 @@ public class AuctionKeyExpirationListener implements MessageListener {
 
             // 종료까지 남은 시간 계산
             long secondsUntilEnd = Duration.between(now, endTime).getSeconds();
+            log.info("[secondsUntilEnd] 종료까지 남은 시간={} ", secondsUntilEnd);
 
             if (secondsUntilEnd > 0) {
                 // 경매 종료 타이머 등록
@@ -118,7 +119,7 @@ public class AuctionKeyExpirationListener implements MessageListener {
                         "1",
                         Duration.ofSeconds(secondsUntilEnd)
                 );
-                log.debug("[AuctionStart] 종료 타이머 등록 pid={}, seconds={}", pid, secondsUntilEnd);
+                log.info("[AuctionStart] 종료 타이머 등록 pid={}, seconds={}", pid, secondsUntilEnd);
 
                 // 10분 전 알림 타이머 (종료 10분 전 = 남은시간 - 600초)
                 if (secondsUntilEnd > 600) {
@@ -127,7 +128,7 @@ public class AuctionKeyExpirationListener implements MessageListener {
                             "1",
                             Duration.ofSeconds(secondsUntilEnd - 600)
                     );
-                    log.debug("[AuctionStart] 10분 전 알림 타이머 등록 pid={}", pid);
+                    log.info("[AuctionStart] 10분 전 알림 타이머 등록 pid={}", pid);
                 }
 
                 // 5분 전 알림 타이머 (종료 5분 전 = 남은시간 - 300초)
@@ -137,7 +138,7 @@ public class AuctionKeyExpirationListener implements MessageListener {
                             "1",
                             Duration.ofSeconds(secondsUntilEnd - 300)
                     );
-                    log.debug("[AuctionStart] 5분 전 알림 타이머 등록 pid={}", pid);
+                    log.info("[AuctionStart] 5분 전 알림 타이머 등록 pid={}", pid);
                 }
             } else {
                 log.warn("[AuctionStart] 이미 종료 시간이 지남 pid={}", pid);
@@ -191,7 +192,8 @@ public class AuctionKeyExpirationListener implements MessageListener {
 
         try {
             log.info("[Notify] {}분 전 알림 발송 pid={}", minutes, pid);
-            notificationService.notifyEndingSoon(pid, minutes);
+//            미구현
+//            notificationService.notifyEndingSoon(pid, minutes);
         } catch (Exception e) {
             log.error("[Notify] {}분 전 알림 실패 pid={}", minutes, pid, e);
         }
