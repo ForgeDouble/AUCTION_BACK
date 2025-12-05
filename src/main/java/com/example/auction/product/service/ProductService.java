@@ -1,6 +1,7 @@
 package com.example.auction.product.service;
 
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -24,6 +25,7 @@ import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.api.gax.rpc.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -88,6 +90,8 @@ public class ProductService {
         this.taskScheduler = taskScheduler;
     }
 
+    private static final String KEY_AUCTION_START = "auction:start:";
+
     /* 상품 임시정지 / 정지 함수 */
 	private void ensureCanMutateProducts(User user, String action) {
 		if (Boolean.TRUE.equals(user.getViewOnly())) {
@@ -100,17 +104,20 @@ public class ProductService {
 	}
 
 
-//    @Transactional
-//    public void controllProduct(ProductCreateDto dto, List<MultipartFile> files) {
-//        // 실제 DataBase에 Product 생성
-//        Product savedProduct = createProduct(dto, files);
-//        // 생성된 Product를 기준으로 bid Redis data, 실제 DataBase bid data 삽입
-//        startAuction(savedProduct.getProductId());
-//    }
+    @Transactional
+    public void controllAuction(ProductCreateDto dto, List<MultipartFile> files) {
+        // 실제 DataBase에 Product 생성
+        Product savedProduct = createProduct(dto, files);
+        // 생성된 Product를 기준으로 입찰의 시작 가격을 bid테이블에 삽입
+        // bid Redis data, 실제 DataBase bid data 삽입
+        setFirstBid(savedProduct.getProductId());
+    }
 
     // 아이템 생성
     @Transactional
     public Product createProduct(ProductCreateDto dto, List<MultipartFile> files) {
+
+        LocalDateTime now = LocalDateTime.now();
 
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("최소 1장의 이미지가 필요합니다.");
@@ -133,15 +140,30 @@ public class ProductService {
 
         productImageService.uploadInitial(savedProduct.getProductId(), files);
 
+        LocalDateTime startTime = savedProduct.getAuctionStartTime();
+        LocalDateTime endTime = savedProduct.getAuctionEndTime();
+
         log.info("상품 생성 완료 - pid={}, startAt={}, endAt={}",
                 savedProduct.getProductId(),
-                savedProduct.getAuctionStartTime(),
-                savedProduct.getAuctionEndTime());
+                startTime,
+                endTime);
+
+
+        // Redis에 경매 시작 타이머 등록 (5분 = 300초)
+        long secondsUntilStart = Duration.between(now, startTime).getSeconds();
+        bidRedisTemplate.opsForValue().set(
+                KEY_AUCTION_START + product.getProductId(),
+                "1",
+                Duration.ofSeconds(secondsUntilStart)
+        );
+        log.info("[ProductCreate] 시작 타이머 등록 pid={}, seconds={}",
+                product.getProductId(), secondsUntilStart);
+
         return savedProduct;
     }
 
     @Transactional
-    public void startAuction(Long productId) {
+    public void setFirstBid(Long productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다."));
 
@@ -239,6 +261,27 @@ public class ProductService {
         bid.setIsWinned(IsWinned.N);
 
         bidRepository.save(bid);
+    }
+
+    /**
+     * 경매 시작 (Status: READY → PROCESSING)
+     */
+    @Transactional
+    public void startAuction(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다: " + productId));
+
+        // 이미 시작된 경매는 무시
+        if (product.getStatus() != Status.READY) {
+            log.warn("[StartAuction] 이미 처리됨 pid={}, status={}", productId, product.getStatus());
+            return;
+        }
+
+        // 상태 변경: READY → PROCESSING
+        product.updateStatus(Status.PROCESSING);
+        productRepository.save(product);
+
+        log.info("[StartAuction] 경매 시작 완료 pid={}, status={}", productId, product.getStatus());
     }
 
 
@@ -370,7 +413,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Product getProduct(Long productId) {
         return productRepository.findById(productId)
-                .orElseThrow(() -> new IllegalArgumentException("상품을 찾을 수 없습니다: " + productId));
+                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다: " + productId));
     }
 
 

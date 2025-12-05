@@ -34,7 +34,7 @@ public class ProductController {
             @ModelAttribute ProductCreateDto productCreateDto,
             @RequestPart("files") List<MultipartFile> files
     ) {
-        productService.createProduct(productCreateDto, files);
+        productService.controllAuction(productCreateDto, files);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 생성 성공", null));
     }
     
