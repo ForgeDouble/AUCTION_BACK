@@ -93,12 +93,12 @@ public class Product extends BaseTimeEntity{
     }
     // 경매 시작 시간( 상품 등록으로부터 30 분 후 자동 시작)
     public LocalDateTime getAuctionStartTime() {
-        return this.getCreatedAt().plusMinutes(30);
+        return this.getCreatedAt().plusMinutes(2);
     }
     // 경매 종료 시간 계산 (24시간 고정)
     // 상품 등록으로부터 24시간 30분 후
     public LocalDateTime getAuctionEndTime() {
-        return this.getCreatedAt().plusMinutes(30).plusHours(24);
+        return this.getCreatedAt().plusMinutes(30);
     }
 
     // 경매 상태 체크
@@ -124,5 +124,12 @@ public class Product extends BaseTimeEntity{
             return Duration.ZERO;
         }
         return Duration.between(now, endTime);
+    }
+
+    /**
+     * 상태 변경 메서드
+     */
+    public void updateStatus(Status newStatus) {
+        this.status = newStatus;
     }
 }
