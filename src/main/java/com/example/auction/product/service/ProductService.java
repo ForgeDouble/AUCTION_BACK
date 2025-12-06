@@ -168,7 +168,7 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다."));
 
         // 종료(판매) 여부 확인
-        if (product.getStatus() != Status.PROCESSING) return;
+        if (product.getStatus() != Status.READY) return;
         // 경매가 시작된 상품인지 확인
         if (LocalDateTime.now().isBefore(product.getAuctionStartTime())) return;
 
