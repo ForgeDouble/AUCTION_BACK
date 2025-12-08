@@ -96,7 +96,7 @@ public class InquiryNotificationService {
 
             for (User h : handlers) {
                 try {
-                    pushService.sendToUser(h.getUserId(), title, body, data);
+                    pushService.sendToUser(h.getUserId(), title, body, data, NotificationCategory.INQUIRY, true);
                 } catch (Exception e) {
                     log.warn("[InquiryNotify] 새 문의 메시지 알림 실패 roomId={}, handlerId={}",
                             room.getId(), h.getUserId(), e);
@@ -123,7 +123,7 @@ public class InquiryNotificationService {
                     if (Objects.equals(customer.getUserId(), sender.getUserId())) {
                         continue;
                     }
-                    pushService.sendToUser(customer.getUserId(), title, body, data);
+                    pushService.sendToUser(customer.getUserId(), title, body, data, NotificationCategory.INQUIRY, true);
                 } catch (Exception e) {
                     log.warn("[InquiryNotify] 문의 답변 알림 실패 roomId={}, customerId={}",
                             room.getId(), customer.getUserId(), e);
@@ -138,5 +138,4 @@ public class InquiryNotificationService {
         if (text.length() <= limit) return text;
         return text.substring(0, limit) + "...";
     }
-
 }
