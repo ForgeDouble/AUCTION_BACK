@@ -330,7 +330,7 @@ public class ProductService {
 
             // 이미 종료된 건이면 중복 종료 방지
             if (currentProduct.getStatus() != Status.PROCESSING) {
-                log.debug("[Auction] 이미 종료된 상품 pid={}", pid);
+                log.info("[Auction] 이미 종료된 상품 pid={}", pid);
                 return;
             }
             // 조기 종료 방지
@@ -369,22 +369,27 @@ public class ProductService {
             // - winnerBid가 있고 userId가 null 아님
             boolean hasRealWinner = (zcount >= 2) && (winnerBid != null) && (winnerBid.getUserId() != null);
 
-            // 1. 상품 상태를 Status.SELLED 변경 (항상 종료로 마킹) --> 이부분 필요시 수정
-            currentProduct.setStatus(Status.SELLED);
-            productRepository.save(currentProduct);
+
+
 
             if (hasRealWinner) {
+                // 1. 상품 상태를 Status.SELLED 변경
+                currentProduct.updateStatus(Status.SELLED);
+                productRepository.save(currentProduct);
                 log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
                         pid, winnerBid.getUserName(), winnerBid.getBidAmount());
                 try {
-                    auctionNotificationService.notifyAuctionEndedWithWinner(
-                            currentProduct.getProductId(), winnerBid, currentProduct.getProductName()
-                    );
+//                    auctionNotificationService.notifyAuctionEndedWithWinner(
+//                            currentProduct.getProductId(), winnerBid, currentProduct.getProductName()
+//                    );
+                    log.info("경매 종료 알림");
                 } catch (Exception ex) {
                     log.warn("[AuctionNotify] 낙찰자 알림 실패 productId={}, winnerUserId={}",
                             pid, winnerBid.getUserId(), ex);
                 }
             } else {
+                currentProduct.updateStatus(Status.NOTSELLED);
+                productRepository.save(currentProduct);
                 log.info("경매 종료 - ProductId: {}, 입찰자 없음(또는 기본가만 존재)", pid);
                 try {
                     auctionNotificationService.notifyAuctionEndedNoWinner(
