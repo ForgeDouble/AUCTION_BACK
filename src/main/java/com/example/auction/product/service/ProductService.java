@@ -170,7 +170,7 @@ public class ProductService {
         // 종료(판매) 여부 확인
         if (product.getStatus() != Status.READY) return;
         // 경매가 시작된 상품인지 확인
-        if (LocalDateTime.now().isBefore(product.getAuctionStartTime())) return;
+//        if (LocalDateTime.now().isBefore(product.getAuctionStartTime())) return;
 
 
         String bidZSetKey = "product_bid_zset_" + productId;
@@ -333,11 +333,23 @@ public class ProductService {
                 log.info("[Auction] 이미 종료된 상품 pid={}", pid);
                 return;
             }
-            // 조기 종료 방지
-            if (LocalDateTime.now().isBefore(currentProduct.getAuctionEndTime())) {
-                log.info("조기 종료 방지 - pid={}, now<end", pid);
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime auctionEndTime = currentProduct.getAuctionEndTime();
+
+            // 스케줄러 주기(예: 1초)를 고려한 허용 범위
+            // 종료 시간 1초 전부터 종료 처리 가능
+            final int SCHEDULER_GRACE_SECONDS = 1;
+            LocalDateTime allowedEndTime = auctionEndTime.minusSeconds(SCHEDULER_GRACE_SECONDS);
+
+            if (now.isBefore(allowedEndTime)) {
+                log.info("조기 종료 방지 - pid={}, now={}, allowedEnd={}, actualEnd={}",
+                        pid, now, allowedEndTime, auctionEndTime);
                 return;
             }
+
+            log.info("경매 종료 처리 시작 - pid={}, scheduledEnd={}, actualProcessTime={}, diff={}ms",
+                    pid, auctionEndTime, now,
+                    ChronoUnit.MILLIS.between(auctionEndTime, now));
 
             // 2. Redis에서 최고 입찰자 확인
             String bidZSetKey = "product_bid_zset_" + pid;
