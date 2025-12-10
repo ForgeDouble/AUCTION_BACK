@@ -5,12 +5,12 @@ import com.example.auction.chat.domain.ChatRoom;
 import com.example.auction.chat.domain.MessageType;
 import com.example.auction.chat.dto.ChatMessageRequest;
 import com.example.auction.chat.dto.ChatMessageResponse;
+import com.example.auction.chat.dto.ChatUserSummary;
 import com.example.auction.chat.repository.ChatMessageRepository;
 import com.example.auction.chat.repository.ChatRoomRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.notification.service.InquiryNotificationService;
 import com.example.auction.push.service.PushService;
-import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -23,10 +23,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -44,8 +41,9 @@ public class ChatMessageService {
     private final UserRepository userRepository;
     private final InquiryNotificationService inquiryNotificationService;
     private final PushService pushService;
+    private final ChatUserCacheService chatUserCacheService;
 
-    public ChatMessageService(ChatMessageRepository chatMessageRepository, ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, SimpMessageSendingOperations messaging, @Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate, @Qualifier("chat") ChannelTopic chatTopic, UserRepository userRepository, InquiryNotificationService inquiryNotificationService, PushService pushService) {
+    public ChatMessageService(ChatMessageRepository chatMessageRepository, ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, SimpMessageSendingOperations messaging, @Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate, @Qualifier("chat") ChannelTopic chatTopic, UserRepository userRepository, InquiryNotificationService inquiryNotificationService, PushService pushService, ChatUserCacheService chatUserCacheService) {
         this.chatMessageRepository = chatMessageRepository;
         this.chatRoomRepository = chatRoomRepository;
         this.chatStateService = chatStateService;
@@ -55,89 +53,107 @@ public class ChatMessageService {
         this.userRepository = userRepository;
         this.inquiryNotificationService = inquiryNotificationService;
         this.pushService = pushService;
+        this.chatUserCacheService = chatUserCacheService;
     }
 
 
     // 최신 메시지 조회
-    public List<ChatMessageResponse> getRecent(String roomId, int size){
+    public List<ChatMessageResponse> getRecent(String roomId, int size) {
+        //  메시지 목록 조회 (기존과 동일)
         List<ChatMessage> messages = chatMessageRepository
                 .findByRoomIdOrderByCreatedAtDesc(roomId, PageRequest.of(0, size));
 
+        // 발신자 이메일 목록 추출
         List<String> senderEmails = messages.stream()
                 .map(ChatMessage::getSenderId)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
 
-        Map<String, User> senderMap = senderEmails.isEmpty()
-                ? Collections.emptyMap()
-                : userRepository.findAllByEmailInAndDelYn(senderEmails, DelYN.N)
-                .stream()
-                .collect(Collectors.toMap(User::getEmail, u -> u));
+        // 3) 한 번에 DB 조회 후, ChatUserSummary 로 변환해서 Map 캐시
+        Map<String, ChatUserSummary> senderMap = new HashMap<>();
+        for (String email : senderEmails) {
+            try {
+                ChatUserSummary summary = chatUserCacheService.getByEmail(email);
+                senderMap.put(email, summary);
+            } catch (RuntimeException e) {
+
+            }
+        }
 
         return messages.stream()
                 .map(m -> {
-                    User sender = senderMap.get(m.getSenderId());
+                    ChatUserSummary sender = senderMap.get(m.getSenderId());
                     return ChatMessageResponse.fromEntity(m, sender);
                 })
                 .toList();
-
-
     }
 
     public void send(ChatMessageRequest chatMessageRequest) {
+        // 1) 발신자 이메일 (SecurityContext 에서 가져옴)
         String senderEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
+        // 2) 발신자 엔티티 1번만 조회
         User sender = userRepository.findByEmailAndDelYn(senderEmail, DelYN.N)
                 .orElseThrow(() -> new IllegalArgumentException("발신자를 찾을 수 없습니다."));
+        ChatUserSummary senderSummary = ChatUserSummary.from(sender);
 
-
+        // 3) 방 조회
         ChatRoom room = chatRoomRepository.findById(chatMessageRequest.getRoomId())
-                .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다"));
+                .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다."));
 
+        // 4) 방 참가자인지 검증
         if (!room.getParticipantIds().contains(senderEmail)) {
             throw new IllegalStateException("해당 채팅방 참가자만 메시지를 보낼 수 있습니다.");
         }
 
+        // 5) 메시지 엔티티 생성 및 저장
         ChatMessage chatMessage = chatMessageRequest.toEntity(senderEmail);
         chatMessage = chatMessageRepository.save(chatMessage);
 
+        // 6) 최근 메시지 미리보기 + 시간 업데이트
         String preview = previewText(chatMessageRequest);
         room.updateRecent(preview, Instant.now());
         chatRoomRepository.save(room);
 
+        // 7) 문의방이면 담당자/고객 알림 (기존 로직 유지)
         try {
             inquiryNotificationService.notifyOnNewMessage(room, sender, preview);
         } catch (Exception e) {
             log.warn("[ChatNotify] 문의 메시지 알림 처리 중 예외 roomId={}", room.getId(), e);
         }
 
-        // 상대방 읽음 / 알림 처리
-        for (String uid : room.getParticipantIds()){
+        // 8) 상대방 읽음/알림 처리 (기존 로직 그대로)
+        for (String uid : room.getParticipantIds()) {
             if (uid.equals(senderEmail)) continue;
+
             String presentRoom = chatStateService.currentRoomOf(uid);
             if (presentRoom == null || !presentRoom.equals(room.getId())) {
                 chatStateService.incUnread(room.getId(), uid);
                 chatStateService.incAlarm(uid);
             }
         }
-//        sendInquiryPushIfNeeded(room, chatMessage, preview);
+        // 기존 FCM push 별도 로직은 주석 처리 상태라 그대로 두었음
+        // sendInquiryPushIfNeeded(room, chatMessage, preview);
 
-        ChatMessageResponse payload = chatMessageResponse(chatMessage);
-        // 단일 인스턴스용 STOMP 전송
+        // 9) 최종 payload 생성
+        ChatMessageResponse payload = ChatMessageResponse.fromEntity(chatMessage, senderSummary);
+
+        // 10) 단일 인스턴스용 STOMP 전송 (기존 그대로)
         messaging.convertAndSend("/topic/chat/room/" + chatMessageRequest.getRoomId(), payload);
-        // 멀티 인스턴스용 Redis Pub/Sub 전파
+        // 11) 멀티 인스턴스용 Redis Pub/Sub 전파 (기존 그대로)
         redisTemplate.convertAndSend(chatTopic.getTopic(), payload);
     }
 
-    private ChatMessageResponse chatMessageResponse(ChatMessage chatMessage){
-
-        User sender = null;
+    private ChatMessageResponse chatMessageResponse(ChatMessage chatMessage) {
+        ChatUserSummary sender = null;
         try {
-            sender = userRepository.findByEmail(chatMessage.getSenderId()).orElse(null);
+            sender = chatUserCacheService.getByEmail(chatMessage.getSenderId());
         } catch (Exception ignored) {}
 
         return ChatMessageResponse.fromEntity(chatMessage, sender);
+
+
     }
 
     // 최근 채팅 미리보기 셋팅

@@ -1,6 +1,7 @@
 package com.example.auction.notification.service;
 
 import com.example.auction.chat.domain.ChatRoom;
+import com.example.auction.chat.dto.ChatUserSummary;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.notification.domain.NotificationCategory;
 import com.example.auction.push.service.PushService;
@@ -25,7 +26,7 @@ public class InquiryNotificationService {
     private final UserRepository userRepository;
 
     // 1) 새 문의방 생성 알림: 고객 → 담당자 1명
-    public void notifyNewInquiryRoom(ChatRoom room, User customer, User inquirer) {
+    public void notifyNewInquiryRoom(ChatRoom room, ChatUserSummary customer, User inquirer) {
         if (room == null || customer == null || inquirer == null) {
             log.warn("[InquiryNotify] 새 문의 알림 파라미터 누락 room/customer/inquirer null");
             return;

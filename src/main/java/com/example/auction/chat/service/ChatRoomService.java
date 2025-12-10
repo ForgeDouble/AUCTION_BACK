@@ -4,6 +4,7 @@ import com.example.auction.chat.domain.ChatRoom;
 import com.example.auction.chat.dto.ChatMemberResponse;
 import com.example.auction.chat.dto.ChatRoomOpenRequest;
 import com.example.auction.chat.dto.ChatRoomResponse;
+import com.example.auction.chat.dto.ChatUserSummary;
 import com.example.auction.chat.repository.ChatRoomRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.notification.service.InquiryNotificationService;
@@ -15,10 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class ChatRoomService {
@@ -28,13 +27,15 @@ public class ChatRoomService {
     private final UserRepository userRepository;
     private final InquiryResolver inquiryResolver;
     private final InquiryNotificationService inquiryNotificationService;
+    private final ChatUserCacheService chatUserCacheService;
 
-    public ChatRoomService(ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, UserRepository userRepository, InquiryResolver inquiryResolver, InquiryNotificationService inquiryNotificationService) {
+    public ChatRoomService(ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, UserRepository userRepository, InquiryResolver inquiryResolver, InquiryNotificationService inquiryNotificationService, ChatUserCacheService chatUserCacheService) {
         this.chatRoomRepository = chatRoomRepository;
         this.chatStateService = chatStateService;
         this.userRepository = userRepository;
         this.inquiryResolver = inquiryResolver;
         this.inquiryNotificationService = inquiryNotificationService;
+        this.chatUserCacheService = chatUserCacheService;
     }
 
     // 방생성관련 user1 의 userId user2의 userId
@@ -42,14 +43,13 @@ public class ChatRoomService {
         return (a.compareTo(b) <= 0) ? a + "_" + b : b + "_" + a;
     }
 
-    private User getCurrentUser() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("현재 로그인한 유저를 찾을 수 없습니다."));
+    private ChatUserSummary getCurrentUserSummary() {
+        return chatUserCacheService.getCurrentUser();
     }
 
     public ChatRoom openRoom(ChatRoomOpenRequest request){
-        User me = getCurrentUser();
+        ChatUserSummary me = getCurrentUserSummary();
+
         String targetEmail = request.getTargetId();
 
         User target = userRepository.findByEmailAndDelYn(targetEmail, DelYN.N)
@@ -76,7 +76,7 @@ public class ChatRoomService {
 
     @Transactional
     public ChatRoom openInquiryRoom(ChatRoomOpenRequest request) {
-        User me = getCurrentUser();
+        ChatUserSummary me = getCurrentUserSummary();
         User inquirer = inquiryResolver.resolve();
 
         String userEmail = me.getEmail();
@@ -97,6 +97,10 @@ public class ChatRoomService {
             );
             ChatRoom saved = chatRoomRepository.save(chatRoom);
 
+//            User meEntity = userRepository.findByEmailAndDelYn(userEmail, DelYN.N)
+//                    .orElseThrow(() -> new IllegalStateException("현재 유저를 찾을 수 없습니다."));
+
+
             // 새 문의방 생성 → 담당자에게 푸시
             inquiryNotificationService.notifyNewInquiryRoom(saved, me, inquirer);
 
@@ -106,25 +110,43 @@ public class ChatRoomService {
 
 
     // 내 채팅방 목록
-    @Transactional(readOnly = true)
     public List<ChatRoomResponse> listMyRooms() {
-        User me = getCurrentUser();
+        ChatUserSummary me = getCurrentUserSummary();
         String myEmail = me.getEmail();
 
         List<ChatRoom> rooms = chatRoomRepository.findByParticipantIdsContains(myEmail);
-        rooms.sort(Comparator.comparing(ChatRoom::getRecentTime, Comparator.nullsLast(Comparator.naturalOrder())).reversed());
+        rooms.sort(Comparator.comparing(
+                ChatRoom::getRecentTime,
+                Comparator.nullsLast(Comparator.naturalOrder())
+        ).reversed());
+
+        Set<String> allEmails = rooms.stream()
+                .flatMap(room -> room.getParticipantIds().stream())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<String, ChatUserSummary> userMap = new java.util.HashMap<>();
+        for (String email : allEmails) {
+            try {
+                ChatUserSummary summary = chatUserCacheService.getByEmail(email);
+                userMap.put(email, summary);
+            } catch (RuntimeException e) {
+            }
+        }
 
         List<ChatRoomResponse> result = new ArrayList<>();
         for (ChatRoom chatRoom : rooms) {
             int unread = chatStateService.getUnread(chatRoom.getId(), myEmail);
-            String roomName = buildRoomName(me, chatRoom);
+            String roomName = buildRoomName(me, chatRoom, userMap);
             result.add(ChatRoomResponse.fromEntity(chatRoom, unread, roomName));
         }
         return result;
+
+
     }
 
     public void enter(String roomId) {
-        User me = getCurrentUser();
+        ChatUserSummary me = getCurrentUserSummary();
         String email = me.getEmail();
         chatStateService.enterRoom(email, roomId);
 
@@ -134,14 +156,14 @@ public class ChatRoomService {
     }
 
     public void exit() {
-        User me = getCurrentUser();
+        ChatUserSummary me = getCurrentUserSummary();
         chatStateService.exitRoom(me.getEmail());
     }
 
 
     @Transactional
     public void inviteInquiry(String roomId, String targetInquiryEmail) {
-        User inviter = getCurrentUser();
+        ChatUserSummary inviter = getCurrentUserSummary();
         ChatRoom room = chatRoomRepository.findById(roomId)
                 .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
 
@@ -180,9 +202,12 @@ public class ChatRoomService {
     }
 
     // 방 이름 생성 로직 관련
-    private String buildRoomName(User me, ChatRoom room) {
-        List<User> participants = room.getParticipantIds().stream()
-                .map(email -> userRepository.findByEmail(email).orElse(null))
+    private String buildRoomName(ChatUserSummary me,
+                                 ChatRoom room,
+                                 Map<String, ChatUserSummary> userMap) {
+
+        List<ChatUserSummary> participants = room.getParticipantIds().stream()
+                .map(userMap::get)
                 .filter(Objects::nonNull)
                 .toList();
 
@@ -194,32 +219,34 @@ public class ChatRoomService {
             if (me.getAuthority() == Authority.USER) {
                 return "문의하기";
             }
-            User customer = participants.stream()
+            ChatUserSummary customer = participants.stream()
                     .filter(u -> u.getAuthority() == Authority.USER)
                     .findFirst()
                     .orElse(null);
-            if (customer != null) {
+            if (customer != null && customer.getNickname() != null) {
                 return customer.getNickname();
             }
             return "문의하기";
         }
 
         if (room.isAdminChat() && !hasUser && hasAdmin && hasInquiry) {
-            User admin = participants.stream()
+            ChatUserSummary admin = participants.stream()
                     .filter(u -> u.getAuthority() == Authority.ADMIN)
                     .findFirst()
                     .orElse(null);
-            User inquiry = participants.stream()
+            ChatUserSummary inquiry = participants.stream()
                     .filter(u -> u.getAuthority() == Authority.INQUIRY)
                     .findFirst()
                     .orElse(null);
 
             if (admin != null && inquiry != null) {
-                return admin.getNickname() + " - " + inquiry.getNickname();
+                String adminName = admin.getNickname() != null ? admin.getNickname() : admin.getEmail();
+                String inquiryName = inquiry.getNickname() != null ? inquiry.getNickname() : inquiry.getEmail();
+                return adminName + " - " + inquiryName;
             }
         }
 
-        List<User> others = participants.stream()
+        List<ChatUserSummary> others = participants.stream()
                 .filter(u -> !u.getEmail().equals(me.getEmail()))
                 .toList();
 
@@ -228,12 +255,15 @@ public class ChatRoomService {
         }
 
         if (others.size() == 1) {
-            return others.get(0).getNickname();
+            ChatUserSummary other = others.get(0);
+            return other.getNickname() != null ? other.getNickname() : other.getEmail();
         }
 
         return others.stream()
-                .map(User::getNickname)
+                .map(u -> u.getNickname() != null ? u.getNickname() : u.getEmail())
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("그룹 채팅");
+
+
     }
 }
