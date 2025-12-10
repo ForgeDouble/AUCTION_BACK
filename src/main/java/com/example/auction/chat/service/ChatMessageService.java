@@ -90,40 +90,40 @@ public class ChatMessageService {
     }
 
     public void send(ChatMessageRequest chatMessageRequest) {
-        // 1) 발신자 이메일 (SecurityContext 에서 가져옴)
+
         String senderEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        // 2) 발신자 엔티티 1번만 조회
-        User sender = userRepository.findByEmailAndDelYn(senderEmail, DelYN.N)
-                .orElseThrow(() -> new IllegalArgumentException("발신자를 찾을 수 없습니다."));
-        ChatUserSummary senderSummary = ChatUserSummary.from(sender);
+        // 발신자 엔티티 1번만 조회
+//        User sender = userRepository.findByEmailAndDelYn(senderEmail, DelYN.N)
+//                .orElseThrow(() -> new IllegalArgumentException("발신자를 찾을 수 없습니다."));
+        ChatUserSummary senderSummary = chatUserCacheService.getByEmail(senderEmail);
 
-        // 3) 방 조회
+        // 방 조회
         ChatRoom room = chatRoomRepository.findById(chatMessageRequest.getRoomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다."));
 
-        // 4) 방 참가자인지 검증
+        // 방 참가자인지 검증
         if (!room.getParticipantIds().contains(senderEmail)) {
             throw new IllegalStateException("해당 채팅방 참가자만 메시지를 보낼 수 있습니다.");
         }
 
-        // 5) 메시지 엔티티 생성 및 저장
+        // 메시지 엔티티 생성 및 저장
         ChatMessage chatMessage = chatMessageRequest.toEntity(senderEmail);
         chatMessage = chatMessageRepository.save(chatMessage);
 
-        // 6) 최근 메시지 미리보기 + 시간 업데이트
+        // 최근 메시지 미리보기 + 시간 업데이트
         String preview = previewText(chatMessageRequest);
         room.updateRecent(preview, Instant.now());
         chatRoomRepository.save(room);
 
-        // 7) 문의방이면 담당자/고객 알림 (기존 로직 유지)
+        // 문의방이면 담당자/고객 알림 (기존 로직 유지)
         try {
-            inquiryNotificationService.notifyOnNewMessage(room, sender, preview);
+            inquiryNotificationService.notifyOnNewMessage(room, senderSummary, preview);
         } catch (Exception e) {
             log.warn("[ChatNotify] 문의 메시지 알림 처리 중 예외 roomId={}", room.getId(), e);
         }
 
-        // 8) 상대방 읽음/알림 처리 (기존 로직 그대로)
+        // 상대방 읽음/알림 처리 (기존 로직 그대로)
         for (String uid : room.getParticipantIds()) {
             if (uid.equals(senderEmail)) continue;
 
@@ -136,12 +136,12 @@ public class ChatMessageService {
         // 기존 FCM push 별도 로직은 주석 처리 상태라 그대로 두었음
         // sendInquiryPushIfNeeded(room, chatMessage, preview);
 
-        // 9) 최종 payload 생성
+        // 최종 payload 생성
         ChatMessageResponse payload = ChatMessageResponse.fromEntity(chatMessage, senderSummary);
 
-        // 10) 단일 인스턴스용 STOMP 전송 (기존 그대로)
+        // 단일 인스턴스용 STOMP 전송 (기존 그대로)
         messaging.convertAndSend("/topic/chat/room/" + chatMessageRequest.getRoomId(), payload);
-        // 11) 멀티 인스턴스용 Redis Pub/Sub 전파 (기존 그대로)
+        // 멀티 인스턴스용 Redis Pub/Sub 전파 (기존 그대로)
         redisTemplate.convertAndSend(chatTopic.getTopic(), payload);
     }
 

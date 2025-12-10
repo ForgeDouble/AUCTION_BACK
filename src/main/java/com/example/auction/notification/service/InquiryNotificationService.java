@@ -51,7 +51,7 @@ public class InquiryNotificationService {
     }
 
     // 2) 문의방 내 새 메시지 알림 (유저 ↔ 담당자)
-    public void notifyOnNewMessage(ChatRoom room, User sender, String preview) {
+    public void notifyOnNewMessage(ChatRoom room, ChatUserSummary sender, String preview) {
         if (room == null || sender == null) {
             return;
         }
