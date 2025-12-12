@@ -59,8 +59,8 @@ public class SecurityConfig {
                                 "/product/all",
                                 "/bid/**",
                                 "/category/**",
-                                "/ws/**"
-
+                                "/ws/**",
+                                "/ws-public/**"
 
                         ).permitAll()  // 로그인, 회원가입 경로는 인증x
                         .anyRequest().authenticated() // 나머지 토큰값 필요
