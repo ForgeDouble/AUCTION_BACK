@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /* 상품 상세 조회 */
@@ -24,6 +25,7 @@ public class ProductDetailDto {
     private Long price;
     private Status status;
 	private List<ProductImageDto> images;
+    private LocalDateTime auctionEndTime;
     
     public static ProductDetailDto fromEntity(Product product) {
     	return ProductDetailDto.builder()
@@ -33,6 +35,7 @@ public class ProductDetailDto {
     			.productContent(product.getProductContent())
     			.price(product.getPrice())
     			.status(product.getStatus())
+                .auctionEndTime(product.getAuctionEndTime())
     			.build();
     }
 
