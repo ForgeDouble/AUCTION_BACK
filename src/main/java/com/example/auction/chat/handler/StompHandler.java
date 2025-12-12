@@ -15,6 +15,9 @@ import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -33,8 +36,18 @@ public class StompHandler implements ChannelInterceptor {
             return message;
         }
 
-        // CONNECT 시에만 토큰 헤더에서 검증
+        // 엔드포인트 타입 확인
+        String endpointType = (String) accessor.getSessionAttributes().get("endpointType");
+        boolean isPublic = "public".equals(endpointType);
+
+        // CONNECT 시 인증 처리
         if (StompCommand.CONNECT.equals(command)) {
+            if (isPublic) {
+                log.info("✅ 공개 엔드포인트 연결 허용 (인증 없음)");
+                return message;
+            }
+
+            // 인증 필수 로직
             String raw = firstNonNull(
                     accessor.getFirstNativeHeader("Authorization"),
                     accessor.getFirstNativeHeader("authorization"),
@@ -63,7 +76,6 @@ public class StompHandler implements ChannelInterceptor {
 
             // presence 기록하기
             userStatusService.touch(email);
-
             // 세션에 email 저장해두기
             accessor.getSessionAttributes().put("email", email);
         }
@@ -72,11 +84,15 @@ public class StompHandler implements ChannelInterceptor {
         if (StompCommand.SUBSCRIBE.equals(command)
                 || StompCommand.SEND.equals(command)) {
 
+            if (isPublic) {
+                // 공개 엔드포인트는 인증 체크 건너뛰기
+                return message;
+            }
+
             Object emailObj = accessor.getSessionAttributes().get("email");
             if (emailObj instanceof String email && !email.isBlank()) {
                 userStatusService.touch(email);
             }
-
         }
 
         return message;
