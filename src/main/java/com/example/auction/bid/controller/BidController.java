@@ -36,8 +36,10 @@ public class BidController {
 
     //    입찰 - websocket 버전
     @MessageMapping("/bid")
-    public void bidProductWeb(BidCreateDto bidCreateDto) {
-        BidEvent bidEvent = bidService.bidProduct(bidCreateDto);
+    public void bidProductWeb(Principal principal, BidCreateDto bidCreateDto) {
+        String userEmail = principal.getName();
+        log.info("userEmail : {}", userEmail);
+        BidEvent bidEvent = bidService.bidProduct(bidCreateDto, userEmail);
     }
 
     //    productId로 입찰 목록 조회
