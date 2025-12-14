@@ -67,15 +67,11 @@ public class BidService {
 
     // 입찰 서비스
 //    로직 보완 필요
-    public BidEvent bidProduct(BidCreateDto bidCreateDto) {
-//        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-//        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-//                .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
-        
-//        websocket test용 코드
-        User user = userRepository.findById(1L)
-                .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
+    public BidEvent bidProduct(BidCreateDto bidCreateDto, String userEmail) {
 
+        User user = userRepository.findByEmailAndDelYn(userEmail, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
+        
         Product product = productRepository.findByProductIdAndDelYn(bidCreateDto.getProductId(), DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("Product"));
 

@@ -7,14 +7,18 @@ import com.example.auction.bid.dto.*;
 import com.example.auction.bid.service.BidService;
 import com.example.auction.common.dto.CommonResDto;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/bid")
 @RequiredArgsConstructor
@@ -24,11 +28,11 @@ public class BidController {
     private final SimpMessagingTemplate messagingTemplate;
 
 //    입찰
-    @PostMapping("/bid")
-    public ResponseEntity<?> bidProduct(@ModelAttribute BidCreateDto bidCreateDto) {
-        BidEvent bidEvent = bidService.bidProduct(bidCreateDto);
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 입찰 성공", bidEvent));
-    }
+//    @PostMapping("/bid")
+//    public ResponseEntity<?> bidProduct(@ModelAttribute BidCreateDto bidCreateDto) {
+//        BidEvent bidEvent = bidService.bidProduct(bidCreateDto);
+//        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 입찰 성공", bidEvent));
+//    }
 
     //    입찰 - websocket 버전
     @MessageMapping("/bid")
