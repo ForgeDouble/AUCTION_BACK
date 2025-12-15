@@ -29,7 +29,6 @@ public class JwtTokenProvider {
 
     @PostConstruct
     public void init() {
-        // [STEP1] HS512는 키 길이가 충분해야 함 (최소 64바이트 권장)
         byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
         if (keyBytes.length < 64) {
             throw new IllegalStateException("jwt.secretKeyRT 가 너무 짧습니다. HS512는 64바이트 이상 권장입니다.");

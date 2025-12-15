@@ -1,5 +1,6 @@
 package com.example.auction.common.auth;
 
+import com.example.auction.chat.dto.ChatUserSummary;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -24,4 +25,14 @@ public final class SecurityUserContext {
     }
 
 
+    public static ChatUserSummary chatSummary() {
+        AuthUserPrincipal authUserPrincipal = principal();
+        return ChatUserSummary.builder()
+                .userId(authUserPrincipal.getUserId())
+                .email(authUserPrincipal.getEmail())
+                .nickname(authUserPrincipal.getNickname())
+                .authority(authUserPrincipal.getAuthority())
+                .profileImageUrl(authUserPrincipal.getProfileImageUrl())
+                .build();
+    }
 }
