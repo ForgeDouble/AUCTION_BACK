@@ -71,7 +71,7 @@ public class BidService {
 
         User user = userRepository.findByEmailAndDelYn(userEmail, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
-        
+
         Product product = productRepository.findByProductIdAndDelYn(bidCreateDto.getProductId(), DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("Product"));
 
@@ -291,7 +291,7 @@ public class BidService {
     //   특정 입찰 목록 조회
     @Transactional(readOnly = true)
     public List<BidAllDto> readAllBidsByProductId(Long productId) {
-        List<BidAllDto> bidAllDtos = bidRepository.findAllByProduct_ProductId(productId).stream()
+        List<BidAllDto> bidAllDtos = bidRepository.findAllByProduct_ProductIdOrderByCreatedAtDesc(productId).stream()
                 .map(BidAllDto::fromEntity)
                 .collect(Collectors.toList());
         return bidAllDtos;

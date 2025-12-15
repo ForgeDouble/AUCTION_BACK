@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BidRepository extends JpaRepository<Bid, Long> {
-    List<Bid> findAllByProduct_ProductId(Long productId);
+    List<Bid> findAllByProduct_ProductIdOrderByCreatedAtDesc(Long productId);
     Optional<Bid> findByProduct_ProductIdAndIsWinned(Long productId, IsWinned isWinned);
     Optional<Bid> findTopByProduct_ProductIdOrderByCreatedAtDesc(Long productId);
 
