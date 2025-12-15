@@ -20,22 +20,28 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class AuthUserPrincipal implements UserDetails, Serializable {
-
+    private static final long serialVersionUID = 1L;
     private Long userId;
     private String email;
     private Authority authority;
     private String nickname;
     private String profileImageUrl;
-    private Instant suspendedUntil;
-    private Boolean viewOnly;
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (authority == null) return List.of();
         return List.of(new SimpleGrantedAuthority("ROLE_" + authority.name()));
     }
+    @Override
+    public String getPassword() {
+        return null;
+    }
 
-    @Override public String getPassword() { return ""; }
-    @Override public String getUsername() { return email; }
+    @Override
+    public String getUsername() {
+        return email;
+    }
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
