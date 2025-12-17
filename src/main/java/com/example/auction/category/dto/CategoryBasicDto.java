@@ -6,19 +6,17 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.List;
 /*경로 확인 필요*/
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CategoryDto {
+public class CategoryBasicDto {
     private Long categoryId;
     private String categoryName;
 
-    public static CategoryDto fromEntity(Category category) {
-        return CategoryDto.builder()
+    public static CategoryBasicDto fromEntity(Category category) {
+        return CategoryBasicDto.builder()
                 .categoryId(category.getCategoryId())
                 .categoryName(category.getCategoryName())
                 .build();
