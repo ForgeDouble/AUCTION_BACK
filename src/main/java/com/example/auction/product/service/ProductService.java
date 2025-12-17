@@ -13,7 +13,7 @@ import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.bid.repository.BidRepository;
-import com.example.auction.category.dto.CategoryDto;
+import com.example.auction.category.dto.CategoryBasicDto;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.notification.service.AuctionNotificationService;
@@ -25,7 +25,6 @@ import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.api.gax.rpc.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -528,8 +527,8 @@ public class ProductService {
                 if (dto.getCategoryId() != null) {
                     Category cat = categoryMap.get(dto.getCategoryId());
                     if (cat != null) {
-                        List<CategoryDto> path = cat.getPath().stream()
-                                .map(CategoryDto::fromEntity)
+                        List<CategoryBasicDto> path = cat.getPath().stream()
+                                .map(CategoryBasicDto::fromEntity)
                                 .collect(Collectors.toList());
                         dto.setPath(path);
                     }

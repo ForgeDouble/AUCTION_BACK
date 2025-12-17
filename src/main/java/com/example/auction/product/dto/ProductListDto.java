@@ -1,6 +1,6 @@
 package com.example.auction.product.dto;
 
-import com.example.auction.category.dto.CategoryDto;
+import com.example.auction.category.dto.CategoryBasicDto;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.domain.Status;
 import lombok.AllArgsConstructor;
@@ -27,7 +27,7 @@ public class ProductListDto {
     private Status status;
 	private String previewImageUrl;
     private Long categoryId;
-    private List<CategoryDto> path;
+    private List<CategoryBasicDto> path;
     private String userEmail;
     private Long latestBidAmount;
     private Long bidCount;
@@ -42,7 +42,7 @@ public class ProductListDto {
                 .price(product.getPrice())
                 .status(product.getStatus())
                 .path(product.getCategory().getPath().stream()
-                        .map(CategoryDto::fromEntity)
+                        .map(CategoryBasicDto::fromEntity)
                         .collect(Collectors.toList()))
                 .build();
     }
