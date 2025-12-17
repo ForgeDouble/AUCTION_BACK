@@ -93,8 +93,9 @@ public class PushService {
             log.warn("[Push] userId 이 없습니다. 알림 전송 스킵. title={}, data={}", title, data);
             return 0;
         }
-        User target = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User"));
-        List<DeviceToken> tokens = deviceTokenRepository.findAllByUser_UserIdAndValidTrue(target.getUserId());
+//        User target = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User"));
+        List<DeviceToken> tokens = deviceTokenRepository.findAllByUser_UserIdAndValidTrue(userId);
+
         if (tokens.isEmpty()) {
             log.info("[Push] userId={} 에 토큰이 없습니다", userId);
             return 0;
