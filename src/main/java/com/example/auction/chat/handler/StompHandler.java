@@ -44,7 +44,7 @@ public class StompHandler implements ChannelInterceptor {
         // CONNECT 시 인증 처리
         if (StompCommand.CONNECT.equals(command)) {
             if (isPublic) {
-                log.info("✅ 공개 엔드포인트 연결 허용 (인증 없음)");
+                log.info("공개 엔드포인트 연결 허용 (인증 없음)");
                 return message;
             }
 
