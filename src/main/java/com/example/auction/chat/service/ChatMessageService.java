@@ -70,33 +70,20 @@ public class ChatMessageService {
                 .distinct()
                 .toList();
 
-        // 3) 한 번에 DB 조회 후, ChatUserSummary 로 변환해서 Map 캐시
-        Map<String, ChatUserSummary> senderMap = new HashMap<>();
-        for (String email : senderEmails) {
-            try {
-                ChatUserSummary summary = chatUserCacheService.getByEmail(email);
-                senderMap.put(email, summary);
-            } catch (RuntimeException e) {
 
-            }
-        }
+        Map<String, ChatUserSummary> senderMap = chatUserCacheService.getByEmails(senderEmails);
 
         return messages.stream()
-                .map(m -> {
-                    ChatUserSummary sender = senderMap.get(m.getSenderId());
-                    return ChatMessageResponse.fromEntity(m, sender);
-                })
+                .map(m -> ChatMessageResponse
+                        .fromEntity(m, senderMap.get(m.getSenderId())))
                 .toList();
     }
 
     public void send(ChatMessageRequest chatMessageRequest) {
 
-        String senderEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        ChatUserSummary senderSummary = chatUserCacheService.getCurrentUser();
 
-        // 발신자 엔티티 1번만 조회
-//        User sender = userRepository.findByEmailAndDelYn(senderEmail, DelYN.N)
-//                .orElseThrow(() -> new IllegalArgumentException("발신자를 찾을 수 없습니다."));
-        ChatUserSummary senderSummary = chatUserCacheService.getByEmail(senderEmail);
+        String senderEmail = senderSummary.getEmail();
 
         // 방 조회
         ChatRoom room = chatRoomRepository.findById(chatMessageRequest.getRoomId())
@@ -133,15 +120,14 @@ public class ChatMessageService {
                 chatStateService.incAlarm(uid);
             }
         }
-        // 기존 FCM push 별도 로직은 주석 처리 상태라 그대로 두었음
         // sendInquiryPushIfNeeded(room, chatMessage, preview);
 
         // 최종 payload 생성
         ChatMessageResponse payload = ChatMessageResponse.fromEntity(chatMessage, senderSummary);
 
-        // 단일 인스턴스용 STOMP 전송 (기존 그대로)
+        // 단일 인스턴스용 STOMP 전송
         messaging.convertAndSend("/topic/chat/room/" + chatMessageRequest.getRoomId(), payload);
-        // 멀티 인스턴스용 Redis Pub/Sub 전파 (기존 그대로)
+        // 멀티 인스턴스용 Redis Pub/Sub 전파
         redisTemplate.convertAndSend(chatTopic.getTopic(), payload);
     }
 

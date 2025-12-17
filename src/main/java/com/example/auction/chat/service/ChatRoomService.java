@@ -125,14 +125,7 @@ public class ChatRoomService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
-        Map<String, ChatUserSummary> userMap = new java.util.HashMap<>();
-        for (String email : allEmails) {
-            try {
-                ChatUserSummary summary = chatUserCacheService.getByEmail(email);
-                userMap.put(email, summary);
-            } catch (RuntimeException e) {
-            }
-        }
+        Map<String, ChatUserSummary> userMap = chatUserCacheService.getByEmails(allEmails);
 
         List<ChatRoomResponse> result = new ArrayList<>();
         for (ChatRoom chatRoom : rooms) {
