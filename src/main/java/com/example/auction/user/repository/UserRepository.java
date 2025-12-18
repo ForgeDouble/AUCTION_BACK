@@ -4,6 +4,8 @@ import com.example.auction.common.domain.DelYN;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,5 +20,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findFirstByAuthorityOrderByCreatedAtDesc(Authority authority);
     List<User> findAllByEmailInAndDelYn(List<String> emails, DelYN delYn);
+
+    @Query("""
+        select u.userId as userId,
+               u.email as email,
+               u.nickname as nickname,
+               u.authority as authority,
+               u.profileImageUrl as profileImageUrl
+        from User u
+        where u.email in :emails
+          and u.delYn = :delYn
+    """)
+    List<UserSummaryProjection> findUserSummariesByEmails(@Param("emails") List<String> emails,
+                                                          @Param("delYn") DelYN delYn);
 
 }

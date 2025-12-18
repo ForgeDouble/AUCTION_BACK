@@ -1,6 +1,8 @@
 package com.example.auction.notification.service;
 
 import com.example.auction.chat.domain.ChatRoom;
+import com.example.auction.chat.dto.ChatUserSummary;
+import com.example.auction.chat.service.ChatUserCacheService;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.notification.domain.NotificationCategory;
 import com.example.auction.push.service.PushService;
@@ -22,10 +24,10 @@ import java.util.stream.Collectors;
 public class InquiryNotificationService {
 
     private final PushService pushService;
-    private final UserRepository userRepository;
+    private final ChatUserCacheService chatUserCacheService;
 
-    // 1) 새 문의방 생성 알림: 고객 → 담당자 1명
-    public void notifyNewInquiryRoom(ChatRoom room, User customer, User inquirer) {
+    // 새 문의방 생성 알림: 고객 → 담당자 1명
+    public void notifyNewInquiryRoom(ChatRoom room, ChatUserSummary customer, User inquirer) {
         if (room == null || customer == null || inquirer == null) {
             log.warn("[InquiryNotify] 새 문의 알림 파라미터 누락 room/customer/inquirer null");
             return;
@@ -50,7 +52,7 @@ public class InquiryNotificationService {
     }
 
     // 2) 문의방 내 새 메시지 알림 (유저 ↔ 담당자)
-    public void notifyOnNewMessage(ChatRoom room, User sender, String preview) {
+    public void notifyOnNewMessage(ChatRoom room, ChatUserSummary sender, String preview) {
         if (room == null || sender == null) {
             return;
         }
@@ -60,25 +62,22 @@ public class InquiryNotificationService {
             return;
         }
 
-        // room.participantIds (이메일 리스트) → User 리스트
-        List<User> participants = userRepository
-                .findAllByEmailInAndDelYn(room.getParticipantIds(), DelYN.N);
+        Map<String, ChatUserSummary> map = chatUserCacheService.getByEmails(room.getParticipantIds());
+        List<ChatUserSummary> participants = map.values().stream().toList();
 
-        List<User> customers = participants.stream()
+        List<ChatUserSummary> customers = participants.stream()
                 .filter(u -> u.getAuthority() == Authority.USER)
-                .collect(Collectors.toList());
+                .toList();
 
-        List<User> handlers = participants.stream()
+        List<ChatUserSummary> handlers = participants.stream()
                 .filter(u -> u.getAuthority() == Authority.INQUIRY || u.getAuthority() == Authority.ADMIN)
-                .collect(Collectors.toList());
+                .toList();
 
         boolean senderIsCustomer = sender.getAuthority() == Authority.USER;
         boolean senderIsHandler = sender.getAuthority() == Authority.INQUIRY
                 || sender.getAuthority() == Authority.ADMIN;
 
-        if (!senderIsCustomer && !senderIsHandler) {
-            return;
-        }
+        if (!senderIsCustomer && !senderIsHandler) return;
 
         String snippet = trimPreview(preview);
 
@@ -94,8 +93,9 @@ public class InquiryNotificationService {
                     "fromNickname", sender.getNickname()
             );
 
-            for (User h : handlers) {
+            for (ChatUserSummary h : handlers) {
                 try {
+                    if (h.getUserId() == null) continue;
                     pushService.sendToUser(h.getUserId(), title, body, data, NotificationCategory.INQUIRY, true);
                 } catch (Exception e) {
                     log.warn("[InquiryNotify] 새 문의 메시지 알림 실패 roomId={}, handlerId={}",
@@ -118,7 +118,7 @@ public class InquiryNotificationService {
                     "fromNickname", sender.getNickname()
             );
 
-            for (User customer : customers) {
+            for (ChatUserSummary customer : customers) {
                 try {
                     if (Objects.equals(customer.getUserId(), sender.getUserId())) {
                         continue;
