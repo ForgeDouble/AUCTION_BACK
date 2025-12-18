@@ -23,7 +23,7 @@ dependencies {
     implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.2'
 
     // DataBase
-    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client:3.5.4'
 
     annotationProcessor 'org.projectlombok:lombok'
 
