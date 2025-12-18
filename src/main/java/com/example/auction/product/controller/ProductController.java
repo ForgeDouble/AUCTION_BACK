@@ -61,24 +61,17 @@ public class ProductController {
             @RequestParam(required = false) Long maxPrice,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "3") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort
+            @RequestParam(defaultValue = "NEWEST") String sortBy
     ) {
-        // Sort 파라미터 파싱
-        String[] sortParams = sort.split(",");
-        Sort sortOrder = Sort.by(
-                sortParams.length > 1 && sortParams[1].equals("asc")
-                        ? Sort.Direction.ASC
-                        : Sort.Direction.DESC,
-                sortParams[0]  // createdAt, price 등 (camelCase)
-        );
-
-        Pageable pageable = PageRequest.of(page, size, sortOrder);
+        // Pageable은 페이징만 처리
+        Pageable pageable = PageRequest.of(page, size);
 
         Page<ProductListDto> products = productService.getProducts(
                 categoryId,
                 search,
                 minPrice,
                 maxPrice,
+                sortBy,
                 pageable
         );
 

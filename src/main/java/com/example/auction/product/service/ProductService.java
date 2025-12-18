@@ -481,6 +481,7 @@ public class ProductService {
             String search,
             Long minPrice,
             Long maxPrice,
+            String sortBy,
             Pageable pageable
     ) {
         // 1. 카테고리 ID 리스트 생성 (부모 선택 시 모든 자식 포함)
@@ -498,6 +499,7 @@ public class ProductService {
                 search,
                 minPrice,
                 maxPrice,
+                sortBy,
                 pageable
         );
 
