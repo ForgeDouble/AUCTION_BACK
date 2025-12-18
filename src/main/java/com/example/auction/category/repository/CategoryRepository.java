@@ -29,6 +29,15 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
             "children.children",  // 2단계
             "children.children.children"  // 3단계
     })
-    @Query("SELECT c FROM Category c WHERE c.parent IS NULL")
+
+    @Query("SELECT DISTINCT c FROM Category c " +
+            "LEFT JOIN FETCH c.children " +
+            "WHERE c.parent IS NULL")
     List<Category> findAllParentCategoriesWithChildren();
+
+    // 카테고리별 상품 개수를 한 번에 조회
+    @Query("SELECT c.categoryId, COUNT(p) FROM Category c " +
+            "LEFT JOIN c.products p " +
+            "GROUP BY c.categoryId")
+    List<Object[]> countProductsByCategory();
 }

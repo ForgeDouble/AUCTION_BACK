@@ -13,7 +13,7 @@ import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.bid.repository.BidRepository;
-import com.example.auction.category.dto.CategoryDto;
+import com.example.auction.category.dto.CategoryBasicDto;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.notification.service.AuctionNotificationService;
@@ -25,7 +25,6 @@ import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.api.gax.rpc.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
@@ -168,9 +167,9 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다."));
 
         // 종료(판매) 여부 확인
-        if (product.getStatus() != Status.PROCESSING) return;
+        if (product.getStatus() != Status.READY) return;
         // 경매가 시작된 상품인지 확인
-        if (LocalDateTime.now().isBefore(product.getAuctionStartTime())) return;
+//        if (LocalDateTime.now().isBefore(product.getAuctionStartTime())) return;
 
 
         String bidZSetKey = "product_bid_zset_" + productId;
@@ -330,14 +329,26 @@ public class ProductService {
 
             // 이미 종료된 건이면 중복 종료 방지
             if (currentProduct.getStatus() != Status.PROCESSING) {
-                log.debug("[Auction] 이미 종료된 상품 pid={}", pid);
+                log.info("[Auction] 이미 종료된 상품 pid={}", pid);
                 return;
             }
-            // 조기 종료 방지
-            if (LocalDateTime.now().isBefore(currentProduct.getAuctionEndTime())) {
-                log.info("조기 종료 방지 - pid={}, now<end", pid);
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime auctionEndTime = currentProduct.getAuctionEndTime();
+
+            // 스케줄러 주기(예: 1초)를 고려한 허용 범위
+            // 종료 시간 1초 전부터 종료 처리 가능
+            final int SCHEDULER_GRACE_SECONDS = 1;
+            LocalDateTime allowedEndTime = auctionEndTime.minusSeconds(SCHEDULER_GRACE_SECONDS);
+
+            if (now.isBefore(allowedEndTime)) {
+                log.info("조기 종료 방지 - pid={}, now={}, allowedEnd={}, actualEnd={}",
+                        pid, now, allowedEndTime, auctionEndTime);
                 return;
             }
+
+            log.info("경매 종료 처리 시작 - pid={}, scheduledEnd={}, actualProcessTime={}, diff={}ms",
+                    pid, auctionEndTime, now,
+                    ChronoUnit.MILLIS.between(auctionEndTime, now));
 
             // 2. Redis에서 최고 입찰자 확인
             String bidZSetKey = "product_bid_zset_" + pid;
@@ -369,22 +380,27 @@ public class ProductService {
             // - winnerBid가 있고 userId가 null 아님
             boolean hasRealWinner = (zcount >= 2) && (winnerBid != null) && (winnerBid.getUserId() != null);
 
-            // 1. 상품 상태를 Status.SELLED 변경 (항상 종료로 마킹) --> 이부분 필요시 수정
-            currentProduct.setStatus(Status.SELLED);
-            productRepository.save(currentProduct);
+
+
 
             if (hasRealWinner) {
+                // 1. 상품 상태를 Status.SELLED 변경
+                currentProduct.updateStatus(Status.SELLED);
+                productRepository.save(currentProduct);
                 log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
                         pid, winnerBid.getUserName(), winnerBid.getBidAmount());
                 try {
-                    auctionNotificationService.notifyAuctionEndedWithWinner(
-                            currentProduct.getProductId(), winnerBid, currentProduct.getProductName()
-                    );
+//                    auctionNotificationService.notifyAuctionEndedWithWinner(
+//                            currentProduct.getProductId(), winnerBid, currentProduct.getProductName()
+//                    );
+                    log.info("경매 종료 알림");
                 } catch (Exception ex) {
                     log.warn("[AuctionNotify] 낙찰자 알림 실패 productId={}, winnerUserId={}",
                             pid, winnerBid.getUserId(), ex);
                 }
             } else {
+                currentProduct.updateStatus(Status.NOTSELLED);
+                productRepository.save(currentProduct);
                 log.info("경매 종료 - ProductId: {}, 입찰자 없음(또는 기본가만 존재)", pid);
                 try {
                     auctionNotificationService.notifyAuctionEndedNoWinner(
@@ -465,6 +481,7 @@ public class ProductService {
             String search,
             Long minPrice,
             Long maxPrice,
+            String sortBy,
             Pageable pageable
     ) {
         // 1. 카테고리 ID 리스트 생성 (부모 선택 시 모든 자식 포함)
@@ -482,6 +499,7 @@ public class ProductService {
                 search,
                 minPrice,
                 maxPrice,
+                sortBy,
                 pageable
         );
 
@@ -511,8 +529,8 @@ public class ProductService {
                 if (dto.getCategoryId() != null) {
                     Category cat = categoryMap.get(dto.getCategoryId());
                     if (cat != null) {
-                        List<CategoryDto> path = cat.getPath().stream()
-                                .map(CategoryDto::fromEntity)
+                        List<CategoryBasicDto> path = cat.getPath().stream()
+                                .map(CategoryBasicDto::fromEntity)
                                 .collect(Collectors.toList());
                         dto.setPath(path);
                     }

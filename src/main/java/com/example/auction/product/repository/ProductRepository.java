@@ -44,24 +44,34 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             " LIMIT 1), " +
             "p.category.categoryId, " +
             "p.user.email, " +
-            "(SELECT b.bidAmount FROM Bid b " +
-            " WHERE b.product.productId = p.productId " +
-            " ORDER BY b.createdAt DESC " +
-            " LIMIT 1), " +
-            "(SELECT COUNT(b) FROM Bid b " +
-            " WHERE b.product.productId = p.productId)) " +
+            "COALESCE(MAX(b.bidAmount), 0), " +
+            "COUNT(DISTINCT b.bidId), " +
+            "p.createdAt) " +
             "FROM Product p " +
+            "LEFT JOIN Bid b ON b.product.productId = p.productId " +
             "WHERE p.delYn = com.example.auction.common.domain.DelYN.N " +
             "  AND (p.blocked = false OR p.blocked IS NULL) " +
             "  AND (:categoryIds IS NULL OR p.category.categoryId IN :categoryIds) " +
             "  AND (:search IS NULL OR :search = '' OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "  AND (:minPrice IS NULL OR p.price >= :minPrice) " +
-            "  AND (:maxPrice IS NULL OR p.price <= :maxPrice)")
+            "  AND (:maxPrice IS NULL OR p.price <= :maxPrice) " +
+            "GROUP BY p.productId, p.productName, p.productContent, p.price, p.status, " +
+            "         p.category.categoryId, p.user.email, p.createdAt " +
+            "ORDER BY " +
+            "CASE WHEN :sortBy = 'ENDING_SOON' THEN " +
+            "  CASE WHEN p.status = com.example.auction.product.domain.Status.PROCESSING THEN 0 ELSE 1 END " +
+            "END ASC, " +
+            "CASE WHEN :sortBy = 'ENDING_SOON' THEN p.createdAt END ASC, " +
+            "CASE WHEN :sortBy = 'MOST_BIDS' THEN COUNT(DISTINCT b.bidId) END DESC, " +
+            "CASE WHEN :sortBy = 'PRICE_ASC' THEN MAX(b.bidAmount) END ASC, " +
+            "CASE WHEN :sortBy = 'PRICE_DESC' THEN MAX(b.bidAmount) END DESC, " +
+            "CASE WHEN :sortBy = 'NEWEST' THEN p.createdAt END DESC")
     Page<ProductListDto> findActiveProducts(
             @Param("categoryIds") List<Long> categoryIds,
             @Param("search") String search,
             @Param("minPrice") Long minPrice,
             @Param("maxPrice") Long maxPrice,
+            @Param("sortBy") String sortBy,
             Pageable pageable
     );
 

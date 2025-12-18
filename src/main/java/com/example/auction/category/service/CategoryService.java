@@ -135,9 +135,20 @@ public class CategoryService {
     // 전체 카테고리 트리 (자식 포함)
     @Transactional(readOnly = true)
     public List<CategoryReadWithChildrenDto> getAllCategoriesWithChildren() {
+        // 1. 카테고리 트리 조회
         List<Category> parentCategories = categoryRepository.findAllParentCategoriesWithChildren();
+
+        // 2. 모든 카테고리의 상품 개수를 Map으로 저장
+        Map<Long, Long> productCountMap = categoryRepository.countProductsByCategory().stream()
+                .collect(Collectors.toMap(
+                        arr -> (Long) arr[0],
+                        arr -> (Long) arr[1]
+                ));
+
+        // 3. DTO 변환
         return parentCategories.stream()
-                .map(category -> CategoryReadWithChildrenDto.fromWithChildren(category, 0, MAX_DEPTH))
+                .map(category -> CategoryReadWithChildrenDto.fromWithChildren(
+                        category, 0, MAX_DEPTH, productCountMap))
                 .collect(Collectors.toList());
     }
 }

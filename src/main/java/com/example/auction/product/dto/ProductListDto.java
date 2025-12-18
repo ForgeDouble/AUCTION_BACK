@@ -1,6 +1,6 @@
 package com.example.auction.product.dto;
 
-import com.example.auction.category.dto.CategoryDto;
+import com.example.auction.category.dto.CategoryBasicDto;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.domain.Status;
 import lombok.AllArgsConstructor;
@@ -11,6 +11,7 @@ import lombok.Setter;
 
 /* 목록 리스트 보기 */
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,10 +28,11 @@ public class ProductListDto {
     private Status status;
 	private String previewImageUrl;
     private Long categoryId;
-    private List<CategoryDto> path;
+    private List<CategoryBasicDto> path;
     private String userEmail;
     private Long latestBidAmount;
     private Long bidCount;
+    private LocalDateTime createdAt;
 
     public static ProductListDto fromEntity(Product product) {
         return ProductListDto.builder()
@@ -42,22 +44,24 @@ public class ProductListDto {
                 .price(product.getPrice())
                 .status(product.getStatus())
                 .path(product.getCategory().getPath().stream()
-                        .map(CategoryDto::fromEntity)
+                        .map(CategoryBasicDto::fromEntity)
                         .collect(Collectors.toList()))
                 .build();
     }
     public ProductListDto(Long productId, String productName, String productContent,
-                          Long price, Status status, String previewImageUrl,
-                          Long categoryId, String userEmail, Long latestBidAmount, Long bidCount) {
+                          Long price, Status status, String imageUrl,
+                          Long categoryId, String email, Long currentBidAmount,
+                          Long bidCount, LocalDateTime createdAt) {
         this.productId = productId;
         this.productName = productName;
         this.productContent = productContent;
         this.price = price;
         this.status = status;
-        this.previewImageUrl = previewImageUrl;
+        this.previewImageUrl = imageUrl;
         this.categoryId = categoryId;
-        this.userEmail = userEmail;
-        this.latestBidAmount = latestBidAmount;
+        this.userEmail = email;
+        this.latestBidAmount = currentBidAmount;
         this.bidCount = bidCount;
+        this.createdAt = createdAt;
     }
 }
