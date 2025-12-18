@@ -11,6 +11,7 @@ import lombok.Setter;
 
 /* 목록 리스트 보기 */
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,6 +32,7 @@ public class ProductListDto {
     private String userEmail;
     private Long latestBidAmount;
     private Long bidCount;
+    private LocalDateTime createdAt;
 
     public static ProductListDto fromEntity(Product product) {
         return ProductListDto.builder()
@@ -47,17 +49,19 @@ public class ProductListDto {
                 .build();
     }
     public ProductListDto(Long productId, String productName, String productContent,
-                          Long price, Status status, String previewImageUrl,
-                          Long categoryId, String userEmail, Long latestBidAmount, Long bidCount) {
+                          Long price, Status status, String imageUrl,
+                          Long categoryId, String email, Long currentBidAmount,
+                          Long bidCount, LocalDateTime createdAt) {
         this.productId = productId;
         this.productName = productName;
         this.productContent = productContent;
         this.price = price;
         this.status = status;
-        this.previewImageUrl = previewImageUrl;
+        this.previewImageUrl = imageUrl;
         this.categoryId = categoryId;
-        this.userEmail = userEmail;
-        this.latestBidAmount = latestBidAmount;
+        this.userEmail = email;
+        this.latestBidAmount = currentBidAmount;
         this.bidCount = bidCount;
+        this.createdAt = createdAt;
     }
 }
