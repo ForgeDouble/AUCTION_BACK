@@ -69,6 +69,28 @@ public class WishlistService {
         return wishlistAllDtos;
     }
 
+    //* 해당 게시물이 접속중인 유저의 위시리스트 ID를 반환하는 함수 */
+    @Transactional(readOnly = true)
+    public Long getWishlistId(Long productId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
+        // Product 존재 여부 확인 (필요한 경우)
+        if (!productRepository.existsById(productId)) {
+            throw new ResourceNotFoundException("Product", productId);
+        }
+
+        // DB에서 wishlistId 조회 (없으면 null 반환)
+        Long result = wishlistRepository.findWishlistIdByUser_UserIdAndProduct_ProductId(
+                user.getUserId(),
+                productId
+        ).orElse(null);
+
+        return result;
+    }
+
 //  사용자의 위시리스트 삭제
     @Transactional
     public void deleteWishlistById(Long wishlistId) {
