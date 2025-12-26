@@ -33,4 +33,5 @@ public class AdminOverviewResponse {
         private int hour;
         private long users;
     }
+
 }
