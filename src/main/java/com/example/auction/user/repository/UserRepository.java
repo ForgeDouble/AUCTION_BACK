@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -38,4 +39,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("select count(u) from User u where u.createdAt >= :start and u.createdAt < :end and u.delYn = com.example.auction.common.domain.DelYN.N")
     long countCreatedBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
 }
