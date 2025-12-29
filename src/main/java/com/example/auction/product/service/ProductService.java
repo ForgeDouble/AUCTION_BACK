@@ -481,6 +481,7 @@ public class ProductService {
             String search,
             Long minPrice,
             Long maxPrice,
+            List<Status> statuses,
             String sortBy,
             Pageable pageable
     ) {
@@ -499,6 +500,7 @@ public class ProductService {
                 search,
                 minPrice,
                 maxPrice,
+                statuses,
                 sortBy,
                 pageable
         );
