@@ -26,6 +26,12 @@ public class AdminOverviewResponse {
     private long monthlyAvgTradeAmount; // 최근 N개월 평균
     private List<HourlyPoint> todayActivityHourly; // 오늘 평균 사용 시간대
 
+    private long statusReady;
+    private long statusProcessing;
+    private long statusSelled;
+    private long statusNotselled;
+
+
     @Getter
     @AllArgsConstructor
     @NoArgsConstructor
