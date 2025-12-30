@@ -33,9 +33,10 @@ public class ProductListDto {
     private Long latestBidAmount;
     private Long bidCount;
     private LocalDateTime createdAt;
+    private LocalDateTime auctionEndTime;
 
     public static ProductListDto fromEntity(Product product) {
-        return ProductListDto.builder()
+        ProductListDto dto = ProductListDto.builder()
                 .productId(product.getProductId())
                 .categoryId(product.getCategory().getCategoryId())
                 .userEmail(product.getUser().getEmail())
@@ -47,6 +48,13 @@ public class ProductListDto {
                         .map(CategoryBasicDto::fromEntity)
                         .collect(Collectors.toList()))
                 .build();
+
+        // createdAt이 있으면 auctionEndTime 계산
+        if (dto.getCreatedAt() != null) {
+            dto.setAuctionEndTime(dto.getCreatedAt().plusMinutes(30));
+        }
+
+        return dto;
     }
     public ProductListDto(Long productId, String productName, String productContent,
                           Long price, Status status, String imageUrl,
@@ -63,5 +71,6 @@ public class ProductListDto {
         this.latestBidAmount = currentBidAmount;
         this.bidCount = bidCount;
         this.createdAt = createdAt;
+        this.auctionEndTime = createdAt != null ? createdAt.plusMinutes(30) : null;
     }
 }
