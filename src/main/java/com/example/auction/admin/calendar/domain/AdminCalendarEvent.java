@@ -32,6 +32,9 @@ public class AdminCalendarEvent extends BaseTimeEntity {
     @Column(nullable = false, length = 200)
     private String title;
 
+    @Column(length = 2000)
+    private String memo;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private CalendarEventTag tag;
@@ -39,5 +42,16 @@ public class AdminCalendarEvent extends BaseTimeEntity {
     @PrePersist
     void prePersist() {
         if (tag == null) tag = CalendarEventTag.ETC;
+    }
+
+    public void update(LocalTime time, String title, CalendarEventTag tag, String memo) {
+        this.time = time;
+        this.title = title;
+        this.tag = (tag == null ? CalendarEventTag.ETC : tag);
+        this.memo = memo;
+    }
+
+    public void moveDate(LocalDate date) {
+        this.date = date;
     }
 }

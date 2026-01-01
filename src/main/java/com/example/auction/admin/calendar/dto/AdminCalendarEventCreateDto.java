@@ -21,4 +21,6 @@ public class AdminCalendarEventCreateDto {
     private String title;
 
     private CalendarEventTag tag;
+
+    private String memo;
 }
