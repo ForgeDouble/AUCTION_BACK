@@ -16,22 +16,28 @@ public class NoticeResponse {
     private boolean pinned;
 
     private String title;
-    private String body;
+    private String content;
 
-    private String author;
+    private String authorNickname;
     private String createdAt;
+    private String updatedAt;
 
     private boolean acknowledged;
+    private NoticeCategory category;
+    private int importance;
 
     public static NoticeResponse fromEntity(Notice notice, boolean acknowledged) {
         return NoticeResponse.builder()
                 .id(String.valueOf(notice.getId()))
                 .pinned(notice.isPinned())
                 .title(notice.getTitle())
-                .body(notice.getContent())
-                .author(notice.getAuthor().getNickname())
+                .content(notice.getContent())
+                .category(notice.getCategory())
+                .authorNickname(notice.getAuthor().getNickname())
                 .createdAt(notice.getCreatedAt().toString())
+                .updatedAt(notice.getUpdatedAt().toString())
                 .acknowledged(acknowledged)
+                .importance(notice.getImportance())
                 .build();
     }
 }
