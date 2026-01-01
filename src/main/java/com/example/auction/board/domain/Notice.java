@@ -31,7 +31,7 @@ public class Notice extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private NoticeCategory category;
 
-    @Column(nullable = false, length = 200)
+    @Column(nullable = false, length = 2000)
     private String title;
 
     @Lob
@@ -42,7 +42,7 @@ public class Notice extends BaseTimeEntity {
     @Builder.Default
     private boolean pinned = false;
 
-    // 0~100 중요도 (필요 없으면 나중에 삭제 가능)
+    // 0~100 중요도
     @Column(nullable = false)
     @Builder.Default
     private int importance = 50;

@@ -11,33 +11,27 @@ import java.time.LocalDateTime;
 @Getter
 @Builder
 public class NoticeResponse {
-    private Long id;
-    private NoticeCategory category;
-    private String title;
-    private String content;
+
+    private String id;
     private boolean pinned;
-    private int importance;
 
-    private Long authorUserId;
-    private String authorEmail;
-    private String authorNickname;
+    private String title;
+    private String body;
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private String author;
+    private String createdAt;
 
-    public static NoticeResponse fromEntity(Notice notice) {
+    private boolean acknowledged;
+
+    public static NoticeResponse fromEntity(Notice notice, boolean acknowledged) {
         return NoticeResponse.builder()
-                .id(notice.getId())
-                .category(notice.getCategory())
-                .title(notice.getTitle())
-                .content(notice.getContent())
+                .id(String.valueOf(notice.getId()))
                 .pinned(notice.isPinned())
-                .importance(notice.getImportance())
-                .authorUserId(notice.getAuthor().getUserId())
-                .authorEmail(notice.getAuthor().getEmail())
-                .authorNickname(notice.getAuthor().getNickname())
-                .createdAt(notice.getCreatedAt())
-                .updatedAt(notice.getUpdatedAt())
+                .title(notice.getTitle())
+                .body(notice.getContent())
+                .author(notice.getAuthor().getNickname())
+                .createdAt(notice.getCreatedAt().toString())
+                .acknowledged(acknowledged)
                 .build();
     }
 }

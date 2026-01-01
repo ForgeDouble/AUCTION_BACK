@@ -4,6 +4,7 @@ import com.example.auction.board.domain.NoticeCategory;
 import com.example.auction.board.dto.NoticeCreateRequest;
 import com.example.auction.board.dto.NoticePageResponse;
 import com.example.auction.board.dto.NoticeResponse;
+import com.example.auction.board.dto.NoticeUpdateRequest;
 import com.example.auction.board.service.AdminNoticeService;
 import com.example.auction.common.dto.CommonResDto;
 import lombok.RequiredArgsConstructor;
@@ -47,10 +48,33 @@ public class AdminNoticeController {
     }
 
     // 상세보기
+//    @PreAuthorize("hasRole('ADMIN')")
+//    @GetMapping("/{id}")
+//    public ResponseEntity<?> detail(@PathVariable Long id) {
+//        NoticeResponse res = adminNoticeService.detail(id);
+//        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "공지(인수인계) 상세", res));
+//    }
+
+    // 수정하기
     @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/{id}")
-    public ResponseEntity<?> detail(@PathVariable Long id) {
-        NoticeResponse res = adminNoticeService.detail(id);
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "공지(인수인계) 상세", res));
+    @PutMapping("/{id}")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody NoticeUpdateRequest noticeUpdateRequest) {
+        adminNoticeService.update(id, noticeUpdateRequest);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "공지(인수인계) 수정 완료", null));
+    }
+
+    // 삭제
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        adminNoticeService.delete(id);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "공지(인수인계) 삭제 완료", null));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/{id}/ack")
+    public ResponseEntity<?> ack(@PathVariable Long id) {
+        adminNoticeService.ack(id);
+        return ResponseEntity.noContent().build();
     }
 }
