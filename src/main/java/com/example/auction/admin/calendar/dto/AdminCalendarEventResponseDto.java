@@ -11,6 +11,8 @@ public class AdminCalendarEventResponseDto {
     private String time;
     private String title;
     private String tag;
+    private String memo;
+    private String nickname;
 
     public static AdminCalendarEventResponseDto from(AdminCalendarEvent e) {
         return AdminCalendarEventResponseDto.builder()
@@ -19,6 +21,7 @@ public class AdminCalendarEventResponseDto {
                 .time(e.getTime() != null ? e.getTime().toString() : null)
                 .title(e.getTitle())
                 .tag(e.getTag() != null ? e.getTag().getLabel() : "기타")
+                .memo(e.getMemo())
                 .build();
     }
 }
