@@ -19,7 +19,7 @@ public class ReportCreateDto {
                 .targetId(targetId)
                 .category(category)
                 .content(content)
-                .targetType(targetType.USER)
+                .targetType(targetType == null ? ReportTargetType.USER : targetType)
                 .build();
     }
 
