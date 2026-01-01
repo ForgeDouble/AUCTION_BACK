@@ -8,10 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/admin/calendar")
@@ -27,5 +26,12 @@ public class AdminCalendarController {
     public ResponseEntity<CommonResDto> create(@Validated @RequestBody AdminCalendarEventCreateDto adminCalendarEventCreateDto) {
         AdminCalendarEventResponseDto created = adminCalendarService.create(adminCalendarEventCreateDto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "운영 캘린더 일정 등록 성공", created));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/events")
+    public ResponseEntity<CommonResDto> list() {
+        List<AdminCalendarEventResponseDto> list = adminCalendarService.listEvents();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "운영 캘린더 조회 성공", list));
     }
 }

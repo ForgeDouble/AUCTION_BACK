@@ -9,6 +9,10 @@ import com.example.auction.user.service.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalTime;
+import java.util.Comparator;
+import java.util.List;
+
 @Service
 public class AdminCalendarService {
     private final AdminCalendarEventRepository adminCalendarEventRepository;
@@ -43,5 +47,18 @@ public class AdminCalendarService {
         );
 
         return AdminCalendarEventResponseDto.from(saved);
+    }
+
+    // 일정 조회
+    @Transactional(readOnly = true)
+    public List<AdminCalendarEventResponseDto> listEvents() {
+        userService.checkAdminAuthority();
+
+        return adminCalendarEventRepository.findAll().stream()
+                .sorted(Comparator
+                        .comparing(AdminCalendarEvent::getDate)
+                        .thenComparing(e -> e.getTime() == null ? LocalTime.MAX : e.getTime()))
+                .map(AdminCalendarEventResponseDto::from)
+                .toList();
     }
 }
