@@ -16,6 +16,7 @@ import com.example.auction.product.domain.Product;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+
 public interface ProductRepository extends JpaRepository<Product, Long> {
 	Optional<Product> findByProductIdAndDelYn(Long productId, DelYN delYN);
     List<Product> findByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(Status status, LocalDateTime createdBefore);
@@ -119,4 +120,41 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "GROUP BY p.productId, p.productName, p.productContent, p.price, p.status " +
             "ORDER BY p.createdAt DESC")
     List<ProductWithBidDto> findWishlistByUserEmailWithBidInfo(@Param("email") String email);
+
+
+    long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    // 진행중인 경매수 (차단 제외)
+    long countByStatusAndBlockedFalse(Status status);
+
+    // 차단된 상품 수
+    long countByBlockedTrue();
+
+    // 금일 판매된 경매수 (status가 SELLED로 바뀐 시점을 updatedAt으로 본다)
+    long countByStatusAndUpdatedAtBetween(Status status, LocalDateTime start, LocalDateTime end);
+
+    // 금일 종료되었지만 미판매(NOTSELLED)된 경매수
+
+    // 관리자에서 전체 경매 수
+    long countByStatus(Status status);
+
+    // 참고: READY/PROCESSING/SELLED/NOTSELLED 분포를 한방에 보고 싶으면
+    @Query("""
+        select count(p)
+        from Product p
+        where p.status = :status
+          and p.blocked = false
+    """)
+    long countByStatusExcludingBlocked(@Param("status") Status status);
+
+
+    @Query("""
+        select p.category.categoryId as categoryId, count(p) as cnt
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+        and (p.blocked = false or p.blocked is null)
+        and p.category is not null
+        group by p.category.categoryId
+    """)
+    List<CategoryCountRow> countByCategoryIdExcludingDeletedBlocked();
 }
