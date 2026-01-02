@@ -3,6 +3,7 @@ package com.example.auction.category.service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.example.auction.category.dto.CategoryReadWithChildrenAndCountDto;
 import com.example.auction.category.dto.CategoryReadWithChildrenDto;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
@@ -19,7 +20,6 @@ import com.example.auction.category.dto.CategoryCreateDto;
 import com.example.auction.category.dto.CategoryReadDto;
 import com.example.auction.category.repository.CategoryRepository;
 import com.example.auction.product.domain.Product;
-import com.example.auction.product.dto.ProductCreateDto;
 
 import lombok.RequiredArgsConstructor;
 
@@ -159,9 +159,9 @@ public class CategoryService {
         return totalCount;
     }
 
-    /* 전체 카테고리 트리 (자식 포함) */
+    /* 전체 카테고리 트리 (자식 포함, 상품 개수 포함) */
     @Transactional(readOnly = true)
-    public List<CategoryReadWithChildrenDto> getAllCategoriesWithChildren() {
+    public List<CategoryReadWithChildrenAndCountDto> getAllCategoriesWithChildren() {
         /* 1. 카테고리 트리 조회 */
         List<Category> parentCategories = categoryRepository.findAllParentCategoriesWithChildren();
 
@@ -182,8 +182,21 @@ public class CategoryService {
 
         /* 5. DTO 변환 */
         return parentCategories.stream()
-                .map(category -> CategoryReadWithChildrenDto.fromWithChildren(
+                .map(category -> CategoryReadWithChildrenAndCountDto.fromWithChildren(
                         category, 0, MAX_DEPTH, totalProductCountMap))
+                .collect(Collectors.toList());
+    }
+
+    /* 전체 카테고리 트리 (자식 포함, 삼품 개수 X) */
+    @Transactional(readOnly = true)
+    public List<CategoryReadWithChildrenDto> getAllOnlyCategoriesWithChildren() {
+        /* 1. 카테고리 트리 조회 */
+        List<Category> parentCategories = categoryRepository.findAllParentCategoriesWithChildren();
+
+        /* 2. DTO 변환 */
+        return parentCategories.stream()
+                .map(category -> CategoryReadWithChildrenDto.fromWithChildren(
+                        category, 0, MAX_DEPTH))
                 .collect(Collectors.toList());
     }
 }
