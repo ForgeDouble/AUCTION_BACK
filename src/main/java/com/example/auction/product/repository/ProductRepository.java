@@ -16,6 +16,7 @@ import com.example.auction.product.domain.Product;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+
 public interface ProductRepository extends JpaRepository<Product, Long> {
 	Optional<Product> findByProductIdAndDelYn(Long productId, DelYN delYN);
     List<Product> findByStatusAndCreatedAtBeforeOrderByCreatedAtAsc(Status status, LocalDateTime createdBefore);
@@ -133,4 +134,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
           and p.blocked = false
     """)
     long countByStatusExcludingBlocked(@Param("status") Status status);
+
+
+    @Query("""
+        select p.category.categoryId as categoryId, count(p) as cnt
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+        and (p.blocked = false or p.blocked is null)
+        and p.category is not null
+        group by p.category.categoryId
+    """)
+    List<CategoryCountRow> countByCategoryIdExcludingDeletedBlocked();
 }

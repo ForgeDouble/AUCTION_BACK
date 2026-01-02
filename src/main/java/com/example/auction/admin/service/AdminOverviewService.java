@@ -1,13 +1,24 @@
 package com.example.auction.admin.service;
 
+import com.example.auction.admin.dto.AdminCategoryDistributionDto;
 import com.example.auction.admin.dto.AdminOverviewResponse;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.repository.BidRepository;
+import com.example.auction.category.domain.Category;
+import com.example.auction.category.repository.CategoryRepository;
+import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.Status;
+import com.example.auction.product.repository.CategoryCountRow;
 import com.example.auction.product.repository.ProductRepository;
+import com.example.auction.user.domain.Authority;
+import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.user.service.UserStatusService;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -16,6 +27,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -23,18 +35,39 @@ public class AdminOverviewService {
 
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final CategoryRepository categoryRepository;
     private final BidRepository bidRepository;
     private final UserStatusService userStatusService;
     private final AdminReportCounter adminReportCounter;
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
-    public AdminOverviewService(UserRepository userRepository, ProductRepository productRepository, BidRepository bidRepository, UserStatusService userStatusService, AdminReportCounter adminReportCounter) {
+    public AdminOverviewService(UserRepository userRepository, ProductRepository productRepository, CategoryRepository categoryRepository, BidRepository bidRepository, UserStatusService userStatusService, AdminReportCounter adminReportCounter) {
         this.userRepository = userRepository;
         this.productRepository = productRepository;
+        this.categoryRepository = categoryRepository;
         this.bidRepository = bidRepository;
         this.userStatusService = userStatusService;
         this.adminReportCounter = adminReportCounter;
+    }
+
+    private static final List<String> TOP_LEVEL = List.of(
+            "전자제품",
+            "패션/잡화",
+            "생활/가전",
+            "취미/레저",
+            "컬렉터블",
+            "자동차/오토바이",
+            "도서/음반/영화"
+    );
+
+    private void ensureAdmin() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+        if (user.getAuthority() != Authority.ADMIN) {
+            throw new UnauthorizedAccessException("관리자 외 권한이 없습니다.");
+        }
     }
 
     public AdminOverviewResponse getOverview() {
@@ -125,5 +158,62 @@ public class AdminOverviewService {
             sum += ymToTotal.getOrDefault(ym, 0L);
         }
         return sum / 6;
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public List<AdminCategoryDistributionDto> getTopLevelCategoryDistribution() {
+        ensureAdmin();
+
+        List<CategoryCountRow> rows = productRepository.countByCategoryIdExcludingDeletedBlocked();
+
+        if (rows == null || rows.isEmpty()) {
+            return TOP_LEVEL.stream()
+                    .map(name -> new AdminCategoryDistributionDto(name, 0L))
+                    .toList();
+        }
+
+        // leafCategoryId -> count
+        Map<Long, Long> leafCounts = new HashMap<>();
+        for (CategoryCountRow r : rows) {
+            if (r.getCategoryId() == null) continue;
+            leafCounts.put(r.getCategoryId(), r.getCnt() == null ? 0L : r.getCnt());
+        }
+
+        if (leafCounts.isEmpty()) {
+            return TOP_LEVEL.stream()
+                    .map(name -> new AdminCategoryDistributionDto(name, 0L))
+                    .toList();
+        }
+
+        Map<Long, Category> leafMap = categoryRepository.findAllById(leafCounts.keySet())
+                .stream()
+                .collect(Collectors.toMap(Category::getCategoryId, c -> c));
+
+        // rootName(대분류명) 기준 합산
+        Map<String, Long> rootSum = new HashMap<>();
+        for (Map.Entry<Long, Long> e : leafCounts.entrySet()) {
+            Category leaf = leafMap.get(e.getKey());
+            if (leaf == null) continue;
+
+            String rootName = resolveRootName(leaf);
+            rootSum.merge(rootName, e.getValue(), Long::sum);
+        }
+
+        return TOP_LEVEL.stream()
+                .map(name -> new AdminCategoryDistributionDto(name, rootSum.getOrDefault(name, 0L)))
+                .toList();
+    }
+
+    private String resolveRootName(Category c) {
+        Category cur = c;
+        int guard = 0;
+        while (cur.getParent() != null) {
+            cur = cur.getParent();
+            guard++;
+            if (guard > 10) break;
+        }
+        return cur.getCategoryName();
     }
 }

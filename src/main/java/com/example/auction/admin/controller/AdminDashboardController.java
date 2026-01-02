@@ -32,4 +32,11 @@ public class AdminDashboardController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "관리자 개요", dto));
     }
 
+    // 카테고리 분포 관련(overview)
+    @GetMapping("/category-distribution")
+    public ResponseEntity<?> categoryDistribution() {
+        var data = adminOverviewService.getTopLevelCategoryDistribution();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 분포 조회 성공", data));
+    }
+
 }
