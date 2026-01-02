@@ -68,7 +68,7 @@ public class ReportController {
             @RequestParam(defaultValue = "20") int size
     ) {
         Pageable pageable = PageRequest.of(page, size);
-        var pageRes = reportService.getGroupReports(targetUserId, category, pageable);
+        var pageRes = reportService.getGroupReportsDto(targetUserId, category, pageable);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "그룹 신고 상세 조회 성공", pageRes));
     }
 

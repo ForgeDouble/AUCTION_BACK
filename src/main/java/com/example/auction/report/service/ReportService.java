@@ -6,10 +6,7 @@ import com.example.auction.report.domain.Report;
 import com.example.auction.report.domain.ReportCategory;
 import com.example.auction.report.domain.ReportStatus;
 import com.example.auction.report.domain.ReportTargetType;
-import com.example.auction.report.dto.AdminReportGroupDto;
-import com.example.auction.report.dto.AdminResolveDto;
-import com.example.auction.report.dto.ReportCreateDto;
-import com.example.auction.report.dto.ReportResponseDto;
+import com.example.auction.report.dto.*;
 import com.example.auction.report.repository.ReportGroupProjection;
 import com.example.auction.report.repository.ReportRepository;
 import com.example.auction.user.domain.User;
@@ -168,8 +165,10 @@ public class ReportService {
         User target = userRepository.findByUserIdAndDelYn(targetUserId, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("대상 유저가 존재하지 않거나 비활성화 상태입니다."));
 
-        List<Report> pendings = reportRepository
-                .findByTargetIdAndCategoryAndStatus(targetUserId, category, ReportStatus.PENDING);
+        List<Report> pendings = reportRepository.findByTargetTypeAndTargetIdAndCategoryAndStatus(
+                ReportTargetType.USER, targetUserId, category, ReportStatus.PENDING
+        );
+
         if (pendings.isEmpty()) {
             throw new IllegalStateException("해당 유저(" + targetUserId + ")의 " + category + " 카테고리에 대기중 신고가 없습니다.");
         }
@@ -272,13 +271,23 @@ public class ReportService {
     }
 
     /* [관리자] 그룹핑 조회에 따른 상세 조회*/
-    @Transactional(readOnly = true)
-    public Page<Report> getGroupReports(Long targetUserId, ReportCategory category, Pageable pageable) {
-        userService.checkAdminAuthority();
-        return reportRepository.findByTargetTypeAndTargetIdAndCategory(
-                ReportTargetType.USER, targetUserId, category, pageable);
-    }
+//    @Transactional(readOnly = true)
+//    public Page<Report> getGroupReports(Long targetUserId, ReportCategory category, Pageable pageable) {
+//        userService.checkAdminAuthority();
+//        return reportRepository.findByTargetTypeAndTargetIdAndCategory(
+//                ReportTargetType.USER, targetUserId, category, pageable);
+//    }
 
+    @Transactional(readOnly = true)
+    public Page<AdminReportItemDto> getGroupReportsDto(Long targetUserId, ReportCategory category, Pageable pageable) {
+        userService.checkAdminAuthority();
+
+        Page<Report> page = reportRepository.findByTargetTypeAndTargetIdAndCategory(
+                ReportTargetType.USER, targetUserId, category, pageable
+        );
+
+        return page.map(AdminReportItemDto::fromEntity);
+    }
 
     /* [관리자] 즉시 정지 */
     @Transactional

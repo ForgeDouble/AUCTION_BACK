@@ -6,6 +6,7 @@ import com.example.auction.report.domain.ReportStatus;
 import com.example.auction.report.domain.ReportTargetType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,8 +20,11 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
     boolean existsByReporter_UserIdAndTargetIdAndCategory(Long reporterUserId, Long targetId, ReportCategory category);
 
 
-    List<Report> findByTargetIdAndCategoryAndStatus(Long targetId, ReportCategory category, ReportStatus status);
-
+//    List<Report> findByTargetIdAndCategoryAndStatus(Long targetId, ReportCategory category, ReportStatus status);
+    // 안전 조회(관리자 처리)
+    List<Report> findByTargetTypeAndTargetIdAndCategoryAndStatus(
+            ReportTargetType targetType, Long targetId, ReportCategory category, ReportStatus status
+    );
     // 관리자 그룹 요약 집계
     @Query("""
         select 
@@ -38,9 +42,10 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     // 그룹 상세 페이징
 //    Page<Report> findByTargetIdAndCategory(Long targetId, ReportCategory category, Pageable pageable);
+    @EntityGraph(attributePaths = {"reporter"})
     Page<Report> findByTargetTypeAndTargetIdAndCategory(
-            ReportTargetType targetType, Long targetId, ReportCategory category, Pageable pageable);
-
+            ReportTargetType targetType, Long targetId, ReportCategory category, Pageable pageable
+    );
     boolean existsByReporter_UserIdAndTargetTypeAndTargetId(
             Long reporterUserId, ReportTargetType targetType, Long targetId);
 

@@ -24,7 +24,7 @@ public class ChatSubscriber implements MessageListener {
     private final ObjectMapper chatObjectMapper;
 
     @Override
-    public void onMessage(org.springframework.data.redis.connection.Message message, byte[] pattern) {
+    public void onMessage(Message message, byte[] pattern) {
         try {
             String json = new String(message.getBody(), StandardCharsets.UTF_8);
             ChatMessageResponse dto = chatObjectMapper.readValue(json, ChatMessageResponse.class);
