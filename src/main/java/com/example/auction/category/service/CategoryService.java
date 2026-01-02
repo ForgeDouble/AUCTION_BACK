@@ -3,6 +3,7 @@ package com.example.auction.category.service;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.example.auction.category.dto.CategoryReadWithChildrenAndCountDto;
 import com.example.auction.category.dto.CategoryReadWithChildrenDto;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
@@ -19,7 +20,6 @@ import com.example.auction.category.dto.CategoryCreateDto;
 import com.example.auction.category.dto.CategoryReadDto;
 import com.example.auction.category.repository.CategoryRepository;
 import com.example.auction.product.domain.Product;
-import com.example.auction.product.dto.ProductCreateDto;
 
 import lombok.RequiredArgsConstructor;
 
@@ -132,23 +132,71 @@ public class CategoryService {
         return String.join(" > ", names);
     }
 
-    // 전체 카테고리 트리 (자식 포함)
+    /* 재귀적으로 자식 카테고리의 상품 개수를 포함한 총 개수 계산 */
+    private long calculateTotalProductCount(
+            Category category,
+            Map<Long, Long> directCountMap,
+            Map<Long, Long> totalCountMap) {
+
+        /* 이미 계산된 경우 재사용 */
+        if (totalCountMap.containsKey(category.getCategoryId())) {
+            return totalCountMap.get(category.getCategoryId());
+        }
+
+        /* 현재 카테고리의 직접 상품 개수 */
+        long totalCount = directCountMap.getOrDefault(category.getCategoryId(), 0L);
+
+        /* 자식 카테고리들의 상품 개수를 재귀적으로 합산 */
+        if (category.getChildren() != null) {
+            for (Category child : category.getChildren()) {
+                totalCount += calculateTotalProductCount(child, directCountMap, totalCountMap);
+            }
+        }
+
+        /* 계산 결과 저장 */
+        totalCountMap.put(category.getCategoryId(), totalCount);
+
+        return totalCount;
+    }
+
+    /* 전체 카테고리 트리 (자식 포함, 상품 개수 포함) */
     @Transactional(readOnly = true)
-    public List<CategoryReadWithChildrenDto> getAllCategoriesWithChildren() {
-        // 1. 카테고리 트리 조회
+    public List<CategoryReadWithChildrenAndCountDto> getAllCategoriesWithChildren() {
+        /* 1. 카테고리 트리 조회 */
         List<Category> parentCategories = categoryRepository.findAllParentCategoriesWithChildren();
 
-        // 2. 모든 카테고리의 상품 개수를 Map으로 저장
-        Map<Long, Long> productCountMap = categoryRepository.countProductsByCategory().stream()
+        /* 2. 각 카테고리의 직접 상품 개수를 Map으로 저장 */
+        Map<Long, Long> directProductCountMap = categoryRepository.countProductsByCategory().stream()
                 .collect(Collectors.toMap(
                         arr -> (Long) arr[0],
                         arr -> (Long) arr[1]
                 ));
 
-        // 3. DTO 변환
+        /* 3. 자식 포함 상품 개수를 계산할 Map */
+        Map<Long, Long> totalProductCountMap = new HashMap<>();
+
+        /* 4. 모든 카테고리에 대해 재귀적으로 총 상품 개수 계산 */
+        for (Category category : parentCategories) {
+            calculateTotalProductCount(category, directProductCountMap, totalProductCountMap);
+        }
+
+        /* 5. DTO 변환 */
+        return parentCategories.stream()
+                .map(category -> CategoryReadWithChildrenAndCountDto.fromWithChildren(
+                        category, 0, MAX_DEPTH, totalProductCountMap))
+                .collect(Collectors.toList());
+    }
+
+    /* 전체 카테고리 트리 (자식 포함, 삼품 개수 X) */
+    @Transactional(readOnly = true)
+    public List<CategoryReadWithChildrenDto> getAllOnlyCategoriesWithChildren() {
+        /* 1. 카테고리 트리 조회 */
+        List<Category> parentCategories = categoryRepository.findAllParentCategoriesWithChildren();
+
+        /* 2. DTO 변환 */
         return parentCategories.stream()
                 .map(category -> CategoryReadWithChildrenDto.fromWithChildren(
-                        category, 0, MAX_DEPTH, productCountMap))
+                        category, 0, MAX_DEPTH))
                 .collect(Collectors.toList());
     }
 }

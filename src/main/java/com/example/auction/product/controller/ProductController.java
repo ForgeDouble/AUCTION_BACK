@@ -1,7 +1,9 @@
 package com.example.auction.product.controller;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
+import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -60,17 +62,28 @@ public class ProductController {
             @RequestParam(required = false) Long minPrice,
             @RequestParam(required = false) Long maxPrice,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "3") int size,
+            @RequestParam(defaultValue = "9") int size,
+            @RequestParam(required = false) List<String> statuses,
             @RequestParam(defaultValue = "NEWEST") String sortBy
     ) {
         // Pageable은 페이징만 처리
         Pageable pageable = PageRequest.of(page, size);
+
+        // String을 Status enum으로 변환
+        List<Status> statusEnums = null;
+
+        if (statuses != null && !statuses.isEmpty()) {
+            statusEnums = statuses.stream()
+                    .map(Status::valueOf)
+                    .collect(Collectors.toList());
+        }
 
         Page<ProductListDto> products = productService.getProducts(
                 categoryId,
                 search,
                 minPrice,
                 maxPrice,
+                statusEnums,
                 sortBy,
                 pageable
         );

@@ -2,6 +2,7 @@ package com.example.auction.category.controller;
 
 import java.util.List;
 
+import com.example.auction.category.dto.CategoryReadWithChildrenAndCountDto;
 import com.example.auction.category.dto.CategoryReadWithChildrenDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -64,10 +65,17 @@ public class CategoryController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadDtos));
     }
 
+    // 전체 트리 카테고리 목록 조회 (자식 포함, 상품 개수 포함)
+    @GetMapping("/with_children_and_count")
+    public ResponseEntity<?> getCategoryTreeWithCount() {
+        List<CategoryReadWithChildrenAndCountDto> categoryReadWithChildrenDtos = categoryService.getAllCategoriesWithChildren();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadWithChildrenDtos));
+    }
+
     // 전체 트리 카테고리 목록 조회 (자식 포함)
     @GetMapping("/with_children")
     public ResponseEntity<?> getCategoryTree() {
-        List<CategoryReadWithChildrenDto> categoryReadWithChildrenDtos = categoryService.getAllCategoriesWithChildren();
+        List<CategoryReadWithChildrenDto> categoryReadWithChildrenDtos = categoryService.getAllOnlyCategoriesWithChildren();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "카테고리 목록 조회 성공", categoryReadWithChildrenDtos));
     }
 

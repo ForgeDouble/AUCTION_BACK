@@ -2,6 +2,7 @@ package com.example.auction.wishlist.controller;
 
 import com.example.auction.wishlist.domain.Wishlist;
 import com.example.auction.wishlist.dto.WishlistAllDto;
+import org.checkerframework.checker.units.qual.C;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,7 +23,7 @@ public class WishlistController {
 	
 	private final WishlistService wishlistService;
 	
-//	위시리스트 생성
+    /* 위시리스트 생성 */
     @PreAuthorize("isAuthenticated()")
 	@PostMapping("/create")
 	public ResponseEntity<CommonResDto> createWishlist(@ModelAttribute WishlistCreateDto wishlistCreateDto) {
@@ -30,7 +31,7 @@ public class WishlistController {
 		return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 생성 성공", null));
 	}
 
-//  사용자의 위시리스트 목록 조회
+    /* 사용자의 위시리스트 목록 조회 */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/allByUser")
     public ResponseEntity<CommonResDto> getAllWishlist() {
@@ -38,7 +39,16 @@ public class WishlistController {
         return  ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 조회 성공", wishlistAllDtos));
     }
 
-//  위시리스트 삭제
+    /* 해당 상품이 접속중인 유저의 위시리스트인지 판별 */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/isWishlisted/{productId}")
+    public ResponseEntity<CommonResDto> clasifyWishlist(@PathVariable("productId") Long productId) {
+        Long result = wishlistService.getWishlistId(productId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 조회 성공", result));
+    }
+
+
+    /* 위시리스트 삭제 */
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/delete/{wishlistId}")
     public ResponseEntity<CommonResDto> deleteWishlist(@PathVariable("wishlistId") Long wishlistId) {

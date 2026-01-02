@@ -56,6 +56,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "  AND (:search IS NULL OR :search = '' OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :search, '%'))) " +
             "  AND (:minPrice IS NULL OR p.price >= :minPrice) " +
             "  AND (:maxPrice IS NULL OR p.price <= :maxPrice) " +
+            "  AND (:statuses IS NULL OR p.status IN :statuses) " +
             "GROUP BY p.productId, p.productName, p.productContent, p.price, p.status, " +
             "         p.category.categoryId, p.user.email, p.createdAt " +
             "ORDER BY " +
@@ -72,6 +73,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("search") String search,
             @Param("minPrice") Long minPrice,
             @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
             @Param("sortBy") String sortBy,
             Pageable pageable
     );
