@@ -264,4 +264,21 @@ public class RedisConfig {
         redisTemplate.setConnectionFactory(presenceConnectionFactory);
         return redisTemplate;
     }
+
+    // 관리자 대시보드 통계/활동시간대 확인 기록
+    @Bean
+    @Qualifier("metrics")
+    LettuceConnectionFactory metricsConnectionFactory() {
+        return redisConnectionFactory(7);
+    }
+
+    @Bean
+    @Qualifier("metrics")
+    public StringRedisTemplate metricsStringRedisTemplate(
+            @Qualifier("metrics") LettuceConnectionFactory metricsConnectionFactory
+    ) {
+        StringRedisTemplate stringRedisTemplate = new StringRedisTemplate();
+        stringRedisTemplate.setConnectionFactory(metricsConnectionFactory);
+        return stringRedisTemplate;
+    }
 }

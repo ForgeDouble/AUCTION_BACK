@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -23,24 +24,24 @@ public class UserActivityMetricsInterceptor implements HandlerInterceptor {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final Duration TTL = Duration.ofDays(3);
 
-    private final StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate metricsRedis;
 
-    public UserActivityMetricsInterceptor(StringRedisTemplate stringRedisTemplate) {
-        this.stringRedisTemplate = stringRedisTemplate;
+    public UserActivityMetricsInterceptor(@Qualifier("metrics") StringRedisTemplate metricsRedis) {
+        this.metricsRedis = metricsRedis;
     }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null) return true;
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) return true;
 
-        if (!auth.isAuthenticated()) return true;
-        String email = auth.getName();
+        if (!authentication.isAuthenticated()) return true;
+        String email = authentication.getName();
         if (email == null || email.isBlank() || "anonymousUser".equalsIgnoreCase(email)) return true;
 
-        if (hasAdminAuthority(auth)) return true;
+        // 관리자 제외
+        if (hasAdminAuthority(authentication)) return true;
 
-        // 오늘 + 3시간 버킷(00/03/06/09/12/15/18/21)
         ZonedDateTime now = ZonedDateTime.now(KST);
         int hour = now.getHour();
         int bucketStart = (hour / 3) * 3;
@@ -51,10 +52,9 @@ public class UserActivityMetricsInterceptor implements HandlerInterceptor {
         String key = "metrics:activeUsers3h:" + day + ":" + hh;
 
         try {
-            stringRedisTemplate.opsForSet().add(key, email);
-            stringRedisTemplate.expire(key, TTL);
-        } catch (Exception ignore) {
-        }
+            metricsRedis.opsForSet().add(key, email);
+            metricsRedis.expire(key, TTL);
+        } catch (Exception ignore) {}
 
         return true;
     }
@@ -64,7 +64,6 @@ public class UserActivityMetricsInterceptor implements HandlerInterceptor {
             if (ga == null) continue;
             String a = ga.getAuthority();
             if (a == null) continue;
-            // 프로젝트에 따라 "ADMIN" 또는 "ROLE_ADMIN" 형태일 수 있어서 둘 다 허용
             if ("ADMIN".equalsIgnoreCase(a) || "ROLE_ADMIN".equalsIgnoreCase(a)) return true;
         }
         return false;
