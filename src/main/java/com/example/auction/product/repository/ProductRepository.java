@@ -130,7 +130,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // 차단된 상품 수
     long countByBlockedTrue();
 
-    // 금일 판매된 경매수 (status가 SELLED로 바뀐 시점을 updatedAt으로 본다)
+    // 금일 판매된 경매수
     long countByStatusAndUpdatedAtBetween(Status status, LocalDateTime start, LocalDateTime end);
 
     // 금일 종료되었지만 미판매(NOTSELLED)된 경매수
@@ -138,7 +138,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // 관리자에서 전체 경매 수
     long countByStatus(Status status);
 
-    // 참고: READY/PROCESSING/SELLED/NOTSELLED 분포를 한방에 보고 싶으면
+    // READY/PROCESSING/SELLED/NOTSELLED 분포 확인
     @Query("""
         select count(p)
         from Product p
@@ -157,4 +157,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         group by p.category.categoryId
     """)
     List<CategoryCountRow> countByCategoryIdExcludingDeletedBlocked();
+
+    //관리자 화면 - 최근 N개 조회
+    @Query("""
+    select p
+    from Product p
+    left join fetch p.user
+    left join fetch p.category
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+    order by p.createdAt desc
+""")
+    List<Product> findAdminMonitoring(org.springframework.data.domain.Pageable pageable);
 }
