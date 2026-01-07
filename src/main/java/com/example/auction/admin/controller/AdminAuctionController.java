@@ -18,9 +18,12 @@ public class AdminAuctionController {
 
     @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
     @GetMapping
-    public ResponseEntity<?> list(@RequestParam(defaultValue = "200") int size) {
-        var list = adminAuctionService.list(size);
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "경매 모니터링 조회 성공", list));
+    public ResponseEntity<?> list(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        var pg = adminAuctionService.list(page, size);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "경매 모니터링 조회 성공", pg));
     }
 
     @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")

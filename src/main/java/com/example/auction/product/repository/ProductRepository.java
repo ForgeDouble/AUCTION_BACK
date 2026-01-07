@@ -167,5 +167,5 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     where p.delYn = com.example.auction.common.domain.DelYN.N
     order by p.createdAt desc
 """)
-    List<Product> findAdminMonitoring(org.springframework.data.domain.Pageable pageable);
+    Page<Product> findAdminMonitoring(Pageable pageable);
 }

@@ -9,6 +9,7 @@ import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -46,12 +47,13 @@ public class AdminAuctionService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminAuctionRowDto> list(int size) {
-        int limit = Math.max(1, Math.min(size, 300));
-        List<Product> products = productRepository.findAdminMonitoring(PageRequest.of(0, limit));
+    public Page<AdminAuctionRowDto> list(int page, int size) {
+        int p = Math.max(0, page);
+        int s = Math.max(1, Math.min(size, 100));
 
-        List<AdminAuctionRowDto> auctionRowDtos = new ArrayList<>(products.size());
-        for (Product product : products) {
+        var productsPage = productRepository.findAdminMonitoring(PageRequest.of(p, s));
+
+        return productsPage.map(product -> {
             Long pid = product.getProductId();
 
             String zKey = "product_bid_zset_" + pid;
@@ -70,7 +72,7 @@ public class AdminAuctionService {
                     ? "BLOCKED"
                     : (product.getStatus() == null ? "UNKNOWN" : product.getStatus().name());
 
-            auctionRowDtos.add(new AdminAuctionRowDto(
+            return new AdminAuctionRowDto(
                     String.valueOf(pid),
                     product.getProductName(),
                     sellerMasked,
@@ -79,9 +81,8 @@ public class AdminAuctionService {
                     bidCount,
                     endsAtIso,
                     status
-            ));
-        }
-        return auctionRowDtos;
+            );
+        });
     }
 
     @Transactional
