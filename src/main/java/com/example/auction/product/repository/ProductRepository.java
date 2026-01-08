@@ -120,7 +120,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "  AND (p.blocked = false OR p.blocked IS NULL) " +
             "GROUP BY p.productId, p.productName, p.productContent, p.price, p.status " +
             "ORDER BY p.createdAt DESC")
-    List<ProductWithBidDto> findWishlistByUserEmailWithBidInfo(@Param("email") String email);
+    Page<ProductWithBidDto> findWishlistByUserEmailWithBidInfo(@Param("email") String email, Pageable pageable);
 
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);

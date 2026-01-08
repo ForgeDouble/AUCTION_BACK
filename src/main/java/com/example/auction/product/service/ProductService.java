@@ -629,10 +629,11 @@ public class ProductService {
 
     /* 마이페이지 - 찜한 목록들 조회 */
     @Transactional(readOnly = true)
-    public List<ProductWithBidDto> readProductsByWishlist() {
+    public Page<ProductWithBidDto> readProductsByWishlist(int page, int size) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return productRepository.findWishlistByUserEmailWithBidInfo(email);
-//                .stream()
-//                .collect(Collectors.toList());
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        return productRepository.findWishlistByUserEmailWithBidInfo(email, pageable);
     }
 }
