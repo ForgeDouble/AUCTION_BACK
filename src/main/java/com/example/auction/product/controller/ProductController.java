@@ -93,9 +93,13 @@ public class ProductController {
 
     /* 로그인중인 유저의 상품 목록 조회 (마이페이지) */
     @GetMapping("/allByUser")
-    public ResponseEntity<?> ReadAllProductsByUser() {
-        List<ProductWithBidDto> dto = productService.readAllProductsByUser();
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
+    public ResponseEntity<?> readAllProductsByUser(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<ProductWithBidDto> productPage = productService.readAllProductsByUser(page, size);
+
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", productPage));
     }
 
     /* 로그인중인 유저의 찜한 상품 목록 조회 (마이페이지) */

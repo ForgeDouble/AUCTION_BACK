@@ -78,6 +78,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Pageable pageable
     );
 
+    // Repository
     @Query("SELECT new com.example.auction.product.dto.ProductWithBidDto(" +
             "p.productId, " +
             "p.productName, " +
@@ -97,7 +98,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "  AND (p.blocked = false OR p.blocked IS NULL) " +
             "GROUP BY p.productId, p.productName, p.productContent, p.price, p.status " +
             "ORDER BY p.createdAt DESC")
-    List<ProductWithBidDto> findAllByUserEmailWithBidInfo(@Param("email") String email);
+    Page<ProductWithBidDto> findAllByUserEmailWithBidInfo(@Param("email") String email, Pageable pageable);
 
     @Query("SELECT new com.example.auction.product.dto.ProductWithBidDto(" +
             "p.productId, " +

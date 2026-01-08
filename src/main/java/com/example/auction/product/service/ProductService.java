@@ -28,7 +28,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.TaskScheduler;
@@ -559,12 +561,12 @@ public class ProductService {
 
     // 마이페이지 아이템 목록 조회
     @Transactional(readOnly = true)
-    public List<ProductWithBidDto> readAllProductsByUser() {
+    public Page<ProductWithBidDto> readAllProductsByUser(int page, int size) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        return productRepository.findAllByUserEmailWithBidInfo(email)
-                .stream()
-                .collect(Collectors.toList());
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        return productRepository.findAllByUserEmailWithBidInfo(email, pageable);
     }
 	
 	// 아이템 수정
