@@ -17,6 +17,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -310,11 +314,12 @@ public class BidService {
 
     /* 마이페이지 user 입찰 내역 조회 */
     @Transactional(readOnly = true)
-    public List<BidAllByUserDto> readBidAllByUser() {
+    public Page<BidAllByUserDto> readBidAllByUser(int page, int size) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        List<BidAllByUserDto> bidListDto = bidRepository.findBidAllByUser(email);
+        Page<BidAllByUserDto> bidListDto = bidRepository.findBidAllByUser(email, pageable);
 //                .stream()
 //                .collect(Collectors.toList());
 
