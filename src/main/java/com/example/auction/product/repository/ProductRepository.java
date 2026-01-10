@@ -7,6 +7,7 @@ import java.util.Optional;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.ProductListDto;
 import com.example.auction.product.dto.ProductWithBidDto;
+import com.example.auction.product.dto.Top3ProductDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -78,7 +79,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Pageable pageable
     );
 
-    // Repository
     @Query("SELECT new com.example.auction.product.dto.ProductWithBidDto(" +
             "p.productId, " +
             "p.productName, " +
@@ -121,6 +121,27 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "GROUP BY p.productId, p.productName, p.productContent, p.price, p.status " +
             "ORDER BY p.createdAt DESC")
     Page<ProductWithBidDto> findWishlistByUserEmailWithBidInfo(@Param("email") String email, Pageable pageable);
+
+    @Query("SELECT new com.example.auction.product.dto.Top3ProductDto(" +
+            "p.productId, " +
+            "p.productName, " +
+            "p.status, " +
+            "COUNT(b.bidId), " +
+            "COALESCE(MAX(b.bidAmount), 0), " +
+            "(SELECT img.url FROM ProductImage img " +
+            " WHERE img.product.productId = p.productId " +
+            " ORDER BY img.position ASC " +
+            " LIMIT 1), " +
+            "p.createdAt) " +  // 추가
+            "FROM Product p " +
+            "LEFT JOIN Bid b ON b.product = p " +
+            "WHERE p.delYn = com.example.auction.common.domain.DelYN.N " +
+            "  AND (p.blocked = false OR p.blocked IS NULL) " +
+            "  AND p.status = com.example.auction.product.domain.Status.PROCESSING " +
+            "GROUP BY p.productId, p.productName, p.status, p.createdAt " +  // createdAt 추가
+            "ORDER BY COUNT(b.bidId) DESC " +
+            "LIMIT 3")
+    List<Top3ProductDto> findTop3ByBidCount();
 
 
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);

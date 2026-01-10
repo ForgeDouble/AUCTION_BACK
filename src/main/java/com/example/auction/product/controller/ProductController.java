@@ -133,6 +133,11 @@ public class ProductController {
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 삭제 성공", null));
     }
 
-
+    /* 메인페이지 - 입찰이 가장 많은 상위 3개 상품들 조회 */
+    @GetMapping("/top3")
+    public ResponseEntity<?> ReadTop3Product() {
+        List<Top3ProductDto> top3ProductDtos = productService.readTop3Products();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", top3ProductDtos));
+    }
 }
 

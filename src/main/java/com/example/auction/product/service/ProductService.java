@@ -636,4 +636,10 @@ public class ProductService {
 
         return productRepository.findWishlistByUserEmailWithBidInfo(email, pageable);
     }
+
+    /* 메인페이지 - 입찰이 가장 많은 상위 3개 상품들 조회 */
+    @Transactional(readOnly = true)
+    public List<Top3ProductDto> readTop3Products() {
+        return productRepository.findTop3ByBidCount();
+    }
 }
