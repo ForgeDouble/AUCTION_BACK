@@ -1,6 +1,7 @@
 package com.example.auction.product.repository;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -168,4 +169,39 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     order by p.createdAt desc
 """)
     Page<Product> findAdminMonitoring(Pageable pageable);
+
+    interface DayCountRow {
+        Date getD();
+        Long getCnt();
+    }
+
+    @Query("""
+        select function('date', p.createdAt) as d, count(p) as cnt
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and p.createdAt >= :from and p.createdAt < :to
+        group by function('date', p.createdAt)
+        order by function('date', p.createdAt)
+    """)
+    List<DayCountRow> countCreatedDaily(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
+    @Query("""
+        select function('date', p.updatedAt) as d, count(p) as cnt
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and p.status in :statuses
+          and p.updatedAt >= :from and p.updatedAt < :to
+        group by function('date', p.updatedAt)
+        order by function('date', p.updatedAt)
+    """)
+    List<DayCountRow> countEndedDaily(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("statuses") List<Status> statuses
+    );
 }
