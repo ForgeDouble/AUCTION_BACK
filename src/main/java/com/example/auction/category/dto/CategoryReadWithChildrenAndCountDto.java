@@ -76,4 +76,52 @@ public class CategoryReadWithChildrenAndCountDto {
 
         return builder.build();
     }
+
+    // 부모 카테고리만 (자식들의 상품 수량 합산)
+    public static CategoryReadWithChildrenAndCountDto fromParentOnly(Category category) {
+        long totalProductCount = calculateTotalProductCount(category);
+
+        return CategoryReadWithChildrenAndCountDto.builder()
+                .categoryId(category.getCategoryId())
+                .categoryName(category.getCategoryName())
+                .productCount(totalProductCount)
+                .children(Collections.emptyList())
+                .build();
+    }
+
+    // 부모 카테고리만 + productCountMap 사용 (효율적인 버전)
+    public static CategoryReadWithChildrenAndCountDto fromParentOnly(
+            Category category, Map<Long, Long> productCountMap) {
+
+        long totalProductCount = calculateTotalProductCount(category, productCountMap);
+
+        return CategoryReadWithChildrenAndCountDto.builder()
+                .categoryId(category.getCategoryId())
+                .categoryName(category.getCategoryName())
+                .productCount(totalProductCount)
+                .children(Collections.emptyList())
+                .build();
+    }
+
+    // 재귀적으로 모든 자식 카테고리의 상품 수를 합산
+    private static long calculateTotalProductCount(Category category) {
+        long count = category.getProducts().size();
+
+        for (Category child : category.getChildren()) {
+            count += calculateTotalProductCount(child);
+        }
+
+        return count;
+    }
+
+    // productCountMap을 사용하여 모든 자식 카테고리의 상품 수를 합산
+    private static long calculateTotalProductCount(Category category, Map<Long, Long> productCountMap) {
+        long count = productCountMap.getOrDefault(category.getCategoryId(), 0L);
+
+        for (Category child : category.getChildren()) {
+            count += calculateTotalProductCount(child, productCountMap);
+        }
+
+        return count;
+    }
 }

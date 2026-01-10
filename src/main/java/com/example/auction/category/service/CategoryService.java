@@ -187,6 +187,36 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
+    /* 부모 카테고리만 조회 (자식들의 상품 개수 합산 포함) - 상위 6개 */
+    @Transactional(readOnly = true)
+    public List<CategoryReadWithChildrenAndCountDto> getTop6ParentCategoriesByProductCount() {
+        /* 1. 카테고리 트리 조회 */
+        List<Category> parentCategories = categoryRepository.findAllParentCategoriesWithChildren();
+
+        /* 2. 각 카테고리의 직접 상품 개수를 Map으로 저장 */
+        Map<Long, Long> directProductCountMap = categoryRepository.countProductsByCategory().stream()
+                .collect(Collectors.toMap(
+                        arr -> (Long) arr[0],
+                        arr -> (Long) arr[1]
+                ));
+
+        /* 3. 자식 포함 상품 개수를 계산할 Map */
+        Map<Long, Long> totalProductCountMap = new HashMap<>();
+
+        /* 4. 모든 카테고리에 대해 재귀적으로 총 상품 개수 계산 */
+        for (Category category : parentCategories) {
+            calculateTotalProductCount(category, directProductCountMap, totalProductCountMap);
+        }
+
+        /* 5. DTO 변환 후 productCount 기준 내림차순 정렬, 상위 6개만 선택 */
+        return parentCategories.stream()
+                .map(category -> CategoryReadWithChildrenAndCountDto.fromParentOnly(
+                        category, totalProductCountMap))
+                .sorted((dto1, dto2) -> Long.compare(dto2.getProductCount(), dto1.getProductCount()))
+                .limit(6)
+                .collect(Collectors.toList());
+    }
+
     /* 전체 카테고리 트리 (자식 포함, 삼품 개수 X) */
     @Transactional(readOnly = true)
     public List<CategoryReadWithChildrenDto> getAllOnlyCategoriesWithChildren() {
