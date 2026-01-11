@@ -38,4 +38,11 @@ public class AdminMetricsController {
         var list = adminMetricsService.auctionTrend(days);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "최근 경매 생성/종료 추이 조회 성공", list));
     }
+
+    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+    @GetMapping("/trade-monthly")
+    public ResponseEntity<?> tradeMonthly(@RequestParam(defaultValue = "6") int months) {
+        var list = adminMetricsService.monthlyTrade(months);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "월별 거래 금액 추이 조회 성공", list));
+    }
 }
