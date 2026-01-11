@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 import com.example.auction.admin.dto.AdminAuctionTrendRowDto;
+import com.example.auction.admin.dto.AdminMonthlyTradeRowDto;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -61,24 +62,25 @@ public class AdminMetricsService {
         return out;
     }
 
+    // 최근 7일 내 생성/종료 확인용 (그래프 지표)
     @Transactional(readOnly = true)
     public List<AdminAuctionTrendRowDto> auctionTrend(int days) {
-        int d = Math.max(1, Math.min(days, 30));
+        int day = Math.max(1, Math.min(days, 30));
 
         LocalDate today = LocalDate.now(KST);
-        LocalDate startDate = today.minusDays(d - 1);
+        LocalDate startDate = today.minusDays(day - 1);
         LocalDate endExclusiveDate = today.plusDays(1);
 
         LocalDateTime from = startDate.atStartOfDay();
         LocalDateTime to = endExclusiveDate.atStartOfDay();
 
-        Map<LocalDate, Long> createdMap = toMap(productRepository.countCreatedDaily(from, to));
+        Map<LocalDate, Long> createdMap = toMap(
+                productRepository.countCreatedDaily(from, to));
         Map<LocalDate, Long> endedMap = toMap(
-                productRepository.countEndedDaily(from, to, List.of(Status.SELLED, Status.NOTSELLED))
-        );
+                productRepository.countEndedDaily(from, to, List.of(Status.SELLED, Status.NOTSELLED)));
 
-        List<AdminAuctionTrendRowDto> out = new ArrayList<>(d);
-        for (int i = 0; i < d; i++) {
+        List<AdminAuctionTrendRowDto> out = new ArrayList<>(day);
+        for (int i = 0; i < day; i++) {
             LocalDate date = startDate.plusDays(i);
             long created = createdMap.getOrDefault(date, 0L);
             long ended = endedMap.getOrDefault(date, 0L);
@@ -99,6 +101,40 @@ public class AdminMetricsService {
             map.put(ld, cnt);
         }
         return map;
+    }
+
+    // 월별 거래 금액 추이 확인 지표
+    @Transactional(readOnly = true)
+    public List<AdminMonthlyTradeRowDto> monthlyTrade(int months) {
+        int m = Math.max(1, Math.min(months, 24));
+
+        LocalDate today = LocalDate.now(KST);
+
+        // 조회 시작 끝 달 확인용
+        LocalDate startMonth = today.withDayOfMonth(1).minusMonths(m - 1);
+        LocalDate endExclusiveMonth = today.withDayOfMonth(1).plusMonths(1);
+
+        LocalDateTime from = startMonth.atStartOfDay();
+        LocalDateTime to = endExclusiveMonth.atStartOfDay();
+
+        var rows = productRepository.sumMonthlyTradeAmountSold(from, to);
+
+        Map<String, Long> map = new HashMap<>();
+        if (rows != null) {
+            for (var r : rows) {
+                String ym = r.getYm();
+                long amount = (r.getAmount() == null ? 0L : r.getAmount());
+                if (ym != null && !ym.isBlank()) map.put(ym, amount);
+            }
+        }
+
+        List<AdminMonthlyTradeRowDto> out = new ArrayList<>(m);
+        for (int i = 0; i < m; i++) {
+            LocalDate month = startMonth.plusMonths(i);
+            String ym = month.getYear() + "-" + String.format("%02d", month.getMonthValue());
+            out.add(new AdminMonthlyTradeRowDto(ym, map.getOrDefault(ym, 0L)));
+        }
+        return out;
     }
 
 
