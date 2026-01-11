@@ -170,6 +170,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 """)
     Page<Product> findAdminMonitoring(Pageable pageable);
 
+    // 최근 7일간 생성/종료 경매 확인 repository
     interface DayCountRow {
         Date getD();
         Long getCnt();
@@ -203,5 +204,34 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             @Param("statuses") List<Status> statuses
+    );
+
+
+    // 월별 경매 추이 repository
+    interface MonthlyAmountRow {
+        String getYm();      // yyyy-MM
+        Long getAmount();    // sum
+    }
+
+    @Query(value = """
+        select
+            date_format(p.updated_at, '%Y-%m') as ym,
+            sum(coalesce(mx.max_bid, p.price, 0)) as amount
+        from product p
+        left join (
+            select b.product_id as product_id, max(b.bid_amount) as max_bid
+            from bid b
+            group by b.product_id
+        ) mx on mx.product_id = p.product_id
+        where p.del_yn = 'N'
+          and (p.blocked = 0 or p.blocked is null)
+          and p.status = 'SELLED'
+          and p.updated_at >= :from and p.updated_at < :to
+        group by date_format(p.updated_at, '%Y-%m')
+        order by ym
+    """, nativeQuery = true)
+    List<MonthlyAmountRow> sumMonthlyTradeAmountSold(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
     );
 }
