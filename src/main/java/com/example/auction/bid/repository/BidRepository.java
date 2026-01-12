@@ -90,7 +90,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
         where p.status = com.example.auction.product.domain.Status.SELLED
           and p.updatedAt >= :start
           and p.updatedAt < :end
-          and b.isWinned = 'Y'
+          and b.isWinned = com.example.auction.bid.domain.IsWinned.Y
     """)
     Long sumTodayGmv(@Param("start") LocalDateTime start,
                      @Param("end") LocalDateTime end);
@@ -104,7 +104,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
         where p.status = com.example.auction.product.domain.Status.SELLED
           and p.updatedAt >= :start
           and p.updatedAt < :end
-          and b.isWinned = 'Y'
+          and b.isWinned = com.example.auction.bid.domain.IsWinned.Y
         group by function('year', p.updatedAt), function('month', p.updatedAt)
         order by function('year', p.updatedAt), function('month', p.updatedAt)
     """)
