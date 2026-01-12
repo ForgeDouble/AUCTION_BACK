@@ -284,5 +284,28 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
         return userStatusService.getStatus(user.getEmail());
     }
+
+
+    @Transactional
+    public TokenExtendRes extendLogin() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+
+        if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
+            throw new RuntimeException("정지된 계정입니다.");
+        }
+
+        String newToken = jwtTokenProvider.createAccessToken(user);
+
+        long ttl = jwtTokenProvider.getRemainingSeconds(newToken);
+        customTokenExpiredStrategy.save(email, newToken, ttl);
+
+        // 접속 유지(선택)
+        userStatusService.touch(email);
+
+        return new TokenExtendRes(newToken, ttl);
+    }
 }
 
