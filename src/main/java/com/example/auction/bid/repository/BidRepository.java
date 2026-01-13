@@ -4,6 +4,8 @@ import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidAllByUserDto;
 import com.example.auction.product.domain.Status;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,7 +34,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
         WHERE b.user.email = :email
         ORDER BY b.createdAt DESC
     """)
-    List<BidAllByUserDto> findBidAllByUser(@Param("email") String email);
+    Page<BidAllByUserDto> findBidAllByUser(@Param("email") String email, Pageable pageable);
 
     // 전체 입찰 개수
     long count();

@@ -93,16 +93,23 @@ public class ProductController {
 
     /* 로그인중인 유저의 상품 목록 조회 (마이페이지) */
     @GetMapping("/allByUser")
-    public ResponseEntity<?> ReadAllProductsByUser() {
-        List<ProductWithBidDto> dto = productService.readAllProductsByUser();
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", dto));
+    public ResponseEntity<?> readAllProductsByUser(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Page<ProductWithBidDto> productPage = productService.readAllProductsByUser(page, size);
+
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", productPage));
     }
 
     /* 로그인중인 유저의 찜한 상품 목록 조회 (마이페이지) */
     @GetMapping("/allByWishlist")
-    public ResponseEntity<?> ReadAllProductsByWishlist() {
-        List<ProductWithBidDto> dto = productService.readProductsByWishlist();
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "찜한 상품 목록 조회 성공", dto));
+    public ResponseEntity<?> ReadAllProductsByWishlist(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<ProductWithBidDto> productPage = productService.readProductsByWishlist(page, size);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "찜한 상품 목록 조회 성공", productPage));
     }
     
     // 상품 수정
@@ -126,6 +133,11 @@ public class ProductController {
     	return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 삭제 성공", null));
     }
 
-
+    /* 메인페이지 - 입찰이 가장 많은 상위 3개 상품들 조회 */
+    @GetMapping("/top3")
+    public ResponseEntity<?> ReadTop3Product() {
+        List<Top3ProductDto> top3ProductDtos = productService.readTop3Products();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", top3ProductDtos));
+    }
 }
 
