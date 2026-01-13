@@ -28,7 +28,7 @@ public class Bid extends BaseTimeEntity {
     @Column(nullable = false)
     private Long bidAmount;
 
-//    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private IsWinned isWinned;
 }

@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -90,12 +91,14 @@ public class AdminOverviewService {
 
         long reportsOpen = adminReportCounter.getOpenReportsCount();
 
-        long todayTradeAmount = bidRepository.sumWinningAmountForSoldProductsBetween(
-                IsWinned.Y, Status.SELLED, start, end
-        );
-
-        // 최근 6개월 월 평균 거래금액(낙찰 합 기준)
-        long monthlyAvgTradeAmount = calcMonthlyAvg6();
+//        long todayTradeAmount = bidRepository.sumWinningAmountForSoldProductsBetween(
+//                IsWinned.Y, Status.SELLED, start, end
+//        );
+//
+//        // 최근 6개월 월 평균 거래금액(낙찰 합 기준)
+//        long monthlyAvgTradeAmount = calcMonthlyAvg6();
+        long todayTradeAmount = calcTodayGmv();
+        long monthlyAvgTradeAmount = calcMonthlyAvgGmv(6);
 
         List<AdminOverviewResponse.HourlyPoint> hourly = new ArrayList<>();
         for (UserStatusService.HourlyPoint p : userStatusService.getHourlySeries(today)) {
@@ -123,6 +126,7 @@ public class AdminOverviewService {
 
                 .todayTradeAmount(todayTradeAmount)
                 .monthlyAvgTradeAmount(monthlyAvgTradeAmount)
+
                 .todayActivityHourly(hourly)
 
                 .statusReady(statusReady)
@@ -159,8 +163,6 @@ public class AdminOverviewService {
         }
         return sum / 6;
     }
-
-
 
     @Transactional(readOnly = true)
     public List<AdminCategoryDistributionDto> getTopLevelCategoryDistribution() {
@@ -216,4 +218,41 @@ public class AdminOverviewService {
         }
         return cur.getCategoryName();
     }
+
+    // 오늘 거래 금액 조회
+    private long calcTodayGmv() {
+        LocalDate today = LocalDate.now(KST);
+        LocalDateTime start = today.atStartOfDay();
+        LocalDateTime end = start.plusDays(1);
+
+        Long sum = bidRepository.sumTodayGmv(start, end);
+        return sum == null ? 0L : sum;
+    }
+
+    // 월별 거래 금액 조회
+    private long calcMonthlyAvgGmv(int months) {
+        LocalDate firstDayThisMonth = LocalDate.now(KST).withDayOfMonth(1);
+        LocalDate fromMonth = firstDayThisMonth.minusMonths(months - 1);
+
+        LocalDateTime start = fromMonth.atStartOfDay();
+        LocalDateTime end = firstDayThisMonth.plusMonths(1).atStartOfDay();
+
+        List<Object[]> rows = bidRepository.sumMonthlyGmv(start, end);
+
+        Map<YearMonth, Long> map = new HashMap<>();
+        for (Object[] r : rows) {
+            int yy = ((Number) r[0]).intValue();
+            int mm = ((Number) r[1]).intValue();
+            long total = ((Number) r[2]).longValue();
+            map.put(YearMonth.of(yy, mm), total);
+        }
+
+        long sum = 0L;
+        for (int i = 0; i < months; i++) {
+            YearMonth ym = YearMonth.from(firstDayThisMonth.minusMonths(i));
+            sum += map.getOrDefault(ym, 0L);
+        }
+        return Math.round((double) sum / months);
+    }
+
 }
