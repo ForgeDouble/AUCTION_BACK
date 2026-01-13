@@ -3,6 +3,8 @@ package com.example.auction.user.repository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -40,4 +42,26 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("select count(u) from User u where u.createdAt >= :start and u.createdAt < :end and u.delYn = com.example.auction.common.domain.DelYN.N")
     long countCreatedBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     long countByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+
+    @Query("""
+    select u
+    from User u
+    where u.delYn = :delYn
+      and (:authority is null or u.authority = :authority)
+      and (
+           :keyword is null
+        or lower(u.email) like lower(concat('%', :keyword, '%'))
+        or lower(u.name) like lower(concat('%', :keyword, '%'))
+        or lower(coalesce(u.nickname, '')) like lower(concat('%', :keyword, '%'))
+      )
+""")
+    Page<User> searchUsersForAdmin(
+            @Param("delYn") DelYN delYn,
+            @Param("authority") Authority authority,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    long countByAuthorityAndDelYn(Authority authority, DelYN delYn);
 }
