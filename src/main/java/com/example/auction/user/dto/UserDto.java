@@ -1,5 +1,6 @@
 package com.example.auction.user.dto;
 
+import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.Gender;
 import com.example.auction.user.domain.User;
 import lombok.*;
@@ -21,6 +22,7 @@ public class UserDto {
     private String phone;
     private Long warning;
     private String nickname;
+    private Authority authority;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -41,6 +43,7 @@ public class UserDto {
                 .nickname(user.getNickname())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
+                .authority(user.getAuthority())
                 .build();
     }
 }
