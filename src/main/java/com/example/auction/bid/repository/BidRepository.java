@@ -58,8 +58,8 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     );
 
     interface MonthlyTotalProjection {
-        String getYm();     // 2025-12
-        Long getTotal();    // sum
+        String getYm();
+        Long getTotal();
     }
 
     @Query("""
@@ -80,4 +80,35 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
     );
+
+
+    // 금일 거래 모니터링 (1. 금일 2. 월별 )
+    @Query("""
+        select coalesce(sum(b.bidAmount), 0)
+        from Bid b
+        join b.product p
+        where p.status = com.example.auction.product.domain.Status.SELLED
+          and p.updatedAt >= :start
+          and p.updatedAt < :end
+          and b.isWinned = com.example.auction.bid.domain.IsWinned.Y
+    """)
+    Long sumTodayGmv(@Param("start") LocalDateTime start,
+                     @Param("end") LocalDateTime end);
+
+    @Query("""
+        select function('year', p.updatedAt) as yy,
+               function('month', p.updatedAt) as mm,
+               coalesce(sum(b.bidAmount), 0) as total
+        from Bid b
+        join b.product p
+        where p.status = com.example.auction.product.domain.Status.SELLED
+          and p.updatedAt >= :start
+          and p.updatedAt < :end
+          and b.isWinned = com.example.auction.bid.domain.IsWinned.Y
+        group by function('year', p.updatedAt), function('month', p.updatedAt)
+        order by function('year', p.updatedAt), function('month', p.updatedAt)
+    """)
+    List<Object[]> sumMonthlyGmv(@Param("start") LocalDateTime start,
+                                 @Param("end") LocalDateTime end);
+
 }

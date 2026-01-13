@@ -1,6 +1,7 @@
 package com.example.auction.product.repository;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -130,7 +131,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // 차단된 상품 수
     long countByBlockedTrue();
 
-    // 금일 판매된 경매수 (status가 SELLED로 바뀐 시점을 updatedAt으로 본다)
+    // 금일 판매된 경매수
     long countByStatusAndUpdatedAtBetween(Status status, LocalDateTime start, LocalDateTime end);
 
     // 금일 종료되었지만 미판매(NOTSELLED)된 경매수
@@ -138,7 +139,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     // 관리자에서 전체 경매 수
     long countByStatus(Status status);
 
-    // 참고: READY/PROCESSING/SELLED/NOTSELLED 분포를 한방에 보고 싶으면
+    // READY/PROCESSING/SELLED/NOTSELLED 분포 확인
     @Query("""
         select count(p)
         from Product p
@@ -157,4 +158,80 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         group by p.category.categoryId
     """)
     List<CategoryCountRow> countByCategoryIdExcludingDeletedBlocked();
+
+    //관리자 화면 - 최근 N개 조회
+    @Query("""
+    select p
+    from Product p
+    left join fetch p.user
+    left join fetch p.category
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+    order by p.createdAt desc
+""")
+    Page<Product> findAdminMonitoring(Pageable pageable);
+
+    // 최근 7일간 생성/종료 경매 확인 repository
+    interface DayCountRow {
+        Date getD();
+        Long getCnt();
+    }
+
+    @Query("""
+        select function('date', p.createdAt) as d, count(p) as cnt
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and p.createdAt >= :from and p.createdAt < :to
+        group by function('date', p.createdAt)
+        order by function('date', p.createdAt)
+    """)
+    List<DayCountRow> countCreatedDaily(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
+    @Query("""
+        select function('date', p.updatedAt) as d, count(p) as cnt
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and p.status in :statuses
+          and p.updatedAt >= :from and p.updatedAt < :to
+        group by function('date', p.updatedAt)
+        order by function('date', p.updatedAt)
+    """)
+    List<DayCountRow> countEndedDaily(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to,
+            @Param("statuses") List<Status> statuses
+    );
+
+
+    // 월별 경매 추이 repository
+    interface MonthlyAmountRow {
+        String getYm();      // yyyy-MM
+        Long getAmount();    // sum
+    }
+
+    @Query(value = """
+        select
+            date_format(p.updated_at, '%Y-%m') as ym,
+            sum(coalesce(mx.max_bid, p.price, 0)) as amount
+        from product p
+        left join (
+            select b.product_id as product_id, max(b.bid_amount) as max_bid
+            from bid b
+            group by b.product_id
+        ) mx on mx.product_id = p.product_id
+        where p.del_yn = 'N'
+          and (p.blocked = 0 or p.blocked is null)
+          and p.status = 'SELLED'
+          and p.updated_at >= :from and p.updated_at < :to
+        group by date_format(p.updated_at, '%Y-%m')
+        order by ym
+    """, nativeQuery = true)
+    List<MonthlyAmountRow> sumMonthlyTradeAmountSold(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
 }

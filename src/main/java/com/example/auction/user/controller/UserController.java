@@ -50,6 +50,13 @@ public class UserController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "로그아웃 성공", null));
     }
 
+    /* 로그인 연장 - 새 토큰 덮어쓰기 */
+    @PostMapping("/extend")
+    public ResponseEntity<?> extend() {
+        var res = userService.extendLogin();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "로그인 연장 성공", res));
+    }
+
     /* 회원가입 */
     @PostMapping("/register")
     public ResponseEntity<?> register(@ModelAttribute UserRegisterDto registerDto) {
