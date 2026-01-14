@@ -178,4 +178,10 @@ public class UserController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "일일 접속 현황", dto));
     }
 
+    /* 판매자의 정보 읽기 */
+    @GetMapping("/seller/{productId}")
+    public ResponseEntity<?> getSellerByProductId(@PathVariable Long productId) {
+        SellerDto sellerDto = userService.getSellerInfoByProductId(productId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "유저정보 조회 성공", sellerDto));
+    }
 }
