@@ -2,6 +2,7 @@ package com.example.auction.user.service;
 
 import com.example.auction.common.auth.JwtTokenProvider;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
@@ -306,6 +307,13 @@ public class UserService {
         userStatusService.touch(email);
 
         return new TokenExtendRes(newToken, ttl);
+    }
+
+    @Transactional(readOnly = true)
+    public SellerDto getSellerInfoByProductId(Long productId) {
+       SellerDto dto = userRepository.findSellerInfoByProductId(productId)
+               .orElseThrow(() -> new ResourceNotFoundException("user"));
+       return dto;
     }
 }
 

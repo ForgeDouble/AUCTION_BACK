@@ -54,6 +54,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/user/login",
                                 "/user/register",
+                                "/user/seller/{productId}",
                                 "/user/verify-token",
                                 "/product/{productId}",
                                 "/product/all",

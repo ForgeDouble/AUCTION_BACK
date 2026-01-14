@@ -52,10 +52,6 @@ public class Product extends BaseTimeEntity{
     @Column(nullable = false)
     private Long price;
 
-//    @Enumerated(EnumType.STRING)
-//    @Column(nullable = false)
-//    private SellYN sellYN;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Status status;
