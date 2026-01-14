@@ -2,6 +2,7 @@ package com.example.auction.user.service;
 
 import com.example.auction.common.auth.JwtTokenProvider;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
@@ -304,6 +305,7 @@ public class UserService {
         long ttl = jwtTokenProvider.getRemainingSeconds(newToken);
         customTokenExpiredStrategy.save(email, newToken, ttl);
 
+        // 접속 유지(선택)
         userStatusService.touch(email);
 
         return new TokenExtendRes(newToken, ttl);
@@ -338,6 +340,13 @@ public class UserService {
         long inquiry = userRepository.countByAuthorityAndDelYn(Authority.INQUIRY, DelYN.N);
         long user = userRepository.countByAuthorityAndDelYn(Authority.USER, DelYN.N);
         return java.util.Map.of("ADMIN", admin, "INQUIRY", inquiry, "USER", user);
+    }
+
+    @Transactional(readOnly = true)
+    public SellerDto getSellerInfoByProductId(Long productId) {
+       SellerDto dto = userRepository.findSellerInfoByProductId(productId)
+               .orElseThrow(() -> new ResourceNotFoundException("user"));
+       return dto;
     }
 }
 
