@@ -178,6 +178,25 @@ public class UserController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "일일 접속 현황", dto));
     }
 
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/page")
+    public ResponseEntity<?> getUsersPage(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String q
+    ) {
+        PageUserListDto<AdminUserRowDto> result = userService.getUsersPageForAdmin(role, q, page, size);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "페이징 조회 성공", result));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/counts")
+    public ResponseEntity<?> getUserCounts() {
+        var result = userService.getUserRoleCountsForAdmin();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "권한별 카운트", result));
+    }
     /* 판매자의 정보 읽기 */
     @GetMapping("/seller/{productId}")
     public ResponseEntity<?> getSellerByProductId(@PathVariable Long productId) {
