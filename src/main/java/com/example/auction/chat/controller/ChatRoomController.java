@@ -1,5 +1,7 @@
 package com.example.auction.chat.controller;
 
+import com.example.auction.chat.dto.ChatRoomCreateGroupRequest;
+import com.example.auction.chat.dto.ChatRoomInviteRequest;
 import com.example.auction.chat.dto.ChatRoomOpenRequest;
 import com.example.auction.chat.dto.ChatRoomResponse;
 import com.example.auction.chat.service.ChatRoomService;
@@ -34,7 +36,7 @@ public class ChatRoomController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/my")
     public ResponseEntity<CommonResDto> myRooms() {
-        List<ChatRoomResponse> list = chatRoomService.listMyRooms();
+        var list = chatRoomService.listMyRooms();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "내 채팅방 목록", list));
     }
 
@@ -62,6 +64,30 @@ public class ChatRoomController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "문의방 생성/조회 성공", room.getId()));
     }
 
+    // 운영자 단체방(라운지) - ADMIN/INQUIRY만
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
+    @PostMapping("/admin/lounge")
+    public ResponseEntity<CommonResDto> openAdminLounge() {
+        var room = chatRoomService.openAdminLounge();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "운영자 단체방 참가", room.getId()));
+    }
+
+    // 운영진 그룹방 생성
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
+    @PostMapping("/staff/group")
+    public ResponseEntity<CommonResDto> createStaffGroup(@RequestBody ChatRoomCreateGroupRequest chatRoomCreateGroupRequest) {
+        var room = chatRoomService.createStaffGroup(chatRoomCreateGroupRequest);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "운영진 그룹방 생성", room.getId()));
+    }
+
+    // 운영진 초대
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
+    @PostMapping("/{roomId}/invite")
+    public ResponseEntity<CommonResDto> invite(@PathVariable String roomId, @RequestBody ChatRoomInviteRequest chatRoomInviteRequest) {
+        chatRoomService.inviteStaffMember(roomId, chatRoomInviteRequest.getTargetEmail());
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "초대 완료", null));
+    }
+
     // INQUIRY 초대
     @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PostMapping("/{roomId}/invite-inquiry")
@@ -69,6 +95,14 @@ public class ChatRoomController {
                                                       @RequestParam String targetInquiryEmail) {
         chatRoomService.inviteInquiry(roomId, targetInquiryEmail);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "문의 담당자 초대 완료", null));
+    }
+
+    // 해당 채팅방 내부 인원 조회
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{roomId}/members")
+    public ResponseEntity<CommonResDto> roomMembers(@PathVariable String roomId) {
+        var list = chatRoomService.listRoomMembers(roomId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "채팅방 멤버", list));
     }
 
     // INQUIRY 리스트
