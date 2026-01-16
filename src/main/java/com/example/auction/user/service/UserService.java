@@ -9,6 +9,8 @@ import com.example.auction.user.domain.User;
 import com.example.auction.user.domain.UserStatus;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.repository.UserRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -307,6 +309,37 @@ public class UserService {
         userStatusService.touch(email);
 
         return new TokenExtendRes(newToken, ttl);
+    }
+
+
+    @Transactional(readOnly = true)
+    public PageUserListDto<AdminUserRowDto> getUsersPageForAdmin(String authorityText, String keyword, int page, int size) {
+        checkAdminAuthority();
+
+        Authority authority = null;
+        if (authorityText != null && !authorityText.isBlank() && !"ALL".equalsIgnoreCase(authorityText)) {
+            authority = Authority.valueOf(authorityText.toUpperCase());
+        }
+
+        String k = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100); // 최대 100
+
+        var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "userId"));
+        var p = userRepository.searchUsersForAdmin(DelYN.N, authority, k, pageable);
+
+        var mapped = p.map(AdminUserRowDto::adminUserRowDto);
+        return PageUserListDto.from(mapped);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Long> getUserRoleCountsForAdmin() {
+        checkAdminAuthority();
+        long admin = userRepository.countByAuthorityAndDelYn(Authority.ADMIN, DelYN.N);
+        long inquiry = userRepository.countByAuthorityAndDelYn(Authority.INQUIRY, DelYN.N);
+        long user = userRepository.countByAuthorityAndDelYn(Authority.USER, DelYN.N);
+        return java.util.Map.of("ADMIN", admin, "INQUIRY", inquiry, "USER", user);
     }
 
     @Transactional(readOnly = true)
