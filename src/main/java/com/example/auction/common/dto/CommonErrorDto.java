@@ -9,11 +9,14 @@ import org.springframework.http.HttpStatus;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CommonErrorDto {
-    private int status_code;
-    private String error_message;
+    private String statusCode;
+    private String errorMessage;
+    private String additionalInfo;
 
-    public CommonErrorDto(HttpStatus httpStatus, String error_message) {
-        this.status_code = httpStatus.value();
-        this.error_message = error_message;
+    public CommonErrorDto(String statusCode, String errorMessage) {
+        this.statusCode = statusCode;
+        this.errorMessage = errorMessage;
+        this.additionalInfo = null;
+
     }
 }
