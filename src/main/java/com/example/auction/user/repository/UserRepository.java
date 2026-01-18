@@ -3,6 +3,7 @@ package com.example.auction.user.repository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
+import com.example.auction.user.dto.UserTokenDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.example.auction.user.dto.SellerDto;
@@ -75,4 +76,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "WHERE p1.productId = :productId " +
             "GROUP BY u.userId, u.nickname, u.profileImageUrl, u.createdAt")
     Optional<SellerDto> findSellerInfoByProductId(@Param("productId") Long productId);
+
+    @Query("SELECT new com.example.auction.user.dto.UserTokenDto(" +
+            "u.email, u.authority) " +
+            "FROM User u " +
+            "WHERE u.email = :email")
+    Optional<UserTokenDto> findUserTokenInfoByEmail(String email);
 }
