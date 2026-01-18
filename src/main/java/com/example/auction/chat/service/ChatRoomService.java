@@ -240,8 +240,11 @@ public class ChatRoomService {
     @Transactional
     public void leaveRoom(String roomId) {
         ChatUserSummary me = getCurrentUserSummary();
-        ChatRoom room = loadRoomOrThrow(roomId);
 
+        ChatRoom room = loadRoomOrThrow(roomId);
+        if (ADMIN_LOUNGE_KEY.equals(room.getRoomKey())) {
+            throw new IllegalStateException("운영자 단체방은 나갈 수 없습니다.");
+        }
         String email = me.getEmail();
         requireParticipant(room, email);
 

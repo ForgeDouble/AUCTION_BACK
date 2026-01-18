@@ -56,6 +56,13 @@ public class ChatRoomController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "퇴장 처리", null));
     }
 
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{roomId}/leave")
+    public ResponseEntity<CommonResDto> leave(@PathVariable String roomId) {
+        chatRoomService.leaveRoom(roomId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "방 나가기 완료", null));
+    }
+
     // 문의하기 기능 구현
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/inquire")
