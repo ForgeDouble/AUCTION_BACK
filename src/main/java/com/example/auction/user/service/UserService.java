@@ -353,11 +353,23 @@ public class UserService {
         return java.util.Map.of("ADMIN", admin, "INQUIRY", inquiry, "USER", user);
     }
 
+    /* 판매자 정보를 조회하는 함수 */
     @Transactional(readOnly = true)
     public SellerDto getSellerInfoByProductId(Long productId) {
        SellerDto dto = userRepository.findSellerInfoByProductId(productId)
                .orElseThrow(() -> new ResourceNotFoundException("user"));
        return dto;
+    }
+
+    /* 토큰에서 정보를 가져오는 함수 */
+    public UserTokenDto getTokenInfo() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserTokenDto dto = userRepository.findUserTokenInfoByEmail(email)
+                .orElseThrow(() -> {
+                    log.warn("[DATA_NOT_FOUND] 존재하지 않는 이메일 email={}", email);
+                    return new ResourceNotFoundException("user");
+                });
+        return dto;
     }
 }
 

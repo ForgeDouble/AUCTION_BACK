@@ -146,12 +146,12 @@ public class UserController {
     }
 
     /* 접속중인 유저 확인 */
-    /* 근데 이 코드라면 jwt -> bearer 헤더로 전달하고 자기만 판단하는 코드같은디;?*/
+    /* 근데 이 코드라면 jwt -> bearer 헤더로 전달하고 자기만 판단하는 코드같은디;? -> 자기만 판단하는게 맞음 ㅇㅇ*/
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/verify-token")
     public ResponseEntity<?> verifyToken() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "계정 조회 성공", email));
+        UserTokenDto dto = userService.getTokenInfo();
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "계정 조회 성공", dto));
     }
 
     @PreAuthorize("isAuthenticated()")
