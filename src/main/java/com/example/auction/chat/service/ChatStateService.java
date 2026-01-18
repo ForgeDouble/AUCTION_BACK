@@ -10,9 +10,9 @@ import java.time.Duration;
 @Component
 public class ChatStateService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
-    public ChatStateService(@Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate) {
+    public ChatStateService(@Qualifier("chatState") StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
     private static final Duration TTL_ROOM_PRESENCE = Duration.ofHours(6);
@@ -31,15 +31,15 @@ public class ChatStateService {
         redisTemplate.delete(keyUserRoom(email));
     }
     // 현 있는 방 조회
+
     public String currentRoomOf(String email) {
-        Object v = redisTemplate.opsForValue().get(keyUserRoom(email));
-        return v == null ? null : v.toString();
+        return redisTemplate.opsForValue().get(keyUserRoom(email));
     }
 
     // 전체 알림 수
     public int getAlarm(String email) {
-        Object v = redisTemplate.opsForValue().get(keyUserAlarm(email));
-        try { return v == null ? 0 : Integer.parseInt(v.toString()); }
+        String v = redisTemplate.opsForValue().get(keyUserAlarm(email));
+        try { return v == null ? 0 : Integer.parseInt(v); }
         catch (Exception e) { return 0; }
     }
 
@@ -49,9 +49,16 @@ public class ChatStateService {
 
     // 알림 개수 증가 메서드
     public void incAlarm(String email) {
-        Long v = redisTemplate.opsForValue().increment(keyUserAlarm(email));
-        redisTemplate.expire(keyUserAlarm(email), TTL_COUNTER);
-        if (v == null) setAlarm(email, getAlarm(email) + 1);
+        String k = keyUserAlarm(email);
+        try {
+            Long v = redisTemplate.opsForValue().increment(k);
+            redisTemplate.expire(k, TTL_COUNTER);
+            if (v == null) setAlarm(email, getAlarm(email) + 1);
+        } catch (Exception e) {
+            redisTemplate.opsForValue().set(k, "0", TTL_COUNTER);
+            redisTemplate.opsForValue().increment(k);
+            redisTemplate.expire(k, TTL_COUNTER);
+        }
     }
 
     // 알림 초기화
@@ -61,20 +68,26 @@ public class ChatStateService {
 
     public void incUnread(String roomId, String email) {
         String k = keyUnread(roomId, email);
-        Long v = redisTemplate.opsForValue().increment(k);
-        redisTemplate.expire(k, TTL_COUNTER);
-        if (v == null) {
-            Object cur = redisTemplate.opsForValue().get(k);
-            int n = 0;
-            try { n = (cur == null) ? 0 : Integer.parseInt(cur.toString()); } catch (Exception ignored) {}
-            redisTemplate.opsForValue().set(k, Integer.toString(n + 1), TTL_COUNTER);
+        try {
+            Long v = redisTemplate.opsForValue().increment(k);
+            redisTemplate.expire(k, TTL_COUNTER);
+            if (v == null) {
+                String cur = redisTemplate.opsForValue().get(k);
+                int n = 0;
+                try { n = (cur == null) ? 0 : Integer.parseInt(cur); } catch (Exception ignored) {}
+                redisTemplate.opsForValue().set(k, Integer.toString(n + 1), TTL_COUNTER);
+            }
+        } catch (Exception e) {
+            redisTemplate.opsForValue().set(k, "0", TTL_COUNTER);
+            redisTemplate.opsForValue().increment(k);
+            redisTemplate.expire(k, TTL_COUNTER);
         }
     }
 
     // 해당 방 기준 미읽음 수 조회
     public int getUnread(String roomId, String email) {
-        Object v = redisTemplate.opsForValue().get(keyUnread(roomId, email));
-        try { return v == null ? 0 : Integer.parseInt(v.toString()); }
+        String v = redisTemplate.opsForValue().get(keyUnread(roomId, email));
+        try { return v == null ? 0 : Integer.parseInt(v); }
         catch (Exception e) { return 0; }
     }
 
