@@ -241,7 +241,7 @@ public class ProductService {
 
             if (Objects.equals(result, 1L)) {
                 log.info("Redis ZSET + Hash + 경매종료시간 초기 세팅 완료 - ProductId : {}, 입찰가 : {}", productId, product.getPrice());
-                auctionNotificationService.notifyAuctionStarted(productId);
+//                auctionNotificationService.notifyAuctionStarted(productId);
             }
              else if (result == 2) {
                 throw new RuntimeException("Redis 초기 입찰 세팅 실패 - ZSET 입력을 실패했습니다.");
@@ -281,6 +281,9 @@ public class ProductService {
         // 상태 변경: READY → PROCESSING
         product.updateStatus(Status.PROCESSING);
         productRepository.save(product);
+
+        // 알림(시작알림)
+        auctionNotificationService.notifyAuctionStarted(productId);
 
         log.info("[StartAuction] 경매 시작 완료 pid={}, status={}", productId, product.getStatus());
     }

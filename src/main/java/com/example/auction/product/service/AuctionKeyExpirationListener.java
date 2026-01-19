@@ -193,7 +193,7 @@ public class AuctionKeyExpirationListener implements MessageListener {
         try {
             log.info("[Notify] {}분 전 알림 발송 pid={}", minutes, pid);
 //            미구현
-//            notificationService.notifyEndingSoon(pid, minutes);
+            notificationService.notifyEndingSoon(pid, minutes);
         } catch (Exception e) {
             log.error("[Notify] {}분 전 알림 실패 pid={}", minutes, pid, e);
         }
