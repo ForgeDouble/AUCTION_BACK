@@ -1,19 +1,19 @@
 package com.example.auction.chat.service;
 
 import com.example.auction.chat.domain.ChatRoom;
-import com.example.auction.chat.dto.ChatMemberResponse;
-import com.example.auction.chat.dto.ChatRoomOpenRequest;
-import com.example.auction.chat.dto.ChatRoomResponse;
-import com.example.auction.chat.dto.ChatUserSummary;
+import com.example.auction.chat.domain.ChatRoomType;
+import com.example.auction.chat.dto.*;
 import com.example.auction.chat.repository.ChatRoomRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.notification.service.InquiryNotificationService;
+import com.example.auction.product.domain.Product;
+import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.*;
@@ -21,6 +21,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class ChatRoomService {
+    private static final String ADMIN_LOUNGE_KEY = "ADMIN_LOUNGE";
+    private static final String NORMAL_PRODUCT_PREFIX = "P:";
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatStateService chatStateService;
@@ -28,14 +30,16 @@ public class ChatRoomService {
     private final InquiryResolver inquiryResolver;
     private final InquiryNotificationService inquiryNotificationService;
     private final ChatUserCacheService chatUserCacheService;
+    private final ProductRepository productRepository;
 
-    public ChatRoomService(ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, UserRepository userRepository, InquiryResolver inquiryResolver, InquiryNotificationService inquiryNotificationService, ChatUserCacheService chatUserCacheService) {
+    public ChatRoomService(ChatRoomRepository chatRoomRepository, ChatStateService chatStateService, UserRepository userRepository, InquiryResolver inquiryResolver, InquiryNotificationService inquiryNotificationService, ChatUserCacheService chatUserCacheService, ProductRepository productRepository) {
         this.chatRoomRepository = chatRoomRepository;
         this.chatStateService = chatStateService;
         this.userRepository = userRepository;
         this.inquiryResolver = inquiryResolver;
         this.inquiryNotificationService = inquiryNotificationService;
         this.chatUserCacheService = chatUserCacheService;
+        this.productRepository = productRepository;
     }
 
     // 방생성관련 user1 의 userId user2의 userId
@@ -43,35 +47,119 @@ public class ChatRoomService {
         return (a.compareTo(b) <= 0) ? a + "_" + b : b + "_" + a;
     }
 
+    private String normalKeyOf(String myEmail, String targetEmail, Long productId) {
+        String pair = keyOf(myEmail, targetEmail);
+        if (productId == null) return pair;
+        return NORMAL_PRODUCT_PREFIX + productId + ":" + pair;
+    }
+
+    private Long extractProductIdFromRoomKey(String roomKey) {
+        try {
+            if (!StringUtils.hasText(roomKey)) return null;
+            if (!roomKey.startsWith(NORMAL_PRODUCT_PREFIX)) return null;
+
+            int firstColon = roomKey.indexOf(':');
+            int secondColon = roomKey.indexOf(':', firstColon + 1);
+            if (secondColon < 0) return null;
+
+            String pidStr = roomKey.substring(firstColon + 1, secondColon);
+            if (!StringUtils.hasText(pidStr)) return null;
+
+            return Long.parseLong(pidStr);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private ChatUserSummary getCurrentUserSummary() {
         return chatUserCacheService.getCurrentUser();
     }
 
-    public ChatRoom openRoom(ChatRoomOpenRequest request){
+    // 관리자 인사담당자 확인 함수
+    private void requireStaff(ChatUserSummary me) {
+        if (me.getAuthority() != Authority.ADMIN && me.getAuthority() != Authority.INQUIRY) {
+            throw new IllegalStateException("ADMIN 또는 INQUIRY만 접근 가능합니다.");
+        }
+    }
+
+    private ChatRoom loadRoomOrThrow(String roomId) {
+        return chatRoomRepository.findById(roomId)
+                .orElseThrow(() -> new IllegalArgumentException("채팅방을 찾을 수 없습니다."));
+    }
+
+    private void requireParticipant(ChatRoom room, String email) {
+        if (!room.getParticipantIds().contains(email)) {
+            throw new IllegalStateException("해당 채팅방 참가자만 접근할 수 있습니다.");
+        }
+    }
+
+    @Transactional
+    public void updateStaffRoomTitle(String roomId, String newTitle) {
+        ChatUserSummary me = getCurrentUserSummary();
+        requireStaff(me);
+
+        ChatRoom room = loadRoomOrThrow(roomId);
+        requireParticipant(room, me.getEmail());
+
+        // 라운지 이름 변경 불가
+        if (ADMIN_LOUNGE_KEY.equals(room.getRoomKey())) {
+            throw new IllegalStateException("운영자 단체방은 제목을 변경할 수 없습니다.");
+        }
+
+        if (!(room.getRoomType() == ChatRoomType.ADMIN_GROUP || room.getRoomType() == ChatRoomType.STAFF_GROUP)) {
+            throw new IllegalStateException("그룹 채팅방(ADMIN_GROUP/STAFF_GROUP)만 제목 변경이 가능합니다.");
+        }
+
+        String t = (newTitle == null) ? "" : newTitle.trim();
+        if (!StringUtils.hasText(t)) throw new IllegalArgumentException("제목은 비어 있을 수 없습니다.");
+        if (t.length() > 30) throw new IllegalArgumentException("제목은 30자 이하여야 합니다.");
+
+        room.setTitle(t);
+        chatRoomRepository.save(room);
+    }
+
+    @Transactional
+    public ChatRoom openRoom(ChatRoomOpenRequest request) {
         ChatUserSummary me = getCurrentUserSummary();
 
         String targetEmail = request.getTargetId();
-
         User target = userRepository.findByEmailAndDelYn(targetEmail, DelYN.N)
                 .orElseThrow(() -> new IllegalArgumentException("상대 유저를 찾을 수 없습니다."));
 
         if (request.isAdminChat()) {
-            if (me.getAuthority() != Authority.ADMIN && me.getAuthority() != Authority.INQUIRY) {
-                throw new IllegalStateException("ADMIN 또는 INQUIRY만 운영 채팅을 생성할 수 있습니다.");
-            }
+            requireStaff(me);
         }
 
-        String key = keyOf(me.getEmail(), target.getEmail());
+        String key = request.isAdminChat()
+                ? keyOf(me.getEmail(), target.getEmail())
+                : normalKeyOf(me.getEmail(), target.getEmail(), request.getProductId());
 
-        return chatRoomRepository.findByRoomKey(key).orElseGet(() -> {
-            ChatRoom chatRoom = request.toEntityForNormal(
+        ChatRoom room = chatRoomRepository.findByRoomKey(key).orElse(null);
+        if (room == null) {
+            ChatRoom created = request.toEntityForNormal(
                     key,
                     me.getEmail(),
                     target.getEmail(),
                     Instant.now()
             );
-            return chatRoomRepository.save(chatRoom);
-        });
+            created.setRoomType(ChatRoomType.NORMAL);
+            created.setAdminChat(request.isAdminChat());
+
+            if (!request.isAdminChat()) {
+                created.setProductId(request.getProductId());
+            }
+            return chatRoomRepository.save(created);
+        }
+
+        boolean changed = false;
+        List<String> p = new ArrayList<>(room.getParticipantIds());
+        if (!p.contains(me.getEmail())) { p.add(me.getEmail()); changed = true; }
+        if (!p.contains(target.getEmail())) { p.add(target.getEmail()); changed = true; }
+        if (changed) {
+            room.setParticipantIds(p);
+            room = chatRoomRepository.save(room);
+        }
+        return room;
     }
 
     @Transactional
@@ -88,28 +176,157 @@ public class ChatRoomService {
 
         String key = keyOf(userEmail, inquirerEmail);
 
-        return chatRoomRepository.findByRoomKey(key).orElseGet(() -> {
-            ChatRoom chatRoom = request.toEntityForInquiry(
-                    key,
-                    userEmail,
-                    inquirerEmail,
-                    Instant.now()
-            );
-            ChatRoom saved = chatRoomRepository.save(chatRoom);
+        ChatRoom existing = chatRoomRepository.findByRoomKey(key).orElse(null);
+        if (existing != null) {
+            boolean changed = false;
+            List<String> p = new ArrayList<>(existing.getParticipantIds());
+            if (!p.contains(userEmail)) { p.add(userEmail); changed = true; }
+            if (!p.contains(inquirerEmail)) { p.add(inquirerEmail); changed = true; }
+            if (changed) {
+                existing.setParticipantIds(p);
+                existing = chatRoomRepository.save(existing);
+            }
+            return existing;
+        }
 
-//            User meEntity = userRepository.findByEmailAndDelYn(userEmail, DelYN.N)
-//                    .orElseThrow(() -> new IllegalStateException("현재 유저를 찾을 수 없습니다."));
+        ChatRoom chatRoom = request.toEntityForInquiry(
+                key,
+                userEmail,
+                inquirerEmail,
+                Instant.now()
+        );
+        chatRoom.setRoomType(ChatRoomType.INQUIRY);
+        chatRoom.setAdminChat(true);
+        if (!StringUtils.hasText(chatRoom.getTitle())) chatRoom.setTitle("문의하기");
 
+        ChatRoom saved = chatRoomRepository.save(chatRoom);
 
-            // 새 문의방 생성 → 담당자에게 푸시
-            inquiryNotificationService.notifyNewInquiryRoom(saved, me, inquirer);
-
-            return saved;
-        });
+        inquiryNotificationService.notifyNewInquiryRoom(saved, me, inquirer);
+        return saved;
     }
 
+    // 운영자 라운지 관련 채팅방 ( 계정 생성 시 자동 참가 목적 )
+    @Transactional
+    public ChatRoom openAdminLounge() {
+        ChatUserSummary me = getCurrentUserSummary();
+        requireStaff(me);
 
-    // 내 채팅방 목록
+        ChatRoom room = chatRoomRepository.findByRoomKey(ADMIN_LOUNGE_KEY).orElse(null);
+        if (room == null) {
+            room = ChatRoom.builder()
+                    .roomKey(ADMIN_LOUNGE_KEY)
+                    .roomType(ChatRoomType.ADMIN_GROUP)
+                    .adminChat(true)
+                    .title("운영자 단체방")
+                    .participantIds(new ArrayList<>())
+                    .createdAt(Instant.now())
+                    .build();
+        }
+
+        List<String> p = new ArrayList<>(room.getParticipantIds());
+        if (!p.contains(me.getEmail())) p.add(me.getEmail());
+        room.setParticipantIds(p);
+
+        return chatRoomRepository.save(room);
+    }
+
+    // 운영진 그룹방 생성
+    @Transactional
+    public ChatRoom createStaffGroup(ChatRoomCreateGroupRequest chatRoomCreateGroupRequest) {
+        ChatUserSummary me = getCurrentUserSummary();
+        requireStaff(me);
+
+        String key = "STAFF_GROUP:" + UUID.randomUUID();
+
+        List<String> participants = new ArrayList<>();
+        participants.add(me.getEmail());
+
+        if (chatRoomCreateGroupRequest.getParticipantEmails() != null) {
+            for (String email : chatRoomCreateGroupRequest.getParticipantEmails()) {
+                if (email == null || email.isBlank()) continue;
+
+                User u = userRepository.findByEmailAndDelYn(email.trim(), DelYN.N)
+                        .orElseThrow(() -> new IllegalArgumentException("초대 대상 유저를 찾을 수 없습니다: " + email));
+
+                if (u.getAuthority() != Authority.ADMIN && u.getAuthority() != Authority.INQUIRY) {
+                    throw new IllegalStateException("운영진 그룹방에는 ADMIN/INQUIRY만 초대할 수 있습니다.");
+                }
+                if (!participants.contains(u.getEmail())) participants.add(u.getEmail());
+            }
+        }
+
+        ChatRoom room = ChatRoom.builder()
+                .roomKey(key)
+                .roomType(ChatRoomType.STAFF_GROUP)
+                .adminChat(true)
+                .title(StringUtils.hasText(chatRoomCreateGroupRequest.getTitle()) ? chatRoomCreateGroupRequest.getTitle().trim() : "운영진 그룹채팅")
+                .participantIds(participants)
+                .createdAt(Instant.now())
+                .build();
+
+        return chatRoomRepository.save(room);
+    }
+
+    // 운영자 채팅방 초대
+    @Transactional
+    public void inviteStaffMember(String roomId, String targetEmail) {
+        ChatUserSummary me = getCurrentUserSummary();
+        requireStaff(me);
+
+        ChatRoom room = loadRoomOrThrow(roomId);
+        requireParticipant(room, me.getEmail());
+
+        if (!(room.getRoomType() == ChatRoomType.ADMIN_GROUP || room.getRoomType() == ChatRoomType.STAFF_GROUP || room.getRoomType() == ChatRoomType.INQUIRY)) {
+            throw new IllegalStateException("운영진 초대는 운영 채팅방에서만 가능합니다.");
+        }
+
+        User target = userRepository.findByEmailAndDelYn(targetEmail, DelYN.N)
+                .orElseThrow(() -> new IllegalArgumentException("대상 유저를 찾을 수 없습니다."));
+
+        if (target.getAuthority() != Authority.ADMIN && target.getAuthority() != Authority.INQUIRY) {
+            throw new IllegalStateException("ADMIN/INQUIRY만 초대할 수 있습니다.");
+        }
+
+        List<String> updated = new ArrayList<>(room.getParticipantIds());
+        if (!updated.contains(target.getEmail())) {
+            updated.add(target.getEmail());
+            room.setParticipantIds(updated);
+            chatRoomRepository.save(room);
+        }
+    }
+
+    // 방 나가기
+    @Transactional
+    public void leaveRoom(String roomId) {
+        ChatUserSummary me = getCurrentUserSummary();
+
+        ChatRoom room = loadRoomOrThrow(roomId);
+        if (ADMIN_LOUNGE_KEY.equals(room.getRoomKey())) {
+            throw new IllegalStateException("운영자 단체방은 나갈 수 없습니다.");
+        }
+        String email = me.getEmail();
+        requireParticipant(room, email);
+
+        String cur = chatStateService.currentRoomOf(email);
+        if (cur != null && cur.equals(roomId)) {
+            chatStateService.exitRoom(email);
+        }
+
+        chatStateService.clearUnread(roomId, email);
+
+        List<String> updated = new ArrayList<>(room.getParticipantIds());
+        updated.removeIf(x -> x != null && x.equals(email));
+        room.setParticipantIds(updated);
+
+        if (updated.isEmpty()) {
+            chatRoomRepository.delete(room);
+            return;
+        }
+        chatRoomRepository.save(room);
+    }
+
+    // 내 채팅방 목록 -> 지금 기준이 title 우선
+    @Transactional(readOnly = true)
     public List<ChatRoomResponse> listMyRooms() {
         ChatUserSummary me = getCurrentUserSummary();
         String myEmail = me.getEmail();
@@ -121,26 +338,51 @@ public class ChatRoomService {
         ).reversed());
 
         Set<String> allEmails = rooms.stream()
-                .flatMap(room -> room.getParticipantIds().stream())
+                .flatMap(r -> r.getParticipantIds().stream())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 
         Map<String, ChatUserSummary> userMap = chatUserCacheService.getByEmails(allEmails);
 
+        Set<Long> productIds = rooms.stream()
+                .filter(r -> r.getRoomType() == ChatRoomType.NORMAL && !r.isAdminChat())
+                .map(r -> r.getProductId() != null ? r.getProductId() : extractProductIdFromRoomKey(r.getRoomKey()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> productNameMap = new HashMap<>();
+        if (!productIds.isEmpty()) {
+            Iterable<Product> products = productRepository.findAllById(productIds);
+            for (Product p : products) {
+                if (p == null) continue;
+                // 프로젝트 필드명이 productName이 아닐 수 있어서 필요하면 여기만 수정
+                productNameMap.put(p.getProductId(), p.getProductName());
+            }
+        }
+
         List<ChatRoomResponse> result = new ArrayList<>();
-        for (ChatRoom chatRoom : rooms) {
-            int unread = chatStateService.getUnread(chatRoom.getId(), myEmail);
-            String roomName = buildRoomName(me, chatRoom, userMap);
-            result.add(ChatRoomResponse.fromEntity(chatRoom, unread, roomName));
+        for (ChatRoom room : rooms) {
+            int unread = chatStateService.getUnread(room.getId(), myEmail);
+
+            String roomName;
+            if (StringUtils.hasText(room.getTitle())) {
+                roomName = room.getTitle();
+            } else {
+                roomName = buildRoomName(me, room, userMap, productNameMap);
+            }
+
+            result.add(ChatRoomResponse.fromEntity(room, unread, roomName));
         }
         return result;
-
-
     }
 
     public void enter(String roomId) {
         ChatUserSummary me = getCurrentUserSummary();
         String email = me.getEmail();
+
+        ChatRoom room = loadRoomOrThrow(roomId);
+        requireParticipant(room, email);
+
         chatStateService.enterRoom(email, roomId);
 
         int alarm = Math.max(0, chatStateService.getAlarm(email) - chatStateService.getUnread(roomId, email));
@@ -151,6 +393,27 @@ public class ChatRoomService {
     public void exit() {
         ChatUserSummary me = getCurrentUserSummary();
         chatStateService.exitRoom(me.getEmail());
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<ChatMemberResponse> listRoomMembers(String roomId) {
+        ChatUserSummary me = getCurrentUserSummary();
+        ChatRoom room = loadRoomOrThrow(roomId);
+        requireParticipant(room, me.getEmail());
+
+        Map<String, ChatUserSummary> map = chatUserCacheService.getByEmails(room.getParticipantIds());
+        return room.getParticipantIds().stream()
+                .map(map::get)
+                .filter(Objects::nonNull)
+                .map(x -> ChatMemberResponse.builder()
+                        .userId(x.getUserId())
+                        .email(x.getEmail())
+                        .nickname(x.getNickname())
+                        .authority(x.getAuthority())
+                        .profileImageUrl(x.getProfileImageUrl())
+                        .build())
+                .toList();
     }
 
 
@@ -185,7 +448,6 @@ public class ChatRoomService {
         chatRoomRepository.save(room);
     }
 
-
     @Transactional(readOnly = true)
     public List<ChatMemberResponse> listMembersByAuthority(Authority authority) {
         return userRepository.findAllByAuthorityAndDelYn(authority, DelYN.N)
@@ -195,10 +457,7 @@ public class ChatRoomService {
     }
 
     // 방 이름 생성 로직 관련
-    private String buildRoomName(ChatUserSummary me,
-                                 ChatRoom room,
-                                 Map<String, ChatUserSummary> userMap) {
-
+    private String buildRoomName(ChatUserSummary me, ChatRoom room, Map<String, ChatUserSummary> userMap, Map<Long, String> productNameMap) {
         List<ChatUserSummary> participants = room.getParticipantIds().stream()
                 .map(userMap::get)
                 .filter(Objects::nonNull)
@@ -208,29 +467,25 @@ public class ChatRoomService {
         boolean hasAdmin = participants.stream().anyMatch(u -> u.getAuthority() == Authority.ADMIN);
         boolean hasInquiry = participants.stream().anyMatch(u -> u.getAuthority() == Authority.INQUIRY);
 
+        // 문의방 규칙
         if (room.isAdminChat() && hasUser) {
-            if (me.getAuthority() == Authority.USER) {
-                return "문의하기";
-            }
+            if (me.getAuthority() == Authority.USER) return "문의하기";
+
             ChatUserSummary customer = participants.stream()
                     .filter(u -> u.getAuthority() == Authority.USER)
-                    .findFirst()
-                    .orElse(null);
-            if (customer != null && customer.getNickname() != null) {
-                return customer.getNickname();
-            }
+                    .findFirst().orElse(null);
+
+            if (customer != null && customer.getNickname() != null) return customer.getNickname();
             return "문의하기";
         }
 
         if (room.isAdminChat() && !hasUser && hasAdmin && hasInquiry) {
             ChatUserSummary admin = participants.stream()
                     .filter(u -> u.getAuthority() == Authority.ADMIN)
-                    .findFirst()
-                    .orElse(null);
+                    .findFirst().orElse(null);
             ChatUserSummary inquiry = participants.stream()
                     .filter(u -> u.getAuthority() == Authority.INQUIRY)
-                    .findFirst()
-                    .orElse(null);
+                    .findFirst().orElse(null);
 
             if (admin != null && inquiry != null) {
                 String adminName = admin.getNickname() != null ? admin.getNickname() : admin.getEmail();
@@ -243,20 +498,32 @@ public class ChatRoomService {
                 .filter(u -> !u.getEmail().equals(me.getEmail()))
                 .toList();
 
-        if (others.isEmpty()) {
-            return "나와의 채팅";
-        }
+        if (others.isEmpty()) return "나와의 채팅";
 
-        if (others.size() == 1) {
+//        if (others.size() == 1) {
+//            ChatUserSummary other = others.get(0);
+//            return other.getNickname() != null ? other.getNickname() : other.getEmail();
+//        }
+
+        if (room.getRoomType() == ChatRoomType.NORMAL && !room.isAdminChat() && others.size() == 1) {
             ChatUserSummary other = others.get(0);
-            return other.getNickname() != null ? other.getNickname() : other.getEmail();
+            String otherName = (other.getNickname() != null) ? other.getNickname() : other.getEmail();
+
+            Long pid = room.getProductId();
+            if (pid == null) pid = extractProductIdFromRoomKey(room.getRoomKey());
+
+            if (pid != null) {
+                String productName = productNameMap.get(pid);
+                if (StringUtils.hasText(productName)) {
+                    return productName + " " + otherName;
+                }
+            }
+            return otherName;
         }
 
         return others.stream()
                 .map(u -> u.getNickname() != null ? u.getNickname() : u.getEmail())
                 .reduce((a, b) -> a + ", " + b)
                 .orElse("그룹 채팅");
-
-
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
     List<Wishlist> findByUser_UserId(Long userId);
@@ -22,4 +23,7 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
             @Param("userId") Long userId,
             @Param("productId") Long productId
     );
+
+    @Query("select distinct w.user.userId from Wishlist w where w.product.productId = :productId")
+    Set<Long> findUserIdsByProductId(@Param("productId") Long productId);
 }

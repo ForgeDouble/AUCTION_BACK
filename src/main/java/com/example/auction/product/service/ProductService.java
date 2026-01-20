@@ -92,6 +92,9 @@ public class ProductService {
     }
 
     private static final String KEY_AUCTION_START = "auction:start:";
+    // 시작 10/5분 전 키
+    private static final String KEY_AUCTION_START_NOTIFY_10 = "auction:startNotify10:";
+    private static final String KEY_AUCTION_START_NOTIFY_5 = "auction:startNotify5:";
 
     /* 상품 임시정지 / 정지 함수 */
 	private void ensureCanMutateProducts(User user, String action) {
@@ -152,6 +155,7 @@ public class ProductService {
 
         // Redis에 경매 시작 타이머 등록 (5분 = 300초)
         long secondsUntilStart = Duration.between(now, startTime).getSeconds();
+        if (secondsUntilStart <= 0) secondsUntilStart = 1; // 음수 방지 키워드 ( 서비스 저속 시 삭제)
         bidRedisTemplate.opsForValue().set(
                 KEY_AUCTION_START + product.getProductId(),
                 "1",
@@ -159,6 +163,27 @@ public class ProductService {
         );
         log.info("[ProductCreate] 시작 타이머 등록 pid={}, seconds={}",
                 product.getProductId(), secondsUntilStart);
+
+        // 시작 10분 전 / 5분 전 알림 키 등록 (판매자용)
+        // 시작까지 10분 이상 남은 경우만 10분 전 키를 생성
+        if (secondsUntilStart > 600) {
+            bidRedisTemplate.opsForValue().set(
+                    KEY_AUCTION_START_NOTIFY_10 + product.getProductId(),
+                    "1",
+                    Duration.ofSeconds(secondsUntilStart - 600)
+            );
+            log.info("[ProductCreate] 시작 10분 전 알림 타이머 등록 pid={}", product.getProductId());
+        }
+
+        // 시작까지 5분 이상 남은 경우만 5분 전 키를 생성
+        if (secondsUntilStart > 300) {
+            bidRedisTemplate.opsForValue().set(
+                    KEY_AUCTION_START_NOTIFY_5 + product.getProductId(),
+                    "1",
+                    Duration.ofSeconds(secondsUntilStart - 300)
+            );
+            log.info("[ProductCreate] 시작 5분 전 알림 타이머 등록 pid={}", product.getProductId());
+        }
 
         return savedProduct;
     }
@@ -241,7 +266,7 @@ public class ProductService {
 
             if (Objects.equals(result, 1L)) {
                 log.info("Redis ZSET + Hash + 경매종료시간 초기 세팅 완료 - ProductId : {}, 입찰가 : {}", productId, product.getPrice());
-                auctionNotificationService.notifyAuctionStarted(productId);
+//                auctionNotificationService.notifyAuctionStarted(productId);
             }
              else if (result == 2) {
                 throw new RuntimeException("Redis 초기 입찰 세팅 실패 - ZSET 입력을 실패했습니다.");
@@ -281,6 +306,9 @@ public class ProductService {
         // 상태 변경: READY → PROCESSING
         product.updateStatus(Status.PROCESSING);
         productRepository.save(product);
+
+        // 알림(시작알림)
+        auctionNotificationService.notifyAuctionStarted(productId);
 
         log.info("[StartAuction] 경매 시작 완료 pid={}, status={}", productId, product.getStatus());
     }
@@ -392,9 +420,12 @@ public class ProductService {
                 log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
                         pid, winnerBid.getUserName(), winnerBid.getBidAmount());
                 try {
-//                    auctionNotificationService.notifyAuctionEndedWithWinner(
-//                            currentProduct.getProductId(), winnerBid, currentProduct.getProductName()
-//                    );
+                    // 경매 종료 알림
+                    auctionNotificationService.notifyAuctionEndedWithWinner(
+                            currentProduct.getProductId(),
+                            winnerBid,
+                            currentProduct.getProductName()
+                    );
                     log.info("경매 종료 알림");
                 } catch (Exception ex) {
                     log.warn("[AuctionNotify] 낙찰자 알림 실패 productId={}, winnerUserId={}",
