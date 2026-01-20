@@ -1,9 +1,6 @@
 package com.example.auction.chat.controller;
 
-import com.example.auction.chat.dto.ChatRoomCreateGroupRequest;
-import com.example.auction.chat.dto.ChatRoomInviteRequest;
-import com.example.auction.chat.dto.ChatRoomOpenRequest;
-import com.example.auction.chat.dto.ChatRoomResponse;
+import com.example.auction.chat.dto.*;
 import com.example.auction.chat.service.ChatRoomService;
 import com.example.auction.common.dto.CommonResDto;
 import com.example.auction.user.domain.Authority;
@@ -125,5 +122,14 @@ public class ChatRoomController {
     public ResponseEntity<CommonResDto> listAdminMembers() {
         var list = chatRoomService.listMembersByAuthority(Authority.ADMIN);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "ADMIN 목록", list));
+    }
+
+    // 운영진 그룹채팅 제목 변경
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
+    @PatchMapping("/{roomId}/title")
+    public ResponseEntity<CommonResDto> updateTitle(@PathVariable String roomId,
+                                                    @RequestBody ChatRoomTitleUpdateRequest req) {
+        chatRoomService.updateStaffRoomTitle(roomId, req.getTitle());
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "방 제목 변경 완료", null));
     }
 }
