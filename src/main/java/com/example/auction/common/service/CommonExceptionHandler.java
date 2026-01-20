@@ -84,7 +84,7 @@ public class CommonExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<CommonErrorDto> ResourceNotFoundHandler(ResourceNotFoundException e) {
         CommonErrorDto commonErrorDto = new CommonErrorDto(
-                "DATA_NOT_FOUND",
+                e.getErrorCode(),
                 e.getMessage()
         );
         e.printStackTrace();
