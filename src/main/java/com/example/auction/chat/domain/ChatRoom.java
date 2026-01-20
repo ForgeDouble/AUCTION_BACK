@@ -38,6 +38,9 @@ public class ChatRoom {
     private ChatRoomType roomType = ChatRoomType.NORMAL;
 
     // 최근 메시지 미리보기 / 시간 -> 채팅방 들어가기 전에 확인가능
+
+    private Long productId;
+
     private String recentText;
     private Instant recentTime;
 
