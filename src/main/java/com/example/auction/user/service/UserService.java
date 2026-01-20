@@ -131,10 +131,15 @@ public class UserService {
 
     /* 회원정보 수정 */
     @Transactional
-    public User update(UserUpdateDto dto) {
+    public User updateUser(UserUpdateDto dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+                .orElseThrow(() ->
+                {
+                    log.warn("[DATA_NOT_FOUND] 존재하지 않는 이메일 email={}", email);
+                    return new ResourceNotFoundException("존재하지 않거나 삭제된 계정입니다.");
+                }
+                        );
 
         user.update(dto);
 
