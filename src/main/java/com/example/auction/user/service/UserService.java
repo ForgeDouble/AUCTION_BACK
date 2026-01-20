@@ -2,13 +2,16 @@ package com.example.auction.user.service;
 
 import com.example.auction.common.auth.JwtTokenProvider;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.AccountSuspendedException;
 import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.domain.UserStatus;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +25,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class UserService {
 
@@ -82,21 +86,28 @@ public class UserService {
     @Transactional(readOnly = true)
     public String login(UserLoginDto dto) {
         User user = userRepository.findByEmail(dto.getEmail())
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 이메일입니다."));
+                .orElseThrow(() -> {
+                    log.warn("[EMAIL_NOT_FOUND] 존재하지 않는 이메일 email={}",dto.getEmail());
+                    return new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+                }
+        );
 
         if (user.getDelYn() == DelYN.Y) {
-            throw new RuntimeException("탈퇴된 계정입니다.");
+            log.warn("[DELETED_ACCOUNT] 탈퇴된 계정 email={}", dto.getEmail());
+            throw new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
             String until = user.getSuspendedUntil()
                     .truncatedTo(ChronoUnit.SECONDS)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            throw new RuntimeException("정지된 계정입니다. 해제 시각: " + until);
+            log.warn("[SUSPENDED_ACCOUNT] 정지된 계정 email={} until={}", dto.getEmail(), until);
+            throw new AccountSuspendedException("정지된 계정입니다." , until);
         }
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new RuntimeException("비밀번호가 일치하지 않습니다.");
+            log.warn("[INVALID_PASSWORD] 일치하지 않는 비밀번호");
+            throw new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
         String token = jwtTokenProvider.createAccessToken(user);
@@ -342,11 +353,23 @@ public class UserService {
         return java.util.Map.of("ADMIN", admin, "INQUIRY", inquiry, "USER", user);
     }
 
+    /* 판매자 정보를 조회하는 함수 */
     @Transactional(readOnly = true)
     public SellerDto getSellerInfoByProductId(Long productId) {
        SellerDto dto = userRepository.findSellerInfoByProductId(productId)
                .orElseThrow(() -> new ResourceNotFoundException("user"));
        return dto;
+    }
+
+    /* 토큰에서 정보를 가져오는 함수 */
+    public UserTokenDto getTokenInfo() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserTokenDto dto = userRepository.findUserTokenInfoByEmail(email)
+                .orElseThrow(() -> {
+                    log.warn("[DATA_NOT_FOUND] 존재하지 않는 이메일 email={}", email);
+                    return new ResourceNotFoundException("user");
+                });
+        return dto;
     }
 }
 
