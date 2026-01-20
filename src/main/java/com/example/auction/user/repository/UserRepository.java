@@ -68,13 +68,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByAuthorityAndDelYn(Authority authority, DelYN delYn);
 
     @Query("SELECT new com.example.auction.user.dto.SellerDto(" +
-            "u.userId, u.nickname, u.profileImageUrl, u.createdAt, " +
+            "u.userId, u.email, u.nickname, u.profileImageUrl, u.createdAt, " +
             "COUNT(CASE WHEN p.status = 'SELLED' THEN 1 END)) " +
             "FROM Product p1 " +
             "JOIN p1.user u " +
             "LEFT JOIN Product p ON p.user.userId = u.userId AND p.status = 'SELLED' " +
             "WHERE p1.productId = :productId " +
-            "GROUP BY u.userId, u.nickname, u.profileImageUrl, u.createdAt")
+            "GROUP BY u.userId, u.email, u.nickname, u.profileImageUrl, u.createdAt")
     Optional<SellerDto> findSellerInfoByProductId(@Param("productId") Long productId);
 
     @Query("SELECT new com.example.auction.user.dto.UserTokenDto(" +

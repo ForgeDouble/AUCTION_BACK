@@ -34,11 +34,19 @@ public class AuctionKeyExpirationListener implements MessageListener {
     private static final String KEY_NOTIFY_10 = "auction:notify10:";
     private static final String KEY_NOTIFY_5 = "auction:notify5:";
 
+    // 시작 10/5분 전
+    private static final String KEY_START_NOTIFY_10 = "auction:startNotify10:";
+    private static final String KEY_START_NOTIFY_5 = "auction:startNotify5:";
+
     // 락 키 prefix
     private static final String LOCK_START = "lock:start:";
     private static final String LOCK_END = "lock:end:";
     private static final String LOCK_NOTIFY_10 = "lock:notify10:";
     private static final String LOCK_NOTIFY_5 = "lock:notify5:";
+
+    // 시작 10/5분 전 락
+    private static final String LOCK_START_NOTIFY_10 = "lock:startNotify10:";
+    private static final String LOCK_START_NOTIFY_5 = "lock:startNotify5:";
 
     private static final long LOCK_TTL_SECONDS = 10L;
 
@@ -57,8 +65,16 @@ public class AuctionKeyExpirationListener implements MessageListener {
         log.debug("[RedisExpired] 키 만료 감지: {}", expiredKey);
 
         try {
+            // 시작 10/5분 전 알림
+            if (expiredKey.startsWith(KEY_START_NOTIFY_10)) {
+                long pid = extractProductId(expiredKey, KEY_START_NOTIFY_10);
+                handleStartSoonNotification(pid, 10, LOCK_START_NOTIFY_10);
+            } else if (expiredKey.startsWith(KEY_START_NOTIFY_5)) {
+                long pid = extractProductId(expiredKey, KEY_START_NOTIFY_5);
+                handleStartSoonNotification(pid, 5, LOCK_START_NOTIFY_5);
+            }
             // 경매 시작 이벤트
-            if (expiredKey.startsWith(KEY_START)) {
+            else if (expiredKey.startsWith(KEY_START)) {
                 long pid = extractProductId(expiredKey, KEY_START);
                 handleAuctionStart(pid);
             }
@@ -67,20 +83,38 @@ public class AuctionKeyExpirationListener implements MessageListener {
                 long pid = extractProductId(expiredKey, KEY_END);
                 handleAuctionEnd(pid);
             }
-            // 10분 전 알림
+            // 종료 10분 전 알림
             else if (expiredKey.startsWith(KEY_NOTIFY_10)) {
                 long pid = extractProductId(expiredKey, KEY_NOTIFY_10);
-                handleNotification(pid, 10, LOCK_NOTIFY_10);
+                handleEndingSoonNotification(pid, 10, LOCK_NOTIFY_10);
             }
-            // 5분 전 알림
+            // 종료 5분 전 알림
             else if (expiredKey.startsWith(KEY_NOTIFY_5)) {
                 long pid = extractProductId(expiredKey, KEY_NOTIFY_5);
-                handleNotification(pid, 5, LOCK_NOTIFY_5);
+                handleEndingSoonNotification(pid, 5, LOCK_NOTIFY_5);
             }
         } catch (NumberFormatException e) {
             log.error("[RedisExpired] Product ID 파싱 실패: {}", expiredKey, e);
         } catch (Exception e) {
             log.error("[RedisExpired] 이벤트 처리 실패: {}", expiredKey, e);
+        }
+    }
+
+    private void handleStartSoonNotification(long pid, int minutes, String lockPrefix) {
+        String lockKey = lockPrefix + pid;
+        Boolean locked = bidRedisTemplate.opsForValue()
+                .setIfAbsent(lockKey, "1", Duration.ofSeconds(LOCK_TTL_SECONDS));
+
+        if (!Boolean.TRUE.equals(locked)) {
+            log.debug("[StartSoonNotify] 이미 처리 중 pid={}, minutes={}", pid, minutes);
+            return;
+        }
+
+        try {
+            log.info("[StartSoonNotify] 시작 {}분 전 알림 발송 pid={}", minutes, pid);
+            notificationService.notifyStartingSoon(pid, minutes);
+        } catch (Exception e) {
+            log.error("[StartSoonNotify] 시작 {}분 전 알림 실패 pid={}", minutes, pid, e);
         }
     }
 
@@ -177,6 +211,24 @@ public class AuctionKeyExpirationListener implements MessageListener {
         }
     }
 
+    private void handleEndingSoonNotification(long pid, int minutes, String lockPrefix) {
+        String lockKey = lockPrefix + pid;
+        Boolean locked = bidRedisTemplate.opsForValue()
+                .setIfAbsent(lockKey, "1", Duration.ofSeconds(LOCK_TTL_SECONDS));
+
+        if (!Boolean.TRUE.equals(locked)) {
+            log.debug("[EndSoonNotify] 이미 처리 중 pid={}, minutes={}", pid, minutes);
+            return;
+        }
+
+        try {
+            log.info("[EndSoonNotify] 종료 {}분 전 알림 발송 pid={}", minutes, pid);
+            notificationService.notifyEndingSoon(pid, minutes);
+        } catch (Exception e) {
+            log.error("[EndSoonNotify] 종료 {}분 전 알림 실패 pid={}", minutes, pid, e);
+        }
+    }
+
     /**
      * 알림 처리
      */
@@ -193,7 +245,7 @@ public class AuctionKeyExpirationListener implements MessageListener {
         try {
             log.info("[Notify] {}분 전 알림 발송 pid={}", minutes, pid);
 //            미구현
-//            notificationService.notifyEndingSoon(pid, minutes);
+            notificationService.notifyEndingSoon(pid, minutes);
         } catch (Exception e) {
             log.error("[Notify] {}분 전 알림 실패 pid={}", minutes, pid, e);
         }
