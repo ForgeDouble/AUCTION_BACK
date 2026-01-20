@@ -55,6 +55,7 @@ public class SecurityConfig {
                                 "/user/login",
                                 "/user/register",
                                 "/user/seller/{productId}",
+                                "/user/update",
                                 "/user/verify-token",
                                 "/product/{productId}",
                                 "/product/all",
