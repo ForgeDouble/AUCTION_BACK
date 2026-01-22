@@ -38,8 +38,11 @@ public class StompHandler implements ChannelInterceptor {
         }
 
         // 엔드포인트 타입 확인
-        String endpointType = (String) accessor.getSessionAttributes().get("endpointType");
+        Map<String, Object> sessionAttrs = accessor.getSessionAttributes();
+        String endpointType = sessionAttrs != null ? (String) sessionAttrs.get("endpointType") : null;
+
         boolean isPublic = "public".equals(endpointType);
+        boolean isAdmin = "admin".equals(endpointType);
 
         // CONNECT 시 인증 처리
         if (StompCommand.CONNECT.equals(command)) {
@@ -47,8 +50,7 @@ public class StompHandler implements ChannelInterceptor {
                 log.info("공개 엔드포인트 연결 허용 (인증 없음)");
                 return message;
             }
-
-            // 인증 필수 로직
+            // admin 이랑 , 채팅 관련 private
             String raw = firstNonNull(
                     accessor.getFirstNativeHeader("Authorization"),
                     accessor.getFirstNativeHeader("authorization"),
@@ -69,33 +71,43 @@ public class StompHandler implements ChannelInterceptor {
 
             String email = jwtTokenProvider.getEmailFromToken(token);
 
-            // 단일 세션(로그인 Redis) 체크
             String current = customTokenExpiredStrategy.get(email);
             if (current == null || !current.equals(token)) {
                 throw new IllegalArgumentException("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
             }
 
+            if (isAdmin) {
+                String authorityRaw = jwtTokenProvider.getAuthorityFromToken(token); // 없으면 아래 '파일3' 추가
+                String authority = normalizeRole(authorityRaw);
+
+                boolean ok = "ADMIN".equals(authority) || "INQUIRY".equals(authority);
+                if (!ok) {
+                    throw new IllegalArgumentException("관리자 소켓은 ADMIN/INQUIRY 권한만 접속 가능합니다.");
+                }
+            }
+
             // presence 기록하기
             userStatusService.touch(email);
-            // 세션에 email 저장해두기
-            accessor.getSessionAttributes().put("email", email);
+            // 세션에 email 저장
+            if (sessionAttrs != null) {
+                sessionAttrs.put("email", email);
+            }
         }
 
-        // [추가] SEND 시 토큰 검증
+        // SEND 처리
         if (StompCommand.SEND.equals(command)) {
             String destination = accessor.getDestination();
-
             log.info("SEND destination: {}", destination);
 
-            // /app/bid 같은 민감한 액션은 인증 필수
+            // /app/bid 액션은 인증 필수
             if (destination != null && requiresAuth(destination)) {
                 String raw = firstNonNull(
                         accessor.getFirstNativeHeader("Authorization"),
                         accessor.getFirstNativeHeader("authorization"),
                         accessor.getFirstNativeHeader("token")
                 );
-
                 log.info("Authorization header: {}", raw);
+
                 if (raw == null || raw.isBlank()) {
                     throw new IllegalArgumentException("인증이 필요한 작업입니다.");
                 }
@@ -114,23 +126,21 @@ public class StompHandler implements ChannelInterceptor {
                     throw new IllegalArgumentException("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
                 }
 
-                // 메시지 헤더에 email 추가 (컨트롤러에서 사용 가능)
+                // 메시지 헤더에 email 추가
                 // setUser 후 메시지 재생성
                 accessor.setUser(() -> email);
                 accessor.setLeaveMutable(true);  // mutable 상태 유지
 
                 log.info("입찰 요청 인증 완료: {}", email);
-
-                // 수정된 accessor로 메시지 재생성
                 return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
             }
 
-            // 공개 엔드포인트의 일반 메시지는 인증 없이 통과
+            // 공개 엔드포인트(일반 메시지) 인증 x
             if (isPublic && !requiresAuth(destination)) {
                 return message;
             }
 
-            // 비공개 엔드포인트는 세션 이메일로 presence 갱신
+            // 비공개 엔드포인트 -> 세션 이메일로 presence 갱신
             if (!isPublic) {
                 Object emailObj = accessor.getSessionAttributes().get("email");
                 if (emailObj instanceof String email && !email.isBlank()) {
@@ -145,12 +155,13 @@ public class StompHandler implements ChannelInterceptor {
                 return message;
             }
 
-            Object emailObj = accessor.getSessionAttributes().get("email");
-            if (emailObj instanceof String email && !email.isBlank()) {
-                userStatusService.touch(email);
+            if (sessionAttrs != null) {
+                Object emailObj = sessionAttrs.get("email");
+                if (emailObj instanceof String email && !email.isBlank()) {
+                    userStatusService.touch(email);
+                }
             }
         }
-
         return message;
     }
 
@@ -164,5 +175,11 @@ public class StompHandler implements ChannelInterceptor {
     private String firstNonNull(String... xs) {
         for (String x : xs) if (x != null) return x;
         return null;
+    }
+
+    private String normalizeRole(String raw) {
+        String s = String.valueOf(raw == null ? "" : raw).trim().toUpperCase();
+        if (s.startsWith("ROLE_")) s = s.substring(5);
+        return s;
     }
 }
