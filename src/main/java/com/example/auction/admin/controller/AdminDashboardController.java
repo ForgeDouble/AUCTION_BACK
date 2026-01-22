@@ -18,14 +18,14 @@ public class AdminDashboardController {
     private final AdminDashboardService adminDashboardService;
     private final AdminOverviewService adminOverviewService;
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @GetMapping("/dashboard")
     public ResponseEntity<?> dashboard() {
         AdminDashboardDto dto = adminDashboardService.getDashboard();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "관리자 대시보드", dto));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @GetMapping("/overview")
     public ResponseEntity<?> overview() {
         AdminOverviewResponse dto = adminOverviewService.getOverview();

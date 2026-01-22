@@ -14,6 +14,7 @@ import com.example.auction.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -231,8 +232,10 @@ public class UserService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
-        if (user.getAuthority() != Authority.ADMIN) {
-            throw new org.springframework.security.access.AccessDeniedException("관리자만 접근 가능합니다.");
+
+        Authority auth = user.getAuthority();
+        if (auth != Authority.ADMIN && auth != Authority.INQUIRY) {
+            throw new AccessDeniedException("ADMIN 또는 INQUIRY만 접근 가능합니다.");
         }
     }
 

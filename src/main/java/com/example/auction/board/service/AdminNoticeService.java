@@ -12,6 +12,7 @@ import com.example.auction.board.repository.NoticeRepository;
 import com.example.auction.common.auth.SecurityUserContext;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,10 +46,18 @@ public class AdminNoticeService {
         this.userRepository = userRepository;
     }
 
+//    private void checkAdmin() {
+//        var p = SecurityUserContext.principal();
+//        if (p.getAuthority() == null || p.getAuthority() != Authority.ADMIN && p.getAuthority() != Authority.INQUIRY) {
+//            throw new IllegalStateException("ADMIN 권한 혹은 INQUIRY 권한이 필요합니다.");
+//        }
+//    }
     private void checkAdmin() {
-        var p = SecurityUserContext.principal();
-        if (p.getAuthority() == null || p.getAuthority() != Authority.ADMIN) {
-            throw new IllegalStateException("ADMIN 권한이 필요합니다.");
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+        if (user.getAuthority() != Authority.ADMIN && user.getAuthority() != Authority.INQUIRY) {
+            throw new UnauthorizedAccessException("관리자 외 권한이 없습니다.");
         }
     }
 
