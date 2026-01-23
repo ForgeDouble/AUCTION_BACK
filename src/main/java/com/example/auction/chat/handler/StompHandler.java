@@ -38,11 +38,13 @@ public class StompHandler implements ChannelInterceptor {
         }
 
         // 엔드포인트 타입 확인
-        Map<String, Object> sessionAttrs = accessor.getSessionAttributes();
-        String endpointType = sessionAttrs != null ? (String) sessionAttrs.get("endpointType") : null;
+        String endpointType = (String) accessor.getSessionAttributes().get("endpointType");
+//        Map<String, Object> sessionAttrs = accessor.getSessionAttributes();
+//        String endpointType = sessionAttrs != null ? (String) sessionAttrs.get("endpointType") : null;
 
         boolean isPublic = "public".equals(endpointType);
-        boolean isAdmin = "admin".equals(endpointType);
+//        boolean isAdmin = "admin".equals(endpointType);
+        boolean isAdminEndpoint = "admin".equals(endpointType);
 
         // CONNECT 시 인증 처리
         if (StompCommand.CONNECT.equals(command)) {
@@ -51,20 +53,24 @@ public class StompHandler implements ChannelInterceptor {
                 return message;
             }
             // admin 이랑 , 채팅 관련 private
-            String raw = firstNonNull(
-                    accessor.getFirstNativeHeader("Authorization"),
-                    accessor.getFirstNativeHeader("authorization"),
-                    accessor.getFirstNativeHeader("token")
-            );
-            if (raw == null || raw.isBlank()) {
-                throw new IllegalArgumentException("인증 헤더가 없습니다.");
-            }
-
-            String token = raw.startsWith("Bearer ")
-                    ? raw.substring(7).trim()
-                    : raw.trim();
-
-            // 토큰 형식/서명 검증
+//            String raw = firstNonNull(
+//                    accessor.getFirstNativeHeader("Authorization"),
+//                    accessor.getFirstNativeHeader("authorization"),
+//                    accessor.getFirstNativeHeader("token")
+//            );
+//            if (raw == null || raw.isBlank()) {
+//                throw new IllegalArgumentException("인증 헤더가 없습니다.");
+//            }
+//
+//            String token = raw.startsWith("Bearer ")
+//                    ? raw.substring(7).trim()
+//                    : raw.trim();
+//
+//            // 토큰 형식/서명 검증
+//            if (!jwtTokenProvider.validateToken(token)) {
+//                throw new IllegalArgumentException("유효하지 않은 JWT 토큰입니다.");
+//            }
+            String token = extractToken(accessor);
             if (!jwtTokenProvider.validateToken(token)) {
                 throw new IllegalArgumentException("유효하지 않은 JWT 토큰입니다.");
             }
@@ -76,45 +82,40 @@ public class StompHandler implements ChannelInterceptor {
                 throw new IllegalArgumentException("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
             }
 
-            if (isAdmin) {
-                String authorityRaw = jwtTokenProvider.getAuthorityFromToken(token); // 없으면 아래 '파일3' 추가
-                String authority = normalizeRole(authorityRaw);
+            if (isAdminEndpoint) {
+                String auth = jwtTokenProvider.getAuthorityFromToken(token); // "ADMIN"/"INQUIRY"/"USER"
+                String upper = auth == null ? "" : auth.trim().toUpperCase();
 
-                boolean ok = "ADMIN".equals(authority) || "INQUIRY".equals(authority);
-                if (!ok) {
-                    throw new IllegalArgumentException("관리자 소켓은 ADMIN/INQUIRY 권한만 접속 가능합니다.");
+                if (!(upper.contains("ADMIN") || upper.contains("INQUIRY"))) {
+                    throw new IllegalArgumentException("관리자 소켓에 접근 권한이 없습니다.");
                 }
             }
 
             // presence 기록하기
             userStatusService.touch(email);
             // 세션에 email 저장
-            if (sessionAttrs != null) {
-                sessionAttrs.put("email", email);
-            }
+            accessor.getSessionAttributes().put("email", email);
+            accessor.setUser(() -> email);
+
+            return message;
         }
 
         // SEND 처리
         if (StompCommand.SEND.equals(command)) {
             String destination = accessor.getDestination();
-            log.info("SEND destination: {}", destination);
 
-            // /app/bid 액션은 인증 필수
+            // 공개 엔드포인트면 인증 없는 SEND 허용
+            if (isPublic && !requiresAuth(destination)) return message;
+
+            // private/admin 는 세션 email로 presence 갱신
+            Object emailObj = accessor.getSessionAttributes().get("email");
+            if (emailObj instanceof String email && !email.isBlank()) {
+                userStatusService.touch(email);
+            }
+
+            // 기존: /app/bid 는 헤더 토큰 인증 필수
             if (destination != null && requiresAuth(destination)) {
-                String raw = firstNonNull(
-                        accessor.getFirstNativeHeader("Authorization"),
-                        accessor.getFirstNativeHeader("authorization"),
-                        accessor.getFirstNativeHeader("token")
-                );
-                log.info("Authorization header: {}", raw);
-
-                if (raw == null || raw.isBlank()) {
-                    throw new IllegalArgumentException("인증이 필요한 작업입니다.");
-                }
-
-                String token = raw.startsWith("Bearer ")
-                        ? raw.substring(7).trim()
-                        : raw.trim();
+                String token = extractToken(accessor);
 
                 if (!jwtTokenProvider.validateToken(token)) {
                     throw new IllegalArgumentException("유효하지 않은 JWT 토큰입니다.");
@@ -126,42 +127,25 @@ public class StompHandler implements ChannelInterceptor {
                     throw new IllegalArgumentException("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
                 }
 
-                // 메시지 헤더에 email 추가
-                // setUser 후 메시지 재생성
                 accessor.setUser(() -> email);
-                accessor.setLeaveMutable(true);  // mutable 상태 유지
+                accessor.setLeaveMutable(true);
 
-                log.info("입찰 요청 인증 완료: {}", email);
                 return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
             }
 
-            // 공개 엔드포인트(일반 메시지) 인증 x
-            if (isPublic && !requiresAuth(destination)) {
-                return message;
-            }
-
-            // 비공개 엔드포인트 -> 세션 이메일로 presence 갱신
-            if (!isPublic) {
-                Object emailObj = accessor.getSessionAttributes().get("email");
-                if (emailObj instanceof String email && !email.isBlank()) {
-                    userStatusService.touch(email);
-                }
-            }
+            return message;
         }
-
-        // SUBSCRIBE 처리 - SEND와 분리
+        // SUBSCRIBE
         if (StompCommand.SUBSCRIBE.equals(command)) {
-            if (isPublic) {
-                return message;
-            }
+            if (isPublic) return message;
 
-            if (sessionAttrs != null) {
-                Object emailObj = sessionAttrs.get("email");
-                if (emailObj instanceof String email && !email.isBlank()) {
-                    userStatusService.touch(email);
-                }
+            Object emailObj = accessor.getSessionAttributes().get("email");
+            if (emailObj instanceof String email && !email.isBlank()) {
+                userStatusService.touch(email);
             }
+            return message;
         }
+
         return message;
     }
 
@@ -172,14 +156,32 @@ public class StompHandler implements ChannelInterceptor {
         return destination.equals("/app/bid");
     }
 
+    private String extractToken(StompHeaderAccessor accessor) {
+        String raw = firstNonNull(
+                accessor.getFirstNativeHeader("Authorization"),
+                accessor.getFirstNativeHeader("authorization"),
+                accessor.getFirstNativeHeader("token")
+        );
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException("인증 헤더가 없습니다.");
+        }
+
+        String token = raw.startsWith("Bearer ")
+                ? raw.substring(7).trim()
+                : raw.trim();
+
+        if (token.isBlank()) throw new IllegalArgumentException("JWT 토큰이 비어있습니다.");
+        return token;
+    }
+
     private String firstNonNull(String... xs) {
         for (String x : xs) if (x != null) return x;
         return null;
     }
 
-    private String normalizeRole(String raw) {
-        String s = String.valueOf(raw == null ? "" : raw).trim().toUpperCase();
-        if (s.startsWith("ROLE_")) s = s.substring(5);
-        return s;
-    }
+//    private String normalizeRole(String raw) {
+//        String s = String.valueOf(raw == null ? "" : raw).trim().toUpperCase();
+//        if (s.startsWith("ROLE_")) s = s.substring(5);
+//        return s;
+//    }
 }

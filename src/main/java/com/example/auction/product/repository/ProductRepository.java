@@ -1,6 +1,7 @@
 package com.example.auction.product.repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -256,4 +257,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
     );
+
+    long countByStatusInAndBlockedFalse(Collection<Status> statuses);
 }
