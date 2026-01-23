@@ -6,6 +6,7 @@ import com.example.auction.bid.dto.*;
 
 import com.example.auction.bid.service.BidService;
 import com.example.auction.common.dto.CommonResDto;
+import com.example.auction.product.domain.Status;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -72,9 +73,11 @@ public class BidController {
     @GetMapping("/allByUser")
     public ResponseEntity<?> getBidAllByUser(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status
     ) {
-        Page<BidAllByUserDto> bidAllByUserDtos = bidService.readBidAllByUser(page, size);
+        Status statusEnum = status != null ? Status.valueOf(status.toUpperCase()) : null;
+        Page<BidAllByUserDto> bidAllByUserDtos = bidService.readBidAllByUser(page, size, statusEnum);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "입찰 목록 조회 성공", bidAllByUserDtos));
     }
 
