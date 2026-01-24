@@ -49,6 +49,8 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
                                            @Param("status") Status status,
                                            Pageable pageable);
 
+    Optional<Bid> findBidByUuid(String uuid);
+
     // 전체 입찰 개수
     long count();
 

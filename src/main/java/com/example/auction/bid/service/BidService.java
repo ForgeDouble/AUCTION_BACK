@@ -72,7 +72,6 @@ public class BidService {
     // 입찰 서비스
 //    로직 보완 필요
     public BidEvent bidProduct(BidCreateDto bidCreateDto, String userEmail) {
-
         User user = userRepository.findByEmailAndDelYn(userEmail, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
 
@@ -138,9 +137,13 @@ public class BidService {
         String bidHashKey = "product_bid_hash_" + bidDto.getProductId();
         String auctionTimeKey = "auction_end_time_" + bidDto.getProductId();
 
+
+        String uuid = UUID.randomUUID().toString();
+        long currentTimeMillis = System.currentTimeMillis();
         BidEvent bidEvent = BidEvent.builder()
+                .uuid(uuid)
                 .userId(user.getUserId())
-                .userName(user.getName())
+                .userNickName(user.getNickname())
                 .productId(bidDto.getProductId())
                 .bidAmount(bidDto.getBidAmount())
                 .createdAt(LocalDateTime.now())
@@ -149,8 +152,6 @@ public class BidService {
 
         try {
             String bidEventJson = objectMapper.writeValueAsString(bidEvent);
-            String uuid = UUID.randomUUID().toString();
-            long currentTimeMillis = System.currentTimeMillis();
             // Lua 스크립트 (최고가 비교 후 갱신)
             String luaScript = """
         local zsetKey = KEYS[1]
