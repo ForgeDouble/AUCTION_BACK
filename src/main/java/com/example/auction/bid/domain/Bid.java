@@ -17,6 +17,9 @@ public class Bid extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long bidId;
 
+    @Column
+    private String uuid;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
