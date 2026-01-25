@@ -102,6 +102,26 @@ public class ProductController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", productPage));
     }
 
+    @GetMapping("/myPageProductUser")
+    public ResponseEntity<?> myPageProductsByUser(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<String> statuses,
+            @RequestParam(defaultValue = "NEWEST") String sortBy
+    ) {
+        List<Status> statusEnums = null;
+        if (statuses != null && !statuses.isEmpty()) {
+            statusEnums = statuses.stream()
+                    .map(Status::valueOf)
+                    .collect(Collectors.toList());
+        }
+        Page<ProductListDto> productPage =
+                productService.myPageProductsByUser(page, size, search, statusEnums, sortBy);
+
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", productPage));
+    }
+
     /* 로그인중인 유저의 찜한 상품 목록 조회 (마이페이지) */
     @GetMapping("/allByWishlist")
     public ResponseEntity<?> ReadAllProductsByWishlist(
