@@ -1,9 +1,14 @@
 package com.example.auction.wishlist.service;
 
+import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
+import com.example.auction.product.dto.ProductListDto;
+import com.example.auction.product.repository.ProductImageRepository;
 import com.example.auction.wishlist.dto.WishlistAllDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +33,8 @@ public class WishlistService {
 	private final UserRepository userRepository;
 	private final ProductRepository productRepository;
 	private final WishlistRepository wishlistRepository;
+    private final BidRepository bidRepository;
+    private final ProductImageRepository productImageRepository;
 
 //  위시리스트 생성
 	@Transactional
@@ -105,5 +112,56 @@ public class WishlistService {
             throw new UnauthorizedAccessException("해당 위시리스트를 삭제할 권한이 없습니다.");
         }
         wishlistRepository.delete(wishlist);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductListDto> getWishlistProducts(int page, int size) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+
+        PageRequest pageable = PageRequest.of(page, size);
+        Page<Wishlist> wishPage = wishlistRepository.findAllByUser(user, pageable);
+
+        List<Long> productIds = wishPage.getContent().stream()
+                .map(w -> w.getProduct().getProductId())
+                .toList();
+
+        // 대표 이미지
+        var previewRows = productIds.isEmpty()
+                ? List.<ProductImageRepository.ProductPreviewRow>of()
+                : productImageRepository.findPreviewRows(productIds);
+
+        java.util.Map<Long, String> previewUrlMap = new java.util.HashMap<>();
+        for (var r : previewRows) {
+            previewUrlMap.putIfAbsent(r.getProductId(), r.getUrl());
+        }
+
+        // 입찰 수 맵
+        java.util.Map<Long, Long> bidCountMap = new java.util.HashMap<>();
+        if (!productIds.isEmpty()) {
+            for (var r : bidRepository.countByProductIds(productIds)) {
+                bidCountMap.put(r.getProductId(), r.getCnt());
+            }
+        }
+        // 최고 입찰가(현재가)
+        java.util.Map<Long, Long> maxBidMap = new java.util.HashMap<>();
+        if (!productIds.isEmpty()) {
+            for (var r : bidRepository.maxBidAmountByProductIds(productIds)) {
+                maxBidMap.put(r.getProductId(), r.getMaxAmount());
+            }
+        }
+        return wishPage.map(w -> {
+            var p = w.getProduct();
+
+            ProductListDto dto = ProductListDto.fromEntity(p);
+            dto.setWishlistId(w.getWishlistId());
+
+            dto.setPreviewImageUrl(previewUrlMap.get(p.getProductId()));
+            dto.setBidCount(bidCountMap.getOrDefault(p.getProductId(), 0L));
+            dto.setLatestBidAmount(maxBidMap.getOrDefault(p.getProductId(), 0L));
+
+            return dto;
+        });
     }
 }
