@@ -8,16 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
-import org.springframework.messaging.support.ChannelInterceptor;
-import org.springframework.stereotype.Component;
 
-import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -76,9 +73,14 @@ public class StompHandler implements ChannelInterceptor {
             }
 
             // presence 기록하기
-            userStatusService.touch(email);
-            // 세션에 email 저장해두기
+//            userStatusService.touch(email);
+
             accessor.getSessionAttributes().put("email", email);
+            accessor.setUser(() -> email);
+            accessor.setLeaveMutable(true);
+            log.info("[CONNECT] 입찰 요청 인증 완료: {}", email);
+
+            return message;
         }
 
         // [추가] SEND 시 토큰 검증
@@ -114,15 +116,10 @@ public class StompHandler implements ChannelInterceptor {
                     throw new IllegalArgumentException("다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
                 }
 
-                // 메시지 헤더에 email 추가 (컨트롤러에서 사용 가능)
-                // setUser 후 메시지 재생성
-                accessor.setUser(() -> email);
-                accessor.setLeaveMutable(true);  // mutable 상태 유지
-
-                log.info("입찰 요청 인증 완료: {}", email);
-
-                // 수정된 accessor로 메시지 재생성
-                return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
+                log.info("[SEND] 입찰 요청 인증 완료: {}", email);
+                log.info("message 확인: {}", message);
+//                return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
+                return message;
             }
 
             // 공개 엔드포인트의 일반 메시지는 인증 없이 통과
@@ -154,11 +151,11 @@ public class StompHandler implements ChannelInterceptor {
         return message;
     }
 
-    // 인증이 필요한 destination 판별 메서드
-    private boolean requiresAuth(String destination) {
-        if (destination == null) return false;
 
-        return destination.equals("/app/bid");
+    private static final Set<String> AUTH_REQUIRED_DESTS = Set.of("/app/bid");
+
+    private boolean requiresAuth(String destination) {
+        return destination != null && AUTH_REQUIRED_DESTS.contains(destination);
     }
 
     private String firstNonNull(String... xs) {
