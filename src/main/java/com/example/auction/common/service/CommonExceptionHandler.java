@@ -1,9 +1,7 @@
 package com.example.auction.common.service;
 
 import com.example.auction.common.dto.CommonErrorDto;
-import com.example.auction.common.exception.AccountSuspendedException;
-import com.example.auction.common.exception.ResourceNotFoundException;
-import com.example.auction.common.exception.UnauthorizedAccessException;
+import com.example.auction.common.exception.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -109,6 +107,26 @@ public class CommonExceptionHandler {
         );
         e.printStackTrace();
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<CommonErrorDto> BadRequestHandler(BadRequestException e) {
+        CommonErrorDto error = new CommonErrorDto(
+                e.getErrorCode(),
+                e.getMessage()
+        );
+        e.printStackTrace();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(InternalErrorException.class)
+    public ResponseEntity<CommonErrorDto> InternalErrorHandler(InternalErrorException e) {
+        CommonErrorDto error = new CommonErrorDto(
+                e.getErrorCode(),
+                e.getMessage()
+        );
+        e.printStackTrace();
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
 }
