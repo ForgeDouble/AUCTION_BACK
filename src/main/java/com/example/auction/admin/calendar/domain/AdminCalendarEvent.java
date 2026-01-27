@@ -42,6 +42,8 @@ public class AdminCalendarEvent extends BaseTimeEntity {
 
     @Column(name = "ref_user_id")
     private Long refUserId;
+    @Column(name = "created_by_nickname", length = 30)
+    private String createdByNickname;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)

@@ -3,6 +3,7 @@ package com.example.auction.user.controller;
 import com.example.auction.common.dto.CommonResDto;
 import com.example.auction.user.domain.UserStatus;
 import com.example.auction.user.dto.*;
+import com.example.auction.user.service.AdminBirthdayCalendarService;
 import com.example.auction.user.service.UserImageService;
 import com.example.auction.user.service.UserService;
 import com.example.auction.user.service.UserStatusService;
@@ -26,11 +27,13 @@ public class UserController {
     private final UserService userService;
     private final UserImageService userImageService;
     private final UserStatusService userStatusService;
+    private final AdminBirthdayCalendarService adminBirthdayCalendarService;
 
-    public UserController(UserService userService, UserImageService userImageService, UserStatusService userStatusService) {
+    public UserController(UserService userService, UserImageService userImageService, UserStatusService userStatusService, AdminBirthdayCalendarService adminBirthdayCalendarService) {
         this.userService = userService;
         this.userImageService = userImageService;
         this.userStatusService = userStatusService;
+        this.adminBirthdayCalendarService = adminBirthdayCalendarService;
     }
 
     /* 로그인 */
@@ -202,5 +205,12 @@ public class UserController {
     public ResponseEntity<?> getSellerByProductId(@PathVariable Long productId) {
         SellerDto sellerDto = userService.getSellerInfoByProductId(productId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "유저정보 조회 성공", sellerDto));
+    }
+    @PreAuthorize("isAuthenticated()")
+    @PatchMapping("/birthday-calendar")
+    public ResponseEntity<?> BirthdayCalendar(@RequestBody AdminBirthdayCalendarToggleDto dto) {
+        if (dto.getEnabled() == null) throw new IllegalArgumentException("enabled 값이 필요합니다.");
+        var res = adminBirthdayCalendarService.setEnabled(dto.getEnabled());
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "생일 캘린더 설정 변경", res));
     }
 }
