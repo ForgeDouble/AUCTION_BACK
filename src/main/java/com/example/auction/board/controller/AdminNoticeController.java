@@ -24,7 +24,7 @@ public class AdminNoticeController {
     private final AdminNoticeService adminNoticeService;
 
     // 생성
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PostMapping
     public ResponseEntity<?> create(@RequestBody NoticeCreateRequest noticeCreateRequest) {
         Long id = adminNoticeService.create(noticeCreateRequest);
@@ -32,7 +32,7 @@ public class AdminNoticeController {
     }
 
     // 페이징 보기(리스트)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @GetMapping
     public ResponseEntity<?> list(
             @RequestParam(name = "category", required = false) NoticeCategory category,
@@ -56,7 +56,7 @@ public class AdminNoticeController {
 //    }
 
     // 수정하기
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody NoticeUpdateRequest noticeUpdateRequest) {
         adminNoticeService.update(id, noticeUpdateRequest);
@@ -64,14 +64,14 @@ public class AdminNoticeController {
     }
 
     // 삭제
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         adminNoticeService.delete(id);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "공지(인수인계) 삭제 완료", null));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PostMapping("/{id}/ack")
     public ResponseEntity<?> ack(@PathVariable Long id) {
         adminNoticeService.ack(id);

@@ -4,12 +4,17 @@ import com.example.auction.admin.dto.AdminDashboardDto;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.common.auth.SecurityUserContext;
+import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.user.domain.Authority;
+import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.user.service.UserStatusService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -32,7 +37,7 @@ public class AdminDashboardService {
 
 
     public AdminDashboardDto getDashboard() {
-        checkAdmin();
+        ensureAdmin();
 
         LocalDate today = LocalDate.now(KST);
         LocalDateTime start = today.atStartOfDay();
@@ -86,11 +91,18 @@ public class AdminDashboardService {
         return new AdminDashboardDto(admin, stats, hourlyDto, money);
     }
 
-    private void checkAdmin() {
-        var p = SecurityUserContext.principal();
-        if (p.getAuthority() == null || p.getAuthority() != Authority.ADMIN) {
-            throw new IllegalStateException("ADMIN 권한이 필요합니다.");
+//    private void checkAdmin() {
+//        var p = SecurityUserContext.principal();
+//        if (p.getAuthority() == null || p.getAuthority() != Authority.ADMIN && ) {
+//            throw new IllegalStateException("ADMIN 권한이 필요합니다.");
+//        }
+//    }
+    private void ensureAdmin() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+        if (user.getAuthority() != Authority.ADMIN && user.getAuthority() != Authority.INQUIRY) {
+            throw new UnauthorizedAccessException("관리자 외 권한이 없습니다.");
         }
     }
-
 }

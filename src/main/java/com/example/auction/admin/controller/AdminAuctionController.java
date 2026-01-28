@@ -16,7 +16,8 @@ public class AdminAuctionController {
 
     private final AdminAuctionService adminAuctionService;
 
-    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+//    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @GetMapping
     public ResponseEntity<?> list(
             @RequestParam(defaultValue = "0") int page,
@@ -26,7 +27,8 @@ public class AdminAuctionController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "경매 모니터링 조회 성공", pg));
     }
 
-    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+//    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PostMapping("/{productId}/suspend")
     public ResponseEntity<?> suspend(@PathVariable long productId,
                                      @RequestBody(required = false) AdminAuctionActionReq req) {
@@ -34,7 +36,8 @@ public class AdminAuctionController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "경매 임시차단 성공", null));
     }
 
-    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+//    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PostMapping("/{productId}/force-end")
     public ResponseEntity<?> forceEnd(@PathVariable long productId,
                                       @RequestBody(required = false) AdminAuctionActionReq req) {

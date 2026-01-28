@@ -67,6 +67,22 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     }
                 })
                 .withSockJS();
+
+        // 관리자 전용
+        registry.addEndpoint("/ws-admin")
+                .setAllowedOriginPatterns("*")
+                .addInterceptors(new HttpSessionHandshakeInterceptor() {
+                    @Override
+                    public boolean beforeHandshake(
+                            ServerHttpRequest request,
+                            ServerHttpResponse response,
+                            WebSocketHandler wsHandler,
+                            Map<String, Object> attributes) throws Exception {
+                        attributes.put("endpointType", "admin");
+                        return super.beforeHandshake(request, response, wsHandler, attributes);
+                    }
+                })
+                .withSockJS();
     }
 
 

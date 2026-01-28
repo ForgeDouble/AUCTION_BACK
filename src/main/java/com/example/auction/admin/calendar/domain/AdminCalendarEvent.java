@@ -36,6 +36,16 @@ public class AdminCalendarEvent extends BaseTimeEntity {
     private String memo;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "source_type", nullable = false, length = 20)
+    @Builder.Default
+    private CalendarEventSourceType sourceType = CalendarEventSourceType.MANUAL;
+
+    @Column(name = "ref_user_id")
+    private Long refUserId;
+    @Column(name = "created_by_nickname", length = 30)
+    private String createdByNickname;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private CalendarEventTag tag;
 
@@ -53,5 +63,10 @@ public class AdminCalendarEvent extends BaseTimeEntity {
 
     public void moveDate(LocalDate date) {
         this.date = date;
+    }
+
+    public void markBirthday(Long userId) {
+        this.sourceType = CalendarEventSourceType.BIRTHDAY;
+        this.refUserId = userId;
     }
 }

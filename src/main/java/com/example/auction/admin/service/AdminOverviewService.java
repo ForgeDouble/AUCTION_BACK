@@ -66,7 +66,7 @@ public class AdminOverviewService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
-        if (user.getAuthority() != Authority.ADMIN) {
+        if (user.getAuthority() != Authority.ADMIN && user.getAuthority() != Authority.INQUIRY) {
             throw new UnauthorizedAccessException("관리자 외 권한이 없습니다.");
         }
     }

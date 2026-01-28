@@ -1,6 +1,7 @@
 package com.example.auction.product.repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -255,5 +256,61 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<MonthlyAmountRow> sumMonthlyTradeAmountSold(
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
+    );
+
+    long countByStatusInAndBlockedFalse(Collection<Status> statuses);
+
+
+
+
+    @Query("""
+    select new com.example.auction.product.dto.ProductListDto(
+        p.productId,
+        p.productName,
+        p.productContent,
+        p.price,
+        p.status,
+        (
+            select img.url
+            from ProductImage img
+            where img.product.productId = p.productId
+            and img.position = (
+                select min(img2.position)
+                from ProductImage img2
+                where img2.product.productId = p.productId
+            )
+        ),
+        p.category.categoryId,
+        p.user.email,
+        coalesce(max(b.bidAmount), 0),
+        count(distinct b.bidId),
+        p.createdAt
+    )
+    from Product p
+    left join Bid b on b.product.productId = p.productId
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+    and (p.blocked = false or p.blocked is null)
+    and p.user.email = :email
+    and (:search is null or :search = '' or lower(p.productName) like lower(concat('%', :search, '%')))
+    and (:statuses is null or p.status in :statuses)
+    group by
+    p.productId, p.productName, p.productContent, p.price, p.status,
+    p.category.categoryId, p.user.email, p.createdAt
+    order by
+    case when :sortBy = 'ENDING_SOON'
+    then case when p.status = com.example.auction.product.domain.Status.PROCESSING then 0 else 1 end
+    end asc,
+    case when :sortBy = 'ENDING_SOON' then p.createdAt end asc,
+    case when :sortBy = 'MOST_BIDS' then count(distinct b.bidId) end desc,
+    case when :sortBy = 'HIGHEST_BID' then max(b.bidAmount) end desc,
+    case when :sortBy = 'NEWEST' then p.createdAt end desc,
+    p.createdAt desc
+    """)
+    Page<ProductListDto> findMyProducts(
+            @Param("email") String email,
+            @Param("search") String search,
+            @Param("statuses") List<Status> statuses,
+            @Param("sortBy") String sortBy,
+            Pageable pageable
     );
 }

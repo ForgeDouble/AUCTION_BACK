@@ -1,8 +1,10 @@
 package com.example.auction.wishlist.controller;
 
+import com.example.auction.product.dto.ProductListDto;
 import com.example.auction.wishlist.domain.Wishlist;
 import com.example.auction.wishlist.dto.WishlistAllDto;
 import org.checkerframework.checker.units.qual.C;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -55,4 +57,15 @@ public class WishlistController {
         wishlistService.deleteWishlistById(wishlistId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 삭제 성공", null));
     }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/products")
+    public ResponseEntity<CommonResDto> getWishlistProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        Page<ProductListDto> result = wishlistService.getWishlistProducts(page, size);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "위시리스트 상품 조회 성공", result));
+    }
+
 }

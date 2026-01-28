@@ -24,7 +24,8 @@ public class AdminMetricsController {
     private final AdminMetricsService adminMetricsService;
 
     // 금일 사용자 주 사용 시간대(3시간 버킷)
-    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+//    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @GetMapping("/active-hours")
     public ResponseEntity<?> getActiveHours3h() {
         List<ActiveHourBucketDto> list = adminMetricsService.getTodayActiveUsers3h();
@@ -32,14 +33,16 @@ public class AdminMetricsController {
     }
 
     // 최근 N일 경매 생성/종료 추이
-    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+//    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @GetMapping("/auction-trend")
     public ResponseEntity<?> auctionTrend(@RequestParam(defaultValue = "7") int days) {
         var list = adminMetricsService.auctionTrend(days);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "최근 경매 생성/종료 추이 조회 성공", list));
     }
 
-    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+//    @PreAuthorize("hasAuthority('ADMIN') or hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @GetMapping("/trade-monthly")
     public ResponseEntity<?> tradeMonthly(@RequestParam(defaultValue = "6") int months) {
         var list = adminMetricsService.monthlyTrade(months);
