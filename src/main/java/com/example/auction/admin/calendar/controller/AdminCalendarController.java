@@ -30,35 +30,35 @@ public class AdminCalendarController {
         return Long.parseLong(raw);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PostMapping("/events")
     public ResponseEntity<CommonResDto> create(@RequestBody AdminCalendarEventCreateDto adminCalendarEventCreateDto) {
         AdminCalendarEventResponseDto created = adminCalendarService.create(adminCalendarEventCreateDto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "운영 캘린더 일정 등록 성공", created));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @GetMapping("/events")
     public ResponseEntity<CommonResDto> list() {
         List<AdminCalendarEventResponseDto> list = adminCalendarService.listEvents();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "운영 캘린더 조회 성공", list));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PutMapping("/events/{eventId}")
     public ResponseEntity<CommonResDto> update(@PathVariable String eventId, @RequestBody AdminCalendarEventUpdateDto dto) {
         AdminCalendarEventResponseDto updated = adminCalendarService.update(parseEventId(eventId), dto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "일정 수정 성공", updated));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @PatchMapping("/events/{eventId}/date")
     public ResponseEntity<CommonResDto> moveDate(@PathVariable String eventId, @RequestBody AdminCalendarEventDateUpdateDto dto) {
         AdminCalendarEventResponseDto updated = adminCalendarService.moveDate(parseEventId(eventId), dto.getDate());
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "날짜 변경 성공", updated));
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
     @DeleteMapping("/events/{eventId}")
     public ResponseEntity<CommonResDto> delete(@PathVariable String eventId) {
         adminCalendarService.delete(parseEventId(eventId));

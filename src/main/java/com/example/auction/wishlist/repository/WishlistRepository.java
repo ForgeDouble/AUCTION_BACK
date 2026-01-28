@@ -1,5 +1,9 @@
 package com.example.auction.wishlist.repository;
 
+import com.example.auction.user.domain.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.auction.wishlist.domain.Wishlist;
@@ -26,4 +30,11 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
 
     @Query("select distinct w.user.userId from Wishlist w where w.product.productId = :productId")
     Set<Long> findUserIdsByProductId(@Param("productId") Long productId);
+
+    @EntityGraph(attributePaths = {
+            "product",
+            "product.category",
+            "product.user"
+    })
+    Page<Wishlist> findAllByUser(User user, Pageable pageable);
 }

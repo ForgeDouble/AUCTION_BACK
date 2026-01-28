@@ -71,6 +71,9 @@ public class User extends BaseTimeEntity {
     private String profileImageKey;
 
 //    private String profileImage;
+    @Builder.Default
+    @Column(nullable = false)
+    private Boolean birthdayCalendarEnabled = false;
 
     public void update(UserUpdateDto dto) {
         if (dto.getName() != null && !dto.getName().isBlank()) {
@@ -99,4 +102,8 @@ public class User extends BaseTimeEntity {
     public void suspendUntil(LocalDateTime until) { this.suspendedUntil = until; }
     // 확정 정지 해제
     public void liftSuspension() { this.suspendedUntil = null; }
+    // 생일 이벤트 생성
+    public void enableBirthdayCalendar() { this.birthdayCalendarEnabled = true; }
+    // 생일 이벤트 삭제
+    public void disableBirthdayCalendar() { this.birthdayCalendarEnabled = false; }
 }

@@ -113,4 +113,30 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     List<Object[]> sumMonthlyGmv(@Param("start") LocalDateTime start,
                                  @Param("end") LocalDateTime end);
 
+
+    interface BidCountRow {
+        Long getProductId();
+        Long getCnt();
+    }
+
+    interface BidMaxRow {
+        Long getProductId();
+        Long getMaxAmount();
+    }
+
+    @Query("""
+        select b.product.productId as productId, count(b) as cnt
+        from Bid b
+        where b.product.productId in :productIds
+        group by b.product.productId
+    """)
+    List<BidCountRow> countByProductIds(@Param("productIds") List<Long> productIds);
+
+    @Query("""
+        select b.product.productId as productId, max(b.bidAmount) as maxAmount
+        from Bid b
+        where b.product.productId in :productIds
+        group by b.product.productId
+    """)
+    List<BidMaxRow> maxBidAmountByProductIds(@Param("productIds") List<Long> productIds);
 }

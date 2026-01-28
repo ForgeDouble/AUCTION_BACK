@@ -599,7 +599,45 @@ public class ProductService {
 
         return productRepository.findAllByUserEmailWithBidInfo(email, pageable);
     }
-	
+
+    @Transactional(readOnly = true)
+    public Page<ProductListDto> myPageProductsByUser(
+            int page,
+            int size,
+            String search,
+            List<Status> statuses,
+            String sortBy
+    ) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        String normalizedSort = normalizeSort(sortBy);
+        String normalizedSearch = (search == null || search.isBlank()) ? null : search.trim();
+
+        List<Status> normalizedStatuses =
+                (statuses == null || statuses.isEmpty()) ? null : statuses;
+
+        return productRepository.findMyProducts(
+                email,
+                normalizedSearch,
+                normalizedStatuses,
+                normalizedSort,
+                pageable
+        );
+    }
+
+    private String normalizeSort(String sortBy) {
+        if (sortBy == null) return "NEWEST";
+        return switch (sortBy) {
+            case "ENDING_SOON" -> "ENDING_SOON";
+            case "MOST_BIDS" -> "MOST_BIDS";
+            case "HIGHEST_BID" -> "HIGHEST_BID";
+            case "PRICE_DESC" -> "HIGHEST_BID";
+            case "NEWEST" -> "NEWEST";
+            default -> "NEWEST";
+        };
+    }
 	// 아이템 수정
     // 권한 - 해당 유저, 관리자
 

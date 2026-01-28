@@ -7,6 +7,9 @@ import com.example.auction.admin.calendar.dto.AdminCalendarEventResponseDto;
 import com.example.auction.admin.calendar.dto.AdminCalendarEventUpdateDto;
 import com.example.auction.admin.calendar.repository.AdminCalendarEventRepository;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
+import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.user.service.UserService;
@@ -36,6 +39,15 @@ public class AdminCalendarService {
         return userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
     }
+    private void checkAdmin() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+        if (user.getAuthority() != Authority.ADMIN && user.getAuthority() != Authority.INQUIRY) {
+            throw new UnauthorizedAccessException("관리자 외 권한이 없습니다.");
+        }
+    }
+
 
     private static LocalTime sortTime(AdminCalendarEvent e) {
         return e.getTime() == null ? LocalTime.MAX : e.getTime();
@@ -43,8 +55,8 @@ public class AdminCalendarService {
     // 일정 생성
     @Transactional
     public AdminCalendarEventResponseDto create(AdminCalendarEventCreateDto dto) {
-        userService.checkAdminAuthority();
-
+//        userService.checkAdminAuthority();
+        checkAdmin();
         if (dto.getTitle() == null || dto.getTitle().isBlank()) {
             throw new IllegalArgumentException("제목은 필수입니다.");
         }
@@ -70,8 +82,8 @@ public class AdminCalendarService {
     // 일정 조회
     @Transactional(readOnly = true)
     public List<AdminCalendarEventResponseDto> listEvents() {
-        userService.checkAdminAuthority();
-
+//        userService.checkAdminAuthority();
+        checkAdmin();
         return adminCalendarEventRepository.findAll().stream()
                 .sorted(Comparator
                         .comparing(AdminCalendarEvent::getDate)
@@ -83,8 +95,8 @@ public class AdminCalendarService {
     // 일정 업데이트
     @Transactional
     public AdminCalendarEventResponseDto update(Long id, AdminCalendarEventUpdateDto dto) {
-        userService.checkAdminAuthority();
-
+//        userService.checkAdminAuthority();
+        checkAdmin();
         AdminCalendarEvent adminCalendarEvent = adminCalendarEventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("일정이 존재하지 않습니다."));
 
@@ -96,8 +108,8 @@ public class AdminCalendarService {
     // 일정 업데이트(드래그 일정 이동)
     @Transactional
     public AdminCalendarEventResponseDto moveDate(Long id, LocalDate date) {
-        userService.checkAdminAuthority();
-
+//        userService.checkAdminAuthority();
+        checkAdmin();
         AdminCalendarEvent adminCalendarEvent = adminCalendarEventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("일정이 존재하지 않습니다."));
 
@@ -107,7 +119,8 @@ public class AdminCalendarService {
 
     @Transactional
     public void delete(Long id) {
-        userService.checkAdminAuthority();
+//        userService.checkAdminAuthority();
+        checkAdmin();
         if (!adminCalendarEventRepository.existsById(id)) throw new RuntimeException("일정이 존재하지 않습니다.");
         adminCalendarEventRepository.deleteById(id);
     }
