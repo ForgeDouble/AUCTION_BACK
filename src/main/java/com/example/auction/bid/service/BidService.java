@@ -5,7 +5,10 @@ import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.*;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.BadRequestException;
+import com.example.auction.common.exception.InternalErrorException;
 import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
@@ -70,23 +73,40 @@ public class BidService {
     }
 
     // 입찰 서비스
-//    로직 보완 필요
     public BidEvent bidProduct(BidCreateDto bidCreateDto, String userEmail) {
-
         User user = userRepository.findByEmailAndDelYn(userEmail, DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("로그인 중인 User"));
+                .orElseThrow(() ->
+                {
+                    log.warn("[USER_NOT_FOUND] 존재하지 않거나 만료된 유저 userEmail={}", userEmail);
+                    return new ResourceNotFoundException("USER_NOT_FOUND", "존재하지 않거나 만료된 유저입니다.");
+                });
 
         Product product = productRepository.findByProductIdAndDelYn(bidCreateDto.getProductId(), DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+                .orElseThrow(() ->
+                {
+                    log.warn("[PRODUCT_NOT_FOUND] 존재하지 않거나 만료된 상품 productId={}", bidCreateDto.getProductId());
+                    return new ResourceNotFoundException("PRODUCT_NOT_FOUND","존재하지 않거나 만료된 경매입니다.");
+                });
 
         if (product.getStatus() != Status.PROCESSING) {
-            throw new RuntimeException("경매중인 상품이 아닙니다.");
-        } 
+            log.warn("[PASSED_AUCTION] 경매의 진행상태가 PROCESSING 이 아님 productId={}, productStatus={}"
+                    , product.getProductId(), product.getStatus());
+            throw new UnauthorizedAccessException("NOT_ALLOWED", "경매중인 상품이 아닙니다.");
+        }
 //        접속중인 유저가 판매자일 경우 입찰 불가능
 //        개발중에는 주석 처리
-//        else if (product.getUser().getUserId() == user.getUserId()) {
-//            throw  new UnauthorizedAccessException("판매자는 입찰 할 수 없습니다.");
-//        }
+        else if (product.getUser().getUserId() == user.getUserId()) {
+            log.warn("[SELLER_NOT_ALLOWED] 판매자가 입찰을 시도");
+            throw new UnauthorizedAccessException("SELLER_NOT_ALLOWED", "판매자는 입찰 할 수 없습니다.");
+        }
+
+        else if (bidCreateDto.getBidAmount() < 0) {
+            log.warn("[INVALID_AMOUNT] 음수 입찰가 bidAmount={}", bidCreateDto.getBidAmount());
+            throw new BadRequestException("QUANTITY_ERROR", "입찰가는 1000원 단위로 입력해주세요.");
+        } else if (bidCreateDto.getBidAmount() % 1000 != 0) {
+            log.warn("[QUANTITY_ERROR] 1000원 단위가 아니거나 올바르지 않은 입찰가 bidAmount={} ", bidCreateDto.getBidAmount());
+            throw new BadRequestException("QUANTITY_ERROR", "입찰가는 1000원 단위로 입력해주세요.");
+        }
 
 
 //      redission을 활용한 락 비즈니스 로직
@@ -105,7 +125,14 @@ public class BidService {
 //        }
         BidEvent bidEvent = bidHotAuction(bidCreateDto, user, product);
 
-        bidWebsocketService.broadcastBidEvent(bidEvent);
+
+        try {
+            // topic으로 메세지 전달
+            bidWebsocketService.broadcastBidEvent(bidEvent);
+        } catch (Exception e) {
+            log.warn("[WEBSOCKET_ERROR] broadCast중 오류 발생 bidEvent={}", bidEvent.toString());
+            throw new InternalErrorException("INTERNAL_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
+        }
 
         return bidEvent;
     }
@@ -138,9 +165,12 @@ public class BidService {
         String bidHashKey = "product_bid_hash_" + bidDto.getProductId();
         String auctionTimeKey = "auction_end_time_" + bidDto.getProductId();
 
+        String uuid = UUID.randomUUID().toString();
+        long currentTimeMillis = System.currentTimeMillis();
         BidEvent bidEvent = BidEvent.builder()
+                .uuid(uuid)
                 .userId(user.getUserId())
-                .userName(user.getName())
+                .userNickName(user.getNickname())
                 .productId(bidDto.getProductId())
                 .bidAmount(bidDto.getBidAmount())
                 .createdAt(LocalDateTime.now())
@@ -149,8 +179,6 @@ public class BidService {
 
         try {
             String bidEventJson = objectMapper.writeValueAsString(bidEvent);
-            String uuid = UUID.randomUUID().toString();
-            long currentTimeMillis = System.currentTimeMillis();
             // Lua 스크립트 (최고가 비교 후 갱신)
             String luaScript = """
         local zsetKey = KEYS[1]
@@ -199,32 +227,49 @@ public class BidService {
             );
 
             if (result == null) {
-                throw new RuntimeException("입찰 처리 중 오류가 발생했습니다.");
+                log.warn("[REDIS_ERROR] redis에서 오류가 발생했습니다. " +
+                        "bidZSetKey={}" +
+                        "bidHashKey={}" +
+                        "auctionTimeKey={}" +
+                        "uuid={}" +
+                        "bidAmount={}" +
+                        "bidEventJson={}" +
+                        "currentTimeMillis={}"
+                        , bidZSetKey, bidHashKey, auctionTimeKey, uuid, bidDto.getBidAmount(), bidEventJson, currentTimeMillis);
+                throw new InternalErrorException("INTERNAL_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
             } else if (result == -2) {
-                throw new RuntimeException("존재하지 않거나 만료된 경매입니다.");
+                log.warn("[NOT_FOUND] Redis에서 경매 종료 시간 조회 실패 productId={}"
+                        , product.getProductId());
+                throw new ResourceNotFoundException("PRODUCT_NOT_FOUND", "존재하지 않거나 만료된 경매입니다.");
             } else if (result == -1) {
-                throw new RuntimeException("경매 시간이 종료되었습니다.");
+                log.warn("[PASSED_AUCTION] 경매시간 종료 productId={}, productEndTime={}"
+                        , product.getProductId(), product.getAuctionEndTime());
+                throw new UnauthorizedAccessException("NOT_ALLOWED", "접근할 권한이 없습니다.");
             } else if (result == 0) {
-                throw new RuntimeException("현재 최고가보다 높은 금액만 입찰 가능합니다.");
+                log.warn("[LOW_PRICE] 최고가보다 낮은 금액으로 입찰 bidAmount={}", bidDto.getBidAmount());
+                throw new BadRequestException("LOW_PRICE", "현재 최고가보다 높은 금액만 입찰 가능합니다.");
             }
 
             log.info("Redis ZSET + Hash 입찰 성공 - ProductId: {}, 입찰가: {}, 현재시간: {}",
                     bidDto.getProductId(), bidDto.getBidAmount(), currentTimeMillis);
 
         } catch (JsonProcessingException e) {
-            throw new RuntimeException("BidEvent JSON 변환 실패", e);
+            log.warn("[JSON_ERROR] BidEvent JSON 변환 실패 bidEvent={}", bidEvent.toString());
+            throw new InternalErrorException("INTERNAL_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
         }
         // 직전 최고 입찰자에게 푸시
         try {
             handleOutbid(bidEvent, product);
         } catch (Exception e) {
-
             log.warn("[BidOutbid] Outbid 처리 중 예외 productId={}", bidDto.getProductId(), e);
         }
-        // 비동기 DB 저장 (정합성 보장용)
-        bidEventProducer.publishBidEvent(bidEvent);
-
-        return bidEvent; // 임시 반환
+        try {
+            // 비동기 DB 저장 (정합성 보장용)
+            bidEventProducer.publishBidEvent(bidEvent);
+        } catch (Exception e) {
+            log.warn("[RABBITMQ_ERROR] RabbitMQ DB INSERT 처리 중 예외 productId={}", bidDto.getProductId(), e);
+        }
+        return bidEvent;
     }
 
 
@@ -314,14 +359,12 @@ public class BidService {
 
     /* 마이페이지 user 입찰 내역 조회 */
     @Transactional(readOnly = true)
-    public Page<BidAllByUserDto> readBidAllByUser(int page, int size) {
+    public Page<BidAllByUserDto> readBidAllByUser(int page, int size, Status status) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<BidAllByUserDto> bidListDto = bidRepository.findBidAllByUser(email, pageable);
-//                .stream()
-//                .collect(Collectors.toList());
+        Page<BidAllByUserDto> bidListDto = bidRepository.findBidAllByUser(email, status, pageable);
 
         return bidListDto;
     }

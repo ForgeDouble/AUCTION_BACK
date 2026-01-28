@@ -9,6 +9,7 @@ import com.example.auction.product.repository.ProductImageRepository;
 import com.example.auction.wishlist.dto.WishlistAllDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class WishlistService {
 	
@@ -86,7 +88,8 @@ public class WishlistService {
 
         // Product 존재 여부 확인 (필요한 경우)
         if (!productRepository.existsById(productId)) {
-            throw new ResourceNotFoundException("Product", productId);
+            log.warn("[PRODUCT_NOT_FOUND] 존재하지 않는 경매 productId={}", productId);
+            throw new ResourceNotFoundException("해당 경매를 찾을 수 없습니다.");
         }
 
         // DB에서 wishlistId 조회 (없으면 null 반환)
@@ -103,12 +106,20 @@ public class WishlistService {
     public void deleteWishlistById(Long wishlistId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+                .orElseThrow(() -> {
+                    log.warn("[USER_NOT_FOUND] 존재하지 않는 유저 email={}", email);
+                    throw new ResourceNotFoundException("해당 유저를 찾을 수 없습니다.");
+                }
+        );
 
         Wishlist wishlist = wishlistRepository.findByWishlistId(wishlistId)
-                .orElseThrow(() -> new ResourceNotFoundException("Wishlist", wishlistId));
+                .orElseThrow(() -> {
+                    log.warn("[WISHLIST_NOT_FOUND] 존재하지 않는 위시리스트 wishlistId={}", wishlistId);
+                    throw new ResourceNotFoundException("해당 위시리스트를 찾을 수 없습니다.");
+                });
 
         if (!wishlist.getUser().getUserId().equals(user.getUserId())) {
+            log.warn("[NOT_ALLOWED] 위시리시트의 유저와 다른 유저 wishlistUserId={} userId={}", wishlist.getUser().getUserId(), user.getUserId() );
             throw new UnauthorizedAccessException("해당 위시리스트를 삭제할 권한이 없습니다.");
         }
         wishlistRepository.delete(wishlist);

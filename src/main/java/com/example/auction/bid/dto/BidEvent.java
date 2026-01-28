@@ -13,8 +13,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 public class BidEvent {
+    private String uuid;
     private Long userId;
-    private String userName;
+    private String userNickName;
     private Long productId;
     private Long bidAmount;
     private LocalDateTime createdAt;

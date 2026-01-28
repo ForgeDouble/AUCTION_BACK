@@ -120,7 +120,7 @@ public class UserController {
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/update")
     public ResponseEntity<?> update(@ModelAttribute UserUpdateDto updateDto) {
-        userService.update(updateDto);
+        userService.updateUser(updateDto);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "회원정보 수정 완료", null));
     }
 

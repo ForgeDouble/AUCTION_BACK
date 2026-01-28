@@ -1,16 +1,16 @@
 package com.example.auction.common.exception;
 
-public class ResourceNotFoundException extends RuntimeException {
+public class InternalErrorException extends RuntimeException{
     private final String errorCode;
 
-    public ResourceNotFoundException(String errorCode, String message) {
+    public InternalErrorException(String errorCode, String message) {
         super(message);
         this.errorCode = errorCode;
     }
 
-    public ResourceNotFoundException(String message) {
+    public InternalErrorException(String message) {
         super(message);
-        this.errorCode = "DATA_NOT_FOUND";
+        this.errorCode = "INTERNAL_ERROR";
     }
 
     public String getErrorCode() {

@@ -1,6 +1,5 @@
 package com.example.auction.common.exception;
 
-
 public class UnauthorizedAccessException extends RuntimeException {
     private final String errorCode;
 

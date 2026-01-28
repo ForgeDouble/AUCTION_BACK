@@ -20,21 +20,36 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     Optional<Bid> findTopByProduct_ProductIdOrderByCreatedAtDesc(Long productId);
 
     @Query("""
-        SELECT new com.example.auction.bid.dto.BidAllByUserDto(
-            b.bidId,
-            p.productId,
-            p.productName,
-            b.bidAmount,
-            b.createdAt,
-            b.isWinned,
-            p.createdAt
+    SELECT new com.example.auction.bid.dto.BidAllByUserDto(
+        b.bidId,
+        p.productId,
+        p.productName,
+        b.bidAmount,
+        b.createdAt,
+        img.id,
+        img.url,
+        img.position,
+        b.isWinned,
+        p.status,
+        p.createdAt
+    )
+    FROM Bid b
+    JOIN b.product p
+    LEFT JOIN ProductImage img ON img.product.productId = p.productId
+        AND img.position = (
+            SELECT MIN(img2.position)
+            FROM ProductImage img2
+            WHERE img2.product.productId = p.productId
         )
-        FROM Bid b
-        JOIN b.product p
-        WHERE b.user.email = :email
-        ORDER BY b.createdAt DESC
-    """)
-    Page<BidAllByUserDto> findBidAllByUser(@Param("email") String email, Pageable pageable);
+    WHERE b.user.email = :email
+    AND (:status IS NULL OR p.status = :status)
+    ORDER BY b.createdAt DESC
+""")
+    Page<BidAllByUserDto> findBidAllByUser(@Param("email") String email,
+                                           @Param("status") Status status,
+                                           Pageable pageable);
+
+    Optional<Bid> findBidByUuid(String uuid);
 
     // 전체 입찰 개수
     long count();

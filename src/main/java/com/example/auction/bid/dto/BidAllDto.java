@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 public class BidAllDto {
 
     private Long userId;
-    private String userName;
+    private String userNickName;
     private Long productId;
     private Long bidAmount;
     private IsWinned isWinned;
@@ -24,7 +24,7 @@ public class BidAllDto {
     public static BidAllDto fromEntity(Bid bid) {
         return BidAllDto.builder()
                 .userId(bid.getUser().getUserId())
-                .userName(bid.getUser().getName())
+                .userNickName(bid.getUser().getNickname())
                 .productId(bid.getProduct().getProductId())
                 .bidAmount(bid.getBidAmount())
                 .isWinned(bid.getIsWinned())

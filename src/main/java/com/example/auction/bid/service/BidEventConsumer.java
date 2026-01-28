@@ -28,6 +28,7 @@ public class BidEventConsumer {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Bid bid = new Bid();
+        bid.setUuid(event.getUuid());
         bid.setProduct(product);
         bid.setUser(user);
         bid.setBidAmount(event.getBidAmount());

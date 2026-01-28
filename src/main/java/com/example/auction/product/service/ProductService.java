@@ -211,7 +211,7 @@ public class ProductService {
             String uuid = UUID.randomUUID().toString();
             BidEvent bidEvent = BidEvent.builder()
                     .userId(product.getUser().getUserId())
-                    .userName(product.getUser().getNickname())
+                    .userNickName(product.getUser().getNickname())
                     .productId(productId)
                     .bidAmount(product.getPrice())
                     .createdAt(product.getAuctionStartTime())
@@ -418,8 +418,20 @@ public class ProductService {
                 currentProduct.updateStatus(Status.SELLED);
                 productRepository.save(currentProduct);
                 log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
-                        pid, winnerBid.getUserName(), winnerBid.getBidAmount());
+                        pid, winnerBid.getUserNickName(), winnerBid.getBidAmount());
                 try {
+                    Bid winningDbBid = bidRepository.findBidByUuid(winnerUuid).orElse(null);
+
+                    if (winningDbBid != null) {
+                        winningDbBid.setIsWinned(IsWinned.Y);
+                        bidRepository.save(winningDbBid);
+                        log.info("낙찰 처리 완료 - bidId={}, uuid={}",
+                                winningDbBid.getBidId(), winnerUuid);
+                    } else {
+                        log.warn("낙찰자의 Bid 레코드를 DB에서 찾을 수 없음 - uuid={}, " +
+                                "RabbitMQ 처리 지연 가능성", winnerUuid);
+                    }
+
                     // 경매 종료 알림
                     auctionNotificationService.notifyAuctionEndedWithWinner(
                             currentProduct.getProductId(),
