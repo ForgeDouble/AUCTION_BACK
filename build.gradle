@@ -63,6 +63,9 @@ dependencies {
 
     //mongodb
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+
+    // validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
 }
 
 tasks.named('test') {
