@@ -32,6 +32,7 @@ public class ProductListDto {
     private String userEmail;
     private Long latestBidAmount;
     private Long bidCount;
+    private Long wishlistCount;
     private LocalDateTime createdAt;
     private LocalDateTime auctionStartTime;
     private LocalDateTime auctionEndTime;
@@ -64,7 +65,7 @@ public class ProductListDto {
     public ProductListDto(Long productId, String productName, String productContent,
                           Long price, Status status, String imageUrl,
                           Long categoryId, String email, Long currentBidAmount,
-                          Long bidCount, LocalDateTime createdAt) {
+                          Long bidCount, Long wishlistCount, LocalDateTime createdAt) {
         this.productId = productId;
         this.productName = productName;
         this.productContent = productContent;
@@ -75,6 +76,7 @@ public class ProductListDto {
         this.userEmail = email;
         this.latestBidAmount = currentBidAmount;
         this.bidCount = bidCount;
+        this.wishlistCount = wishlistCount;
         this.createdAt = createdAt;
         this.auctionEndTime = createdAt != null ? createdAt.plusMinutes(30) : null;
     }
