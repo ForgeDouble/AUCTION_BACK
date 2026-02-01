@@ -25,7 +25,8 @@ public class Notification extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+//    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -42,6 +43,15 @@ public class Notification extends BaseTimeEntity {
     @Column(name = "read_flag", nullable = false)
     @Builder.Default
     private boolean read = false;
+
+    // 타입 값을 별도 컬럼으로 저장
+    @Column(name = "notification_type", length = 80)
+    private String notificationType;
+
+    // data 전체(JSON) 저장
+    @Lob
+    @Column(name = "data_json", columnDefinition = "TEXT")
+    private String dataJson;
 
     public void markRead() {
         this.read = true;
