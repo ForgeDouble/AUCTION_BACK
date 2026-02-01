@@ -6,4 +6,5 @@ public enum NotificationCategory {
     INQUIRY, // 문의
     PRODUCT, // 상품
     CHAT, // 채팅
+    ALL
 }
