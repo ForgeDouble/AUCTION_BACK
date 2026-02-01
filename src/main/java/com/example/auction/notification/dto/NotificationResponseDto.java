@@ -35,6 +35,8 @@ public class NotificationResponseDto {
                 .category(notification.getCategory())
                 .createdAt(notification.getCreatedAt() != null ? notification.getCreatedAt().toString() : null)
                 .read(notification.isRead())
+                .type(type)
+                .data(data)
                 .build();
     }
 }
