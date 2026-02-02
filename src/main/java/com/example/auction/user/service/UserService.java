@@ -6,6 +6,8 @@ import com.example.auction.common.exception.AccountSuspendedException;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
+import com.example.auction.product.domain.Status;
+import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.domain.UserStatus;
@@ -24,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -31,12 +34,14 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ProductRepository productRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
     private final UserStatusService userStatusService;
-    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy, UserStatusService userStatusService) {
+    public UserService(UserRepository userRepository, ProductRepository productRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy, UserStatusService userStatusService) {
         this.userRepository = userRepository;
+        this.productRepository = productRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.customTokenExpiredStrategy = customTokenExpiredStrategy;
@@ -378,6 +383,47 @@ public class UserService {
                     return new ResourceNotFoundException("user");
                 });
         return dto;
+    }
+
+    @Transactional(readOnly = true)
+    public PublicProfileDto getPublicProfile(Long userId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User requester = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> new RuntimeException("요청자 정보를 찾을 수 없습니다."));
+
+        User target = userRepository.findById(userId)
+                .filter(u -> u.getDelYn() == DelYN.N)
+                .orElseThrow(() -> new RuntimeException("조회 대상 유저가 존재하지 않습니다."));
+
+        boolean reportable = !Objects.equals(requester.getUserId(), target.getUserId());
+
+        long totalProducts = productRepository.countByUser_UserIdAndDelYnAndBlockedFalse(
+                target.getUserId(), DelYN.N
+        );
+
+        long soldCount = productRepository.countByUser_UserIdAndStatusAndDelYnAndBlockedFalse(
+                target.getUserId(), Status.SELLED, DelYN.N
+        );
+
+        long sellingCount = productRepository.countByUser_UserIdAndStatusInAndDelYnAndBlockedFalse(
+                target.getUserId(), List.of(Status.READY, Status.PROCESSING), DelYN.N
+        );
+
+        long endedCount = productRepository.countByUser_UserIdAndStatusInAndDelYnAndBlockedFalse(
+                target.getUserId(), List.of(Status.SELLED, Status.NOTSELLED), DelYN.N
+        );
+
+        return PublicProfileDto.builder()
+                .userId(target.getUserId())
+                .nickname(target.getNickname())
+                .profileImageUrl(target.getProfileImageUrl())
+                .createdAt(target.getCreatedAt())
+                .tradeCount(soldCount)
+                .totalProducts(totalProducts)
+                .sellingProducts(sellingCount)
+                .endedProducts(endedCount)
+                .reportable(reportable)
+                .build();
     }
 }
 
