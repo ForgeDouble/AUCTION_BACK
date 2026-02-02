@@ -25,9 +25,7 @@ public class PasswordResetController {
     @PostMapping("/forgot_password")
     public ResponseEntity<CommonResDto> forgotPassword(
             @Valid @ModelAttribute ForgotPasswordDto request) {
-        log.info("이메일 확인 email={}", request.getEmail());
         passwordResetService.requestPasswordReset(request.getEmail());
-
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "비밀번호 재설정 요청 성공", null));
     }
 
@@ -37,11 +35,17 @@ public class PasswordResetController {
     @PostMapping("/reset_password")
     public ResponseEntity<CommonResDto> resetPassword(
             @Valid @ModelAttribute ResetPasswordDto request) {
-
         passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
-
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "비밀번호 재설정 성공", null));
+    }
 
+    /**
+     * 토큰 검증
+     */
+    @GetMapping("/validate_token")
+    public ResponseEntity<CommonResDto> validateToken(@RequestParam String token) {
+        passwordResetService.validateResetToken(token);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "검증 성공", null));
     }
 }
 

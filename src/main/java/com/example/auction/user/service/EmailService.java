@@ -1,5 +1,6 @@
 package com.example.auction.user.service;
 
+import com.example.auction.common.exception.InternalErrorException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
@@ -70,7 +71,7 @@ public class EmailService {
             mailSender.send(message);
 
         } catch (MessagingException e) {
-            throw new RuntimeException("이메일 전송 실패", e);
+            throw new InternalErrorException("FAILED_TO_SEND_EMAIL", "이메일 전송 실패", e);
         }
     }
 }

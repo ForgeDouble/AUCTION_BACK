@@ -1,5 +1,9 @@
 package com.example.auction.user.service;
 
+import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.BadRequestException;
+import com.example.auction.common.exception.InternalErrorException;
+import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.user.domain.PasswordResetToken;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.PasswordResetTokenRepository;
@@ -35,7 +39,8 @@ public class PasswordResetService {
      */
     public void requestPasswordReset(String email) {
         // 사용자 조회
-//        Optional<User> userOpt = userRepository.findByEmail(email);
+//        Optional<User> userOpt = userRepository.findByEmailAndDelYn(email, DelYN.N);
+
         User user = userRepository.findByEmail("user1@auction.test")
                 .orElseThrow(() ->  new RuntimeException("User not found"));
 //        if (userOpt.isEmpty()) {
@@ -76,16 +81,22 @@ public class PasswordResetService {
 
         // 토큰 조회
         PasswordResetToken resetToken = tokenRepository.findByToken(hashedToken)
-                .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 토큰입니다"));
+                .orElseThrow(() -> new BadRequestException("INVALID_TOKEN", "유효하지 않거나 만료된 토큰입니다"));
 
         // 만료 확인
         if (resetToken.isExpired()) {
-            throw new IllegalArgumentException("만료된 토큰입니다");
+            log.warn("[TOKEN_EXPIRED] tokenId={}, expiresAt={}",
+                    resetToken.getId(), resetToken.getExpiresAt());
+            throw new BadRequestException("INVALID_TOKEN",
+                    "유효하지 않거나 만료된 토큰입니다");
         }
 
         // 사용 여부 확인
         if (resetToken.isUsed()) {
-            throw new IllegalArgumentException("이미 사용된 토큰입니다");
+            log.warn("[TOKEN_ALREADY_USED] tokenId={}",
+                    resetToken.getId());
+            throw new BadRequestException("INVALID_TOKEN",
+                    "유효하지 않거나 만료된 토큰입니다");
         }
 
         // 비밀번호 변경
@@ -96,6 +107,28 @@ public class PasswordResetService {
         // 토큰 사용 처리
         resetToken.setUsed(true);
         tokenRepository.save(resetToken);
+        log.info("[PASSWORD_RESET_SUCCESS] userId={}", user.getUserId());
+    }
+
+    /**
+     * 토큰 검증 처리
+     */
+    public void validateResetToken(String token) {
+        String hashedToken = hashToken(token);
+
+        PasswordResetToken resetToken = tokenRepository.findByToken(hashedToken)
+                .orElseThrow(() -> new BadRequestException("INVALID_TOKEN",
+                        "유효하지 않거나 만료된 토큰입니다"));
+
+        if (resetToken.isExpired()) {
+            throw new BadRequestException("INVALID_TOKEN",
+                    "유효하지 않거나 만료된 토큰입니다");
+        }
+
+        if (resetToken.isUsed()) {
+            throw new BadRequestException("INVALID_TOKEN",
+                    "유효하지 않거나 만료된 토큰입니다");
+        }
     }
 
     /**
@@ -117,7 +150,7 @@ public class PasswordResetService {
             byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
             return bytesToHex(hash);
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("토큰 해시 생성 실패", e);
+            throw new InternalErrorException("INITIALIZATION_ERROR", "SHA-256 알고리즘 초기화 실패", e);
         }
     }
 
