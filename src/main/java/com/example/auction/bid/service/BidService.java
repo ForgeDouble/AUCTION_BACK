@@ -175,6 +175,7 @@ public class BidService {
                 .bidAmount(bidDto.getBidAmount())
                 .createdAt(LocalDateTime.now())
                 .isWinned(bidDto.getIsWinned())
+                .profileImageUrl(user.getProfileImageUrl())
                 .build();
 
         try {
