@@ -49,5 +49,16 @@ public class Review extends BaseTimeEntity {
     @Builder.Default
     private Set<ReviewTag> tags = new LinkedHashSet<>();
 
+    public void changeContent(String content) {
+        if (content == null) {
+            this.content = null;
+            return;
+        }
+        String trimmed = content.trim();
+        this.content = trimmed.isBlank() ? null : trimmed;
+    }
 
+    public void changeTags(Set<ReviewTag> tags) {
+        this.tags = (tags == null) ? new LinkedHashSet<>() : tags;
+    }
 }
