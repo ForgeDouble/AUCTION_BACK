@@ -159,5 +159,19 @@ public class ProductController {
         List<Top3ProductDto> top3ProductDtos = productService.readTop3Products();
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", top3ProductDtos));
     }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> productsByUser(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) List<Status> statuses,
+            @RequestParam(required = false) String sortBy
+    ) {
+        var result = productService.productsByTargetUser(userId, page, size, search, statuses, sortBy);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "유저 상품 조회 성공", result));
+    }
 }
 

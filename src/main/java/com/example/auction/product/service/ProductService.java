@@ -723,4 +723,26 @@ public class ProductService {
     public List<Top3ProductDto> readTop3Products() {
         return productRepository.findTop3ByBidCount();
     }
+
+    @Transactional(readOnly = true)
+    public Page<ProductListDto> productsByTargetUser(Long userId, int page, int size, String search, List<Status> statuses, String sortBy) {
+        User target = userRepository.findById(userId)
+                .filter(u -> u.getDelYn() == DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("User"));
+
+        Pageable pageable = PageRequest.of(Math.max(0, page), Math.max(1, size));
+
+        String normalizedSort = normalizeSort(sortBy);
+        String normalizedSearch = (search == null || search.isBlank()) ? null : search.trim();
+        List<Status> normalizedStatuses = (statuses == null || statuses.isEmpty()) ? null : statuses;
+
+        return productRepository.findMyProducts(
+                target.getEmail(),
+                normalizedSearch,
+                normalizedStatuses,
+                normalizedSort,
+                pageable
+        );
+
+    }
 }

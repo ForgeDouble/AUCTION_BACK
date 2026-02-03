@@ -20,4 +20,5 @@ public class BidEvent {
     private Long bidAmount;
     private LocalDateTime createdAt;
     private IsWinned isWinned;
+    private String profileImageUrl;
 }

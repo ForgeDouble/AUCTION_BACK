@@ -20,6 +20,7 @@ public class BidAllDto {
     private Long bidAmount;
     private IsWinned isWinned;
     private LocalDateTime createdAt;
+    private String profileImageUrl;
 
     public static BidAllDto fromEntity(Bid bid) {
         return BidAllDto.builder()
@@ -29,6 +30,7 @@ public class BidAllDto {
                 .bidAmount(bid.getBidAmount())
                 .isWinned(bid.getIsWinned())
                 .createdAt(bid.getCreatedAt())
+                .profileImageUrl(bid.getUser().getProfileImageUrl())
                 .build();
     }
 }

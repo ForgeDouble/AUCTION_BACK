@@ -14,7 +14,6 @@ public class InquiryResolver {
 
     private final UserRepository userRepository;
 
-    // 원하는경우 yml 을 통한 지정 가능
     @Value("${support.inquirer.email:}")
     private String inquirerEmail;
 

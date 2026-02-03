@@ -213,4 +213,12 @@ public class UserController {
         var res = adminBirthdayCalendarService.setEnabled(dto.getEnabled());
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "생일 캘린더 설정 변경", res));
     }
+
+    /* 타인 프로필 조회 */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/profile/{userId}")
+    public ResponseEntity<CommonResDto> publicProfile(@PathVariable Long userId) {
+        PublicProfileDto dto = userService.getPublicProfile(userId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "프로필 조회 성공", dto));
+    }
 }

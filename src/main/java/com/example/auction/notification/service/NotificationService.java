@@ -6,6 +6,7 @@ import com.example.auction.notification.domain.Notification;
 import com.example.auction.notification.domain.NotificationCategory;
 import com.example.auction.notification.dto.NotificationResponseDto;
 import com.example.auction.notification.repository.NotificationRepository;
+import com.example.auction.notification.util.NotificationPayloadJson;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +70,49 @@ public class NotificationService {
         } catch (Exception e) {
             log.warn("[Notification] STOMP 전송 실패 userId={}", userId, e);
         }
+    }
+    @Transactional
+    public NotificationResponseDto createAndSend(Long userId,
+                                                 NotificationCategory category,
+                                                 String title,
+                                                 String body,
+                                                 Map<String, String> data) {
+
+        if (userId == null) {
+            log.warn("[Notification] userId 가 없습니다. createAndSend 스킵 title={}", title);
+            return null;
+        }
+
+        User user = userRepository.findById(userId).filter(u -> u.getDelYn() == DelYN.N).orElse(null);
+        if (user == null) {
+            log.warn("[Notification] 대상 유저를 찾을 수 없습니다 userId={}", userId);
+            return null;
+        }
+
+        String type = (data != null) ? data.get("type") : null;
+        String dataJson = NotificationPayloadJson.toJson(data);
+
+        Notification notification = Notification.builder()
+                .user(user)
+                .category(category)
+                .title(title)
+                .body(body)
+                .read(false)
+                .notificationType(type)
+                .dataJson(dataJson)
+                .build();
+
+        Notification saved = notificationRepository.save(notification);
+
+        NotificationResponseDto dto = NotificationResponseDto.fromEntity(saved);
+
+        try {
+            messagingTemplate.convertAndSend("/topic/notification/" + user.getEmail(), dto);
+        } catch (Exception e) {
+            log.warn("[Notification] STOMP 전송 실패 userId={}", userId, e);
+        }
+
+        return dto;
     }
 
     @Transactional(readOnly = true)
