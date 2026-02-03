@@ -149,7 +149,7 @@ public class PushService {
 
         if (storeWebNotification && userId != null && category != null) {
             try {
-                notificationService.createAndSend(userId, category, title, body);
+                notificationService.createAndSend(userId, category, title, body, data);
             } catch (Exception e) {
                 log.warn("[Push] 웹 알림 저장/브로드캐스트 실패 userId={}", userId, e);
             }

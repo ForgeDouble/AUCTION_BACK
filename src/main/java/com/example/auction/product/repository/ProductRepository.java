@@ -317,4 +317,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("sortBy") String sortBy,
             Pageable pageable
     );
+
+    long countByUser_UserIdAndDelYnAndBlockedFalse(Long userId, DelYN delYn);
+
+    long countByUser_UserIdAndStatusAndDelYnAndBlockedFalse(
+            Long userId,
+            Status status,
+            DelYN delYn
+    );
+
+    long countByUser_UserIdAndStatusInAndDelYnAndBlockedFalse(
+            Long userId,
+            Collection<Status> statuses,
+            DelYN delYn
+    );
 }
