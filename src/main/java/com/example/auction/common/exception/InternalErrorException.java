@@ -3,6 +3,16 @@ package com.example.auction.common.exception;
 public class InternalErrorException extends RuntimeException{
     private final String errorCode;
 
+    public InternalErrorException(String errorCode, String message, Throwable cause) {
+        super(message, cause);
+        this.errorCode = errorCode;
+    }
+
+    public InternalErrorException(String message, Throwable cause) {
+        super(message, cause);
+        this.errorCode = "INTERNAL_ERROR";
+    }
+
     public InternalErrorException(String errorCode, String message) {
         super(message);
         this.errorCode = errorCode;

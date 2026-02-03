@@ -17,8 +17,11 @@ repositories {
 }
 
 dependencies {
+    // jpa
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    // web
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    // lombok
     compileOnly 'org.projectlombok:lombok'
     implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.2'
 
@@ -63,6 +66,12 @@ dependencies {
 
     //mongodb
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+
+    // validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // mail
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
 }
 
 tasks.named('test') {

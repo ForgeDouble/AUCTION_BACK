@@ -10,6 +10,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
+import java.util.Arrays;
+
 @Slf4j
 @ControllerAdvice
 public class CommonExceptionHandler {
@@ -61,11 +63,14 @@ public class CommonExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<CommonErrorDto> generalExceptionHandler(Exception e) {
+        log.error("[INTERNAL_ERROR] message={}, cause={}",
+                e.getMessage(),
+                e.getCause() != null ? e.getCause().getClass().getSimpleName() : "none",
+                e);
         CommonErrorDto commonErrorDto = new CommonErrorDto(
                 "INTERNAL_SERVER_ERROR",
                 "서버 내부에서 오류가 발생했습니다. 관리자에게 문의해주세요."
         );
-        e.printStackTrace();
         return new ResponseEntity<>(commonErrorDto, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
@@ -81,52 +86,72 @@ public class CommonExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<CommonErrorDto> ResourceNotFoundHandler(ResourceNotFoundException e) {
+        log.error("[{}] message={}, cause={}",
+                e.getErrorCode(),
+                e.getMessage(),
+                e.getCause() != null ? e.getCause().getClass().getSimpleName() : "none",
+                e);
         CommonErrorDto commonErrorDto = new CommonErrorDto(
                 e.getErrorCode(),
                 e.getMessage()
         );
-        e.printStackTrace();
         return new ResponseEntity<>(commonErrorDto, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(UnauthorizedAccessException.class)
     public ResponseEntity<CommonErrorDto> unauthorizedHandler(UnauthorizedAccessException e) {
+        log.error("[{}] message={}, cause={}",
+                e.getErrorCode(),
+                e.getMessage(),
+                e.getCause() != null ? e.getCause().getClass().getSimpleName() : "none",
+                e);
         CommonErrorDto error = new CommonErrorDto(
                 e.getErrorCode(),
                 e.getMessage()
         );
-        e.printStackTrace();
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(AccountSuspendedException.class)
     public ResponseEntity<CommonErrorDto> AccountSuspendedHandler(AccountSuspendedException e) {
+        log.error("[{}] message={}, cause={}",
+                e.getErrorCode(),
+                e.getMessage(),
+                e.getCause() != null ? e.getCause().getClass().getSimpleName() : "none",
+                e);
         CommonErrorDto error = new CommonErrorDto(
                 e.getErrorCode(),
                 e.getMessage()
         );
-        e.printStackTrace();
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<CommonErrorDto> BadRequestHandler(BadRequestException e) {
+        log.error("[{}] message={}, cause={}",
+                e.getErrorCode(),
+                e.getMessage(),
+                e.getCause() != null ? e.getCause().getClass().getSimpleName() : "none",
+                e);
         CommonErrorDto error = new CommonErrorDto(
                 e.getErrorCode(),
                 e.getMessage()
         );
-        e.printStackTrace();
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(InternalErrorException.class)
     public ResponseEntity<CommonErrorDto> InternalErrorHandler(InternalErrorException e) {
-        CommonErrorDto error = new CommonErrorDto(
+        log.error("[{}] message={}, cause={}",
                 e.getErrorCode(),
-                e.getMessage()
+                e.getMessage(),
+                e.getCause() != null ? e.getCause().getClass().getSimpleName() : "none",
+                e);
+
+        CommonErrorDto error = new CommonErrorDto(
+                "INTERNAL_SERVER_ERROR",
+                "서버 내부에서 오류가 발생했습니다. 관리자에게 문의해주세요."
         );
-        e.printStackTrace();
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
 }

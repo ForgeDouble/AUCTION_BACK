@@ -43,10 +43,10 @@ public class Product extends BaseTimeEntity{
     @JoinColumn(name = "user_id")
     private User user;
     
-    @Column(nullable = false)
+    @Column(nullable = false, length = 30)
     private String productName;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(nullable = false, length = 2500)
     private String productContent;
 
     @Column(nullable = false)

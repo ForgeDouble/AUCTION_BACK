@@ -50,9 +50,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             "p.user.email, " +
             "COALESCE(MAX(b.bidAmount), 0), " +
             "COUNT(DISTINCT b.bidId), " +
+            "COUNT(DISTINCT w.wishlistId), " +
             "p.createdAt) " +
             "FROM Product p " +
             "LEFT JOIN Bid b ON b.product.productId = p.productId " +
+            "LEFT JOIN Wishlist w ON w.product.productId = p.productId " +
             "WHERE p.delYn = com.example.auction.common.domain.DelYN.N " +
             "  AND (p.blocked = false OR p.blocked IS NULL) " +
             "  AND (:categoryIds IS NULL OR p.category.categoryId IN :categoryIds) " +
@@ -284,10 +286,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
         p.user.email,
         coalesce(max(b.bidAmount), 0),
         count(distinct b.bidId),
+        count(distinct w.wishlistId),
         p.createdAt
     )
     from Product p
     left join Bid b on b.product.productId = p.productId
+    left join Wishlist w on w.product.productId = p.productId
     where p.delYn = com.example.auction.common.domain.DelYN.N
     and (p.blocked = false or p.blocked is null)
     and p.user.email = :email

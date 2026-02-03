@@ -61,6 +61,7 @@ public class SecurityConfig {
                                 "/product/all",
                                 "/bid/**",
                                 "/category/**",
+                                "/auth/**",
                                 "/ws/**",
                                 "/ws-public/**",
                                 "/ws-admin/**"

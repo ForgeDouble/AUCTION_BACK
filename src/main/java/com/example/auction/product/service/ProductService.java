@@ -110,6 +110,20 @@ public class ProductService {
 
     @Transactional
     public void controllAuction(ProductCreateDto dto, List<MultipartFile> files) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> {
+                    log.warn("[USER_NOT_FOUND] 존재하지 않거나 만료된 사용자 email={}", email);
+                    return new ResourceNotFoundException("USER_NOT_FOUND", "접속중인 계정을 찾을 수 없습니다. 고객센터에 문의해주세요.");
+                });
+
+        /* 관리자 또는 고객센터는 접근 제한 */
+        if(user.getAuthority().equals(Authority.ADMIN) | user.getAuthority().equals(Authority.INQUIRY)){
+            log.warn("[NOT_ALLOWED] ADMIN 또는 INQUIRY의 접근 user.authority={}", user.getAuthority());
+            throw  new UnauthorizedAccessException("NOT_ALLOWED", "해당 계정은 접근할 권한이 없습니다.");
+        }
+
         // 실제 DataBase에 Product 생성
         Product savedProduct = createProduct(dto, files);
         // 생성된 Product를 기준으로 입찰의 시작 가격을 bid테이블에 삽입
