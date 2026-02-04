@@ -1,5 +1,6 @@
 package com.example.auction.review.controller;
 
+import com.example.auction.review.dto.CanWriteReviewDto;
 import com.example.auction.review.dto.ReviewCreateDto;
 import com.example.auction.review.dto.ReviewDetailDto;
 import com.example.auction.review.dto.ReviewListDto;
@@ -27,15 +28,23 @@ public class ReviewController {
     ) {
         return reviewService.create(dto, files);
     }
-
-    // 상품별 리뷰
+    @GetMapping("/can-write/{productId}")
+    public CanWriteReviewDto canWrite(@PathVariable Long productId) {
+        return reviewService.canWrite(productId);
+    }
+    // 상품별 리뷰 조회
     @GetMapping("/product/{productId}")
     public Page<ReviewListDto> listByProduct(@PathVariable Long productId, Pageable pageable) {
         return reviewService.listByProduct(productId, pageable);
     }
-    // 판매자(유저)별 리뷰
+    // 판매자(유저)별 리뷰 조회
     @GetMapping("/seller/{sellerId}")
     public Page<ReviewListDto> listBySeller(@PathVariable Long sellerId, Pageable pageable) {
         return reviewService.listBySeller(sellerId, pageable);
+    }
+    // 내가 쓴 리뷰 조회
+    @GetMapping("/me")
+    public Page<ReviewListDto> myReviews(Pageable pageable) {
+        return reviewService.myReviews(pageable);
     }
 }

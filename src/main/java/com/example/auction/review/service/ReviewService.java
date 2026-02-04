@@ -13,10 +13,7 @@ import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.review.domain.Review;
 import com.example.auction.review.domain.ReviewImage;
 import com.example.auction.review.domain.ReviewTag;
-import com.example.auction.review.dto.ReviewCreateDto;
-import com.example.auction.review.dto.ReviewDetailDto;
-import com.example.auction.review.dto.ReviewImageDto;
-import com.example.auction.review.dto.ReviewListDto;
+import com.example.auction.review.dto.*;
 import com.example.auction.review.repository.ReviewRepository;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
@@ -32,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class ReviewService {
@@ -169,6 +167,45 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    public CanWriteReviewDto canWrite(Long productId) {
+        User reviewer = me();
+
+        if (productId == null) {
+            return CanWriteReviewDto.builder().canWrite(false).reason("productId가 필요합니다.").build();
+        }
+
+        Optional<Product> opt = productRepository.findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false);
+        if (opt.isEmpty()) {
+            return CanWriteReviewDto.builder().canWrite(false).reason("존재하지 않거나 차단된 상품입니다.").build();
+        }
+
+        Product product = opt.get();
+        if (product.getStatus() != Status.SELLED) {
+            return CanWriteReviewDto.builder().canWrite(false).reason("판매 완료 상태가 아닙니다.").build();
+        }
+
+        if (product.getUser() != null && Objects.equals(product.getUser().getUserId(), reviewer.getUserId())) {
+            return CanWriteReviewDto.builder().canWrite(false).reason("본인 상품입니다.").build();
+        }
+
+        boolean dup = reviewRepository.existsByProduct_ProductIdAndReviewer_UserIdAndDelYn(productId, reviewer.getUserId(), DelYN.N);
+        if (dup) {
+            return CanWriteReviewDto.builder().canWrite(false).reason("이미 리뷰를 작성했습니다.").build();
+        }
+
+        Optional<Bid> winner = bidRepository.findByProduct_ProductIdAndIsWinned(productId, IsWinned.Y);
+        if (winner.isEmpty() || winner.get().getUser() == null) {
+            return CanWriteReviewDto.builder().canWrite(false).reason("낙찰자 정보가 없습니다.").build();
+        }
+
+        if (!Objects.equals(winner.get().getUser().getUserId(), reviewer.getUserId())) {
+            return CanWriteReviewDto.builder().canWrite(false).reason("낙찰자만 작성 가능합니다.").build();
+        }
+
+        return CanWriteReviewDto.builder().canWrite(true).reason("OK").build();
+    }
+
+    @Transactional(readOnly = true)
     public Page<ReviewListDto> listByProduct(Long productId, Pageable pageable) {
         Page<Review> page = reviewRepository.findAllByProduct_ProductIdAndDelYnOrderByCreatedAtDesc(productId, DelYN.N, pageable);
         return page.map(this::toListDto);
@@ -180,6 +217,12 @@ public class ReviewService {
         return page.map(this::toListDto);
     }
 
+    @Transactional(readOnly = true)
+    public Page<ReviewListDto> myReviews(Pageable pageable) {
+        User reviewer = me();
+        Page<Review> page = reviewRepository.findAllByReviewer_UserIdAndDelYnOrderByCreatedAtDesc(reviewer.getUserId(), DelYN.N, pageable);
+        return page.map(this::toListDto);
+    }
 
     private ReviewListDto toListDto(Review review) {
         String firstImageUrl = null;
