@@ -5,6 +5,7 @@ import com.example.auction.user.domain.Authority;
 import com.example.auction.user.service.CustomUserService;
 import com.example.auction.user.service.UserService;
 import com.example.auction.user.service.UserStatusService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +20,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -29,6 +32,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 //    private final CustomUserService customUserService;
     private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
     private final UserStatusService userStatusService;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -42,7 +46,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 // 토큰 검증(서명/만료)
                 if (!jwtTokenProvider.validateToken(token)) {
-                    unauthorized(response, "만료되었거나 유효하지 않은 JWT 토큰입니다.");
+                    unauthorized(response, "INVALID_TOKEN", "만료되었거나 유효하지 않은 JWT 토큰입니다.");
                     return;
                 }
 
@@ -53,7 +57,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     // [STEP2] 단일 세션(로그인 Redis) 체크는 유지
                     String current = customTokenExpiredStrategy.get(email);
                     if (current == null || !current.equals(token)) {
-                        unauthorized(response, "다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
+                        unauthorized(response, "INVALID_TOKEN", "다른 기기에서 로그인했거나 토큰이 무효화되었습니다.");
                         return;
                     }
 
@@ -88,14 +92,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
 
         } catch (Exception e) {
-            unauthorized(response, "유효하지 않거나 만료된 JWT 토큰입니다.");
+            unauthorized(response, "INVALID_TOKEN", "유효하지 않거나 만료된 JWT 토큰입니다.");
         }
     }
 
-    private void unauthorized(HttpServletResponse response, String msg) throws IOException {
+    private void unauthorized(HttpServletResponse response, String errorCode, String msg) throws IOException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setCharacterEncoding("UTF-8");
         response.setContentType("text/plain; charset=UTF-8");
-        response.getWriter().write(msg);
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("statusCode", errorCode);
+        errorResponse.put("errorMessage", msg);
+        errorResponse.put("additionalInfo", null);
+
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }
