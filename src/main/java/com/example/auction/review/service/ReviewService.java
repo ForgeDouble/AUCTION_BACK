@@ -16,9 +16,12 @@ import com.example.auction.review.domain.ReviewTag;
 import com.example.auction.review.dto.ReviewCreateDto;
 import com.example.auction.review.dto.ReviewDetailDto;
 import com.example.auction.review.dto.ReviewImageDto;
+import com.example.auction.review.dto.ReviewListDto;
 import com.example.auction.review.repository.ReviewRepository;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -163,5 +166,40 @@ public class ReviewService {
         List<ReviewImageDto> imageDtos = imgs.stream().map(ReviewImageDto::from).toList();
 
         return ReviewDetailDto.from(saved, imageDtos);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReviewListDto> listByProduct(Long productId, Pageable pageable) {
+        Page<Review> page = reviewRepository.findAllByProduct_ProductIdAndDelYnOrderByCreatedAtDesc(productId, DelYN.N, pageable);
+        return page.map(this::toListDto);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ReviewListDto> listBySeller(Long sellerId, Pageable pageable) {
+        Page<Review> page = reviewRepository.findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(sellerId, DelYN.N, pageable);
+        return page.map(this::toListDto);
+    }
+
+
+    private ReviewListDto toListDto(Review review) {
+        String firstImageUrl = null;
+        List<ReviewImage> imgs = reviewImageService.findByReviewId(review.getReviewId());
+        if (imgs != null && !imgs.isEmpty()) {
+            firstImageUrl = imgs.get(0).getUrl();
+        }
+
+        return ReviewListDto.builder()
+                .reviewId(review.getReviewId())
+                .productId(review.getProduct().getProductId())
+                .productName(review.getProduct().getProductName())
+                .reviewerId(review.getReviewer().getUserId())
+                .reviewerNick(review.getReviewer().getNickname())
+                .reviewerProfileImageUrl(review.getReviewer().getProfileImageUrl())
+                .rating(review.rating())
+                .tags(review.getTags())
+                .content(review.getContent())
+                .firstImageUrl(firstImageUrl)
+                .createdAt(review.getCreatedAt())
+                .build();
     }
 }

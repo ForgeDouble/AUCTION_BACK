@@ -58,5 +58,8 @@ public class ReviewImageService {
         return saved;
     }
 
-
+    @Transactional(readOnly = true)
+    public List<ReviewImage> findByReviewId(Long reviewId) {
+        return reviewImageRepository.findAllByReview_ReviewIdOrderByPositionAsc(reviewId);
+    }
 }
