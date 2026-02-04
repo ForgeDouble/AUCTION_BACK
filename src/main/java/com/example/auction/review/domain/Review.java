@@ -6,18 +6,23 @@ import com.example.auction.user.domain.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 @Entity
-@Table(name = "review", uniqueConstraints = {
-            @UniqueConstraint(name = "uk_review_product_reviewer", columnNames = {"product_id", "reviewer_id"})
-        })
+@Builder
+@Table(
+        name = "review",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_review_product_reviewer", columnNames = {"product_id", "reviewer_id"})
+        }
+)
 public class Review extends BaseTimeEntity {
 
     @Id
@@ -28,7 +33,7 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    // 리뷰 대상(판매자)
+    // 판매자(상품 등록자)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "seller_id", nullable = false)
     private User seller;
@@ -38,7 +43,10 @@ public class Review extends BaseTimeEntity {
     @JoinColumn(name = "reviewer_id", nullable = false)
     private User reviewer;
 
-    // 정책 : 내용 생략가능(선택)
+    // 만족도
+    @Column(nullable = false)
+    private Integer ratingHalf;
+
     @Column(length = 2000)
     private String content;
 
@@ -47,18 +55,9 @@ public class Review extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "tag", nullable = false, length = 50)
     @Builder.Default
-    private Set<ReviewTag> tags = new LinkedHashSet<>();
+    private List<ReviewTag> tags = new ArrayList<>();
 
-    public void changeContent(String content) {
-        if (content == null) {
-            this.content = null;
-            return;
-        }
-        String trimmed = content.trim();
-        this.content = trimmed.isBlank() ? null : trimmed;
-    }
-
-    public void changeTags(Set<ReviewTag> tags) {
-        this.tags = (tags == null) ? new LinkedHashSet<>() : tags;
+    public double rating() {
+        return ratingHalf == null ? 0.0 : ratingHalf / 2.0;
     }
 }

@@ -1,6 +1,7 @@
 package com.example.auction.review.dto;
 
 import com.example.auction.review.domain.Review;
+import com.example.auction.review.domain.ReviewTag;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -26,17 +27,15 @@ public class ReviewDetailDto {
     private String reviewerNickname;
     private String reviewerProfileImageUrl;
 
+    private Double rating;
+    private List<ReviewTag> tags;
+
     private String content;
-    private List<ReviewTagDto> tags;
     private List<ReviewImageDto> images;
+
     private LocalDateTime createdAt;
 
     public static ReviewDetailDto from(Review review, List<ReviewImageDto> images) {
-
-        List<ReviewTagDto> tagDtos = review.getTags().stream()
-                .map(ReviewTagDto::from)
-                .collect(Collectors.toList());
-
         return ReviewDetailDto.builder()
                 .reviewId(review.getReviewId())
                 .productId(review.getProduct().getProductId())
@@ -47,12 +46,11 @@ public class ReviewDetailDto {
                 .reviewerId(review.getReviewer().getUserId())
                 .reviewerNickname(review.getReviewer().getNickname())
                 .reviewerProfileImageUrl(review.getReviewer().getProfileImageUrl())
+                .rating(review.rating())
+                .tags(review.getTags())
                 .content(review.getContent())
-                .tags(tagDtos)
                 .images(images)
                 .createdAt(review.getCreatedAt())
                 .build();
     }
-
-
 }
