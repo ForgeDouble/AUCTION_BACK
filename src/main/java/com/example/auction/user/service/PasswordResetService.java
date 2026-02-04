@@ -81,13 +81,13 @@ public class PasswordResetService {
 
         // 토큰 조회
         PasswordResetToken resetToken = tokenRepository.findByToken(hashedToken)
-                .orElseThrow(() -> new BadRequestException("INVALID_TOKEN", "유효하지 않거나 만료된 토큰입니다"));
+                .orElseThrow(() -> new BadRequestException("INVALID_PS_TOKEN", "유효하지 않거나 만료된 토큰입니다"));
 
         // 만료 확인
         if (resetToken.isExpired()) {
             log.warn("[TOKEN_EXPIRED] tokenId={}, expiresAt={}",
                     resetToken.getId(), resetToken.getExpiresAt());
-            throw new BadRequestException("INVALID_TOKEN",
+            throw new BadRequestException("INVALID_PS_TOKEN",
                     "유효하지 않거나 만료된 토큰입니다");
         }
 
@@ -95,7 +95,7 @@ public class PasswordResetService {
         if (resetToken.isUsed()) {
             log.warn("[TOKEN_ALREADY_USED] tokenId={}",
                     resetToken.getId());
-            throw new BadRequestException("INVALID_TOKEN",
+            throw new BadRequestException("INVALID_PS_TOKEN",
                     "유효하지 않거나 만료된 토큰입니다");
         }
 
@@ -117,16 +117,16 @@ public class PasswordResetService {
         String hashedToken = hashToken(token);
 
         PasswordResetToken resetToken = tokenRepository.findByToken(hashedToken)
-                .orElseThrow(() -> new BadRequestException("INVALID_TOKEN",
+                .orElseThrow(() -> new BadRequestException("INVALID_PS_TOKEN",
                         "유효하지 않거나 만료된 토큰입니다"));
 
         if (resetToken.isExpired()) {
-            throw new BadRequestException("INVALID_TOKEN",
+            throw new BadRequestException("INVALID_PS_TOKEN",
                     "유효하지 않거나 만료된 토큰입니다");
         }
 
         if (resetToken.isUsed()) {
-            throw new BadRequestException("INVALID_TOKEN",
+            throw new BadRequestException("INVALID_PS_TOKEN",
                     "유효하지 않거나 만료된 토큰입니다");
         }
     }
