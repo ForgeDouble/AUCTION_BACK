@@ -109,7 +109,9 @@ public class BidController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status
     ) {
-        Status statusEnum = status != null ? Status.valueOf(status.toUpperCase()) : null;
+        Status statusEnum = (status != null && !status.isBlank() && !status.equalsIgnoreCase("null"))
+                ? Status.valueOf(status.toUpperCase())
+                : null;
         Page<BidAllByUserDto> bidAllByUserDtos = bidService.readBidAllByUser(page, size, statusEnum);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "입찰 목록 조회 성공", bidAllByUserDtos));
     }
