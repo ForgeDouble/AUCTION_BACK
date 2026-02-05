@@ -6,7 +6,6 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -20,17 +19,16 @@ public class ReviewDetailDto {
     private String productName;
 
     private Long sellerId;
-    private String sellerNickname;
-    private String sellerProfileImageUrl;
+    private String sellerNick;
 
     private Long reviewerId;
-    private String reviewerNickname;
+    private String reviewerNick;
     private String reviewerProfileImageUrl;
 
-    private Double rating;
+    private double rating;
+    private String content;
     private List<ReviewTag> tags;
 
-    private String content;
     private List<ReviewImageDto> images;
 
     private LocalDateTime createdAt;
@@ -41,14 +39,13 @@ public class ReviewDetailDto {
                 .productId(review.getProduct().getProductId())
                 .productName(review.getProduct().getProductName())
                 .sellerId(review.getSeller().getUserId())
-                .sellerNickname(review.getSeller().getNickname())
-                .sellerProfileImageUrl(review.getSeller().getProfileImageUrl())
+                .sellerNick(review.getSeller().getNickname())
                 .reviewerId(review.getReviewer().getUserId())
-                .reviewerNickname(review.getReviewer().getNickname())
+                .reviewerNick(review.getReviewer().getNickname())
                 .reviewerProfileImageUrl(review.getReviewer().getProfileImageUrl())
-                .rating(review.rating())
-                .tags(review.getTags())
+                .rating(review.ratingDouble())
                 .content(review.getContent())
+                .tags(review.getTags())
                 .images(images)
                 .createdAt(review.getCreatedAt())
                 .build();

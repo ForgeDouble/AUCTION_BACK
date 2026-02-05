@@ -25,5 +25,6 @@ public class ReviewListDto {
 
     private String content;
     private String firstImageUrl;
+
     private LocalDateTime createdAt;
 }

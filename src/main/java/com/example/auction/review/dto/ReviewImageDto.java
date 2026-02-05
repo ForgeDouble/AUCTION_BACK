@@ -14,6 +14,7 @@ public class ReviewImageDto {
     private Integer position;
 
     public static ReviewImageDto from(ReviewImage image) {
+        if (image == null) return null;
         return ReviewImageDto.builder()
                 .id(image.getId())
                 .url(image.getUrl())

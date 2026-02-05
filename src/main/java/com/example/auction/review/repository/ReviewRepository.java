@@ -9,8 +9,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
+
     boolean existsByProduct_ProductIdAndReviewer_UserIdAndDelYn(Long productId, Long reviewerId, DelYN delYn);
-    Page<Review> findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(Long sellerId, DelYN delYn, Pageable pageable);
+
     Page<Review> findAllByProduct_ProductIdAndDelYnOrderByCreatedAtDesc(Long productId, DelYN delYn, Pageable pageable);
+
+    Page<Review> findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(Long sellerId, DelYN delYn, Pageable pageable);
+
     Page<Review> findAllByReviewer_UserIdAndDelYnOrderByCreatedAtDesc(Long reviewerId, DelYN delYn, Pageable pageable);
+
 }

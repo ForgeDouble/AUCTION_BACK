@@ -154,4 +154,25 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
         group by b.product.productId
     """)
     List<BidMaxRow> maxBidAmountByProductIds(@Param("productIds") List<Long> productIds);
+
+
+
+    @Query("""
+select b
+from Bid b
+where b.isWinned = com.example.auction.bid.domain.IsWinned.Y
+and b.user.userId = :userId
+and b.product.status = com.example.auction.product.domain.Status.SELLED
+and b.product.delYn = com.example.auction.common.domain.DelYN.N
+and b.product.blocked = false
+and not exists (
+select 1
+from Review r
+where r.delYn = com.example.auction.common.domain.DelYN.N
+and r.product.productId = b.product.productId
+and r.reviewer.userId = :userId
+)
+order by b.createdAt desc
+""")
+    Page<Bid> findPendingReviewBids(@Param("userId") Long userId, Pageable pageable);
 }

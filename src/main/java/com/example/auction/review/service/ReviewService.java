@@ -34,6 +34,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final ProductRepository productRepository;
     private final BidRepository bidRepository;
+
     private final UserRepository userRepository;
     private final ReviewImageService reviewImageService;
 
@@ -51,6 +52,7 @@ public class ReviewService {
         return userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("USER_NOT_FOUND", "로그인 유저를 찾을 수 없습니다."));
     }
+
     // 임시제한 여부 확인
     private void ensureUserCanWrite(User user) {
         if (Boolean.TRUE.equals(user.getViewOnly())) {
@@ -61,8 +63,8 @@ public class ReviewService {
         }
     }
 
-    // 별 정책 
-    private int parseRatingHalf(Double rating) {
+    // 별 정책 (0.5 단위, 0.0~5.0)
+    private BigDecimal parseRatingHalf(Double rating) {
         if (rating == null) {
             throw new BadRequestException("BAD_REQUEST", "만족도(rating)는 필수입니다.");
         }
@@ -71,16 +73,12 @@ public class ReviewService {
         if (r.compareTo(BigDecimal.ZERO) < 0 || r.compareTo(BigDecimal.valueOf(5)) > 0) {
             throw new BadRequestException("BAD_REQUEST", "만족도는 0.0 ~ 5.0 사이여야 합니다.");
         }
-
         try {
-            int half = r.multiply(BigDecimal.valueOf(2)).intValueExact(); 
-            if (half < 0 || half > 10) {
-                throw new BadRequestException("BAD_REQUEST", "만족도 범위가 올바르지 않습니다.");
-            }
-            return half;
+            r.multiply(BigDecimal.valueOf(2)).intValueExact();
         } catch (ArithmeticException ex) {
             throw new BadRequestException("BAD_REQUEST", "만족도는 0.5점 단위로 입력해야 합니다.");
         }
+        return r.setScale(1);
     }
 
     // 태그 정책
@@ -120,7 +118,7 @@ public class ReviewService {
             throw new UnauthorizedAccessException("NOT_ALLOWED", "본인 상품에는 리뷰를 작성할 수 없습니다.");
         }
 
-        // 낙찰자 검증 -> bid에서 isWinned = Y 인 유저가 나여야 함
+        // 낙찰자 검증
         Bid winnerBid = bidRepository.findByProduct_ProductIdAndIsWinned(product.getProductId(), IsWinned.Y)
                 .orElseThrow(() -> new UnauthorizedAccessException("NOT_ALLOWED", "낙찰자만 리뷰를 작성할 수 있습니다."));
 
@@ -138,7 +136,7 @@ public class ReviewService {
             throw new BadRequestException("DUPLICATE_REVIEW", "이미 해당 상품에 대한 리뷰를 작성했습니다.");
         }
 
-        int ratingHalf = parseRatingHalf(req.getRating());
+        BigDecimal rating = parseRatingHalf(req.getRating());
         validateTags(req.getTags());
 
         String content = null;
@@ -150,7 +148,7 @@ public class ReviewService {
                 .product(product)
                 .seller(seller)
                 .reviewer(reviewer)
-                .ratingHalf(ratingHalf)
+                .rating(rating)
                 .content(content)
                 .tags(new ArrayList<>(req.getTags()))
                 .build();
@@ -163,6 +161,7 @@ public class ReviewService {
         return ReviewDetailDto.from(saved, imageDtos);
     }
 
+    // 작성 가능 여부
     @Transactional(readOnly = true)
     public CanWriteReviewDto canWrite(Long productId) {
         User reviewer = me();
@@ -201,32 +200,29 @@ public class ReviewService {
 
         return CanWriteReviewDto.builder().canWrite(true).reason("OK").build();
     }
+
+    // 판매자 요약
     @Transactional(readOnly = true)
     public ReviewSellerSummaryDto sellerSummary(Long sellerId) {
         Page<Review> page = reviewRepository.findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(sellerId, DelYN.N, Pageable.unpaged());
         List<Review> reviews = page.getContent();
 
         long count = reviews.size();
-        long sumHalf = 0;
 
         Map<ReviewTag, Long> tagCounts = new EnumMap<>(ReviewTag.class);
-        for (ReviewTag tags : ReviewTag.values()) {
-            tagCounts.put(tags, 0L);
-        }
+        for (ReviewTag t : ReviewTag.values()) tagCounts.put(t, 0L);
 
+        double sum = 0.0;
         for (Review review : reviews) {
-            sumHalf += (review.getRatingHalf() == null ? 0 : review.getRatingHalf());
+            sum += (review.getRating() == null ? 0.0 : review.getRating().doubleValue());
             if (review.getTags() != null) {
-                for (ReviewTag reviewTag : review.getTags()) {
-                    tagCounts.put(reviewTag, tagCounts.getOrDefault(reviewTag, 0L) + 1);
+                for (ReviewTag rt : review.getTags()) {
+                    tagCounts.put(rt, tagCounts.getOrDefault(rt, 0L) + 1);
                 }
             }
         }
 
-        double avg = 0.0;
-        if (count > 0) {
-            avg = (sumHalf / (double) count) / 2.0;
-        }
+        double avg = (count > 0) ? (sum / (double) count) : 0.0;
 
         return ReviewSellerSummaryDto.builder()
                 .sellerId(sellerId)
@@ -236,19 +232,21 @@ public class ReviewService {
                 .build();
     }
 
-
+    // 상품별 리뷰 목록
     @Transactional(readOnly = true)
     public Page<ReviewListDto> listByProduct(Long productId, Pageable pageable) {
         Page<Review> page = reviewRepository.findAllByProduct_ProductIdAndDelYnOrderByCreatedAtDesc(productId, DelYN.N, pageable);
         return page.map(this::toListDto);
     }
 
+    // 판매자 받은 리뷰 목록
     @Transactional(readOnly = true)
     public Page<ReviewListDto> listBySeller(Long sellerId, Pageable pageable) {
         Page<Review> page = reviewRepository.findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(sellerId, DelYN.N, pageable);
         return page.map(this::toListDto);
     }
 
+    // 내가 작성한 리뷰 목록
     @Transactional(readOnly = true)
     public Page<ReviewListDto> myReviews(Pageable pageable) {
         User reviewer = me();
@@ -256,12 +254,45 @@ public class ReviewService {
         return page.map(this::toListDto);
     }
 
+    // 안 쓴 리뷰 목록 (낙찰자 기준, SELLED, 미작성)
+    @Transactional(readOnly = true)
+    public Page<PendingReviewRowDto> myPendingReviews(Pageable pageable) {
+        User reviewer = me();
+        Page<Bid> bids = bidRepository.findPendingReviewBids(reviewer.getUserId(), pageable);
+
+        return bids.map(b -> {
+            Product product = b.getProduct();
+            User seller = (product != null ? product.getUser() : null);
+
+            return PendingReviewRowDto.builder()
+                    .productId(product.getProductId())
+                    .productName(product.getProductName())
+                    .sellerId(seller == null ? null : seller.getUserId())
+                    .sellerNick(seller == null ? null : seller.getNickname())
+                    .winnerBidAmount(b.getBidAmount())
+                    .auctionEndTime(product.getAuctionEndTime())
+                    .build();
+        });
+    }
+
+    // 리뷰 상세 (이미지 전체)
+    @Transactional(readOnly = true)
+    public ReviewDetailDto detail(Long reviewId) {
+        if (reviewId == null) throw new BadRequestException("BAD_REQUEST", "reviewId가 필요합니다.");
+
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new ResourceNotFoundException("REVIEW_NOT_FOUND", "리뷰를 찾을 수 없습니다."));
+
+        List<ReviewImage> imgs = reviewImageService.findByReviewId(reviewId);
+        List<ReviewImageDto> imageDtos = (imgs == null ? List.of() : imgs.stream().map(ReviewImageDto::from).toList());
+
+        return ReviewDetailDto.from(review, imageDtos);
+    }
+
     private ReviewListDto toListDto(Review review) {
         String firstImageUrl = null;
         List<ReviewImage> imgs = reviewImageService.findByReviewId(review.getReviewId());
-        if (imgs != null && !imgs.isEmpty()) {
-            firstImageUrl = imgs.get(0).getUrl();
-        }
+        if (imgs != null && !imgs.isEmpty()) firstImageUrl = imgs.get(0).getUrl();
 
         return ReviewListDto.builder()
                 .reviewId(review.getReviewId())
@@ -270,11 +301,12 @@ public class ReviewService {
                 .reviewerId(review.getReviewer().getUserId())
                 .reviewerNick(review.getReviewer().getNickname())
                 .reviewerProfileImageUrl(review.getReviewer().getProfileImageUrl())
-                .rating(review.rating())
+                .rating(review.getRating() == null ? 0.0 : review.getRating().doubleValue())
                 .tags(review.getTags())
                 .content(review.getContent())
                 .firstImageUrl(firstImageUrl)
                 .createdAt(review.getCreatedAt())
                 .build();
     }
+
 }
