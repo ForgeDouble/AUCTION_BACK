@@ -511,6 +511,26 @@ public class ProductService {
         dto.setImages(images);
         return dto;
     }
+
+    // DelYN.N 인것을 조회
+    // 아이템 상세 조회
+    @Transactional(readOnly = true)
+    public ProductReadUpdateDto readUpdateProduct(Long productId) {
+        Product product = productRepository
+                .findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
+                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+
+        ProductReadUpdateDto dto = ProductReadUpdateDto.fromEntity(product);
+
+        List<ProductImageDto> images = productImageRepository
+                .findByProduct_ProductIdOrderByPositionAsc(productId)
+                .stream()
+                .map(ProductImageDto::from)
+                .toList();
+
+        dto.setImages(images);
+        return dto;
+    }
 	
 	// 아이템 목록 조회
 //    @Transactional(readOnly = true)

@@ -46,6 +46,13 @@ public class ProductController {
 			ProductDetailDto dto = productService.readProduct(productId);
 			return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", dto));
     }
+
+    // 상품 단일 조회 (상품 수정 페이지)
+    @GetMapping("/update/{productId}")
+    public ResponseEntity<?> ReadEditProduct(@PathVariable("productId") Long productId) {
+        ProductReadUpdateDto dto = productService.readUpdateProduct(productId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", dto));
+    }
     
     /* 상품 목록 조회 */
 //    @GetMapping("/all")
