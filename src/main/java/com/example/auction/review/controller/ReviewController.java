@@ -1,9 +1,6 @@
 package com.example.auction.review.controller;
 
-import com.example.auction.review.dto.CanWriteReviewDto;
-import com.example.auction.review.dto.ReviewCreateDto;
-import com.example.auction.review.dto.ReviewDetailDto;
-import com.example.auction.review.dto.ReviewListDto;
+import com.example.auction.review.dto.*;
 import com.example.auction.review.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -41,6 +38,11 @@ public class ReviewController {
     @GetMapping("/seller/{sellerId}")
     public Page<ReviewListDto> listBySeller(@PathVariable Long sellerId, Pageable pageable) {
         return reviewService.listBySeller(sellerId, pageable);
+    }
+    // 판매자 요약(평균/카운트/태그카운트)
+    @GetMapping("/seller/{sellerId}/summary")
+    public ReviewSellerSummaryDto sellerSummary(@PathVariable Long sellerId) {
+        return reviewService.sellerSummary(sellerId);
     }
     // 내가 쓴 리뷰 조회
     @GetMapping("/me")

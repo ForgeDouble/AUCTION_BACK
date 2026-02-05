@@ -26,10 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class ReviewService {
@@ -204,6 +201,41 @@ public class ReviewService {
 
         return CanWriteReviewDto.builder().canWrite(true).reason("OK").build();
     }
+    @Transactional(readOnly = true)
+    public ReviewSellerSummaryDto sellerSummary(Long sellerId) {
+        Page<Review> page = reviewRepository.findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(sellerId, DelYN.N, Pageable.unpaged());
+        List<Review> reviews = page.getContent();
+
+        long count = reviews.size();
+        long sumHalf = 0;
+
+        Map<ReviewTag, Long> tagCounts = new EnumMap<>(ReviewTag.class);
+        for (ReviewTag tags : ReviewTag.values()) {
+            tagCounts.put(tags, 0L);
+        }
+
+        for (Review review : reviews) {
+            sumHalf += (review.getRatingHalf() == null ? 0 : review.getRatingHalf());
+            if (review.getTags() != null) {
+                for (ReviewTag reviewTag : review.getTags()) {
+                    tagCounts.put(reviewTag, tagCounts.getOrDefault(reviewTag, 0L) + 1);
+                }
+            }
+        }
+
+        double avg = 0.0;
+        if (count > 0) {
+            avg = (sumHalf / (double) count) / 2.0;
+        }
+
+        return ReviewSellerSummaryDto.builder()
+                .sellerId(sellerId)
+                .reviewCount(count)
+                .avgRating(avg)
+                .tagCounts(tagCounts)
+                .build();
+    }
+
 
     @Transactional(readOnly = true)
     public Page<ReviewListDto> listByProduct(Long productId, Pageable pageable) {
