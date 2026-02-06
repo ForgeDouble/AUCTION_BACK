@@ -6,6 +6,7 @@ import lombok.*;
 import java.util.Map;
 
 @Setter
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
