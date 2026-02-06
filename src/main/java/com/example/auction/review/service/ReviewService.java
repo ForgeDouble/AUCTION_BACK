@@ -302,7 +302,7 @@ public class ReviewService {
                 .reviewerNick(review.getReviewer().getNickname())
                 .reviewerProfileImageUrl(review.getReviewer().getProfileImageUrl())
                 .rating(review.getRating() == null ? 0.0 : review.getRating().doubleValue())
-                .tags(review.getTags())
+                .tags(review.getTags() == null ? List.of() : new ArrayList<>(review.getTags()))
                 .content(review.getContent())
                 .firstImageUrl(firstImageUrl)
                 .createdAt(review.getCreatedAt())

@@ -45,7 +45,7 @@ public class ReviewDetailDto {
                 .reviewerProfileImageUrl(review.getReviewer().getProfileImageUrl())
                 .rating(review.ratingDouble())
                 .content(review.getContent())
-                .tags(review.getTags())
+                .tags(review.getTags() == null ? List.of() : new java.util.ArrayList<>(review.getTags()))
                 .images(images)
                 .createdAt(review.getCreatedAt())
                 .build();
