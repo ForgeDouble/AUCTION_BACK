@@ -175,4 +175,82 @@ and r.reviewer.userId = :userId
 order by b.createdAt desc
 """)
     Page<Bid> findPendingReviewBids(@Param("userId") Long userId, Pageable pageable);
+
+
+    // season에 적용시킬 코드
+    interface UserLongRow {
+        Long getUserId();
+        Long getV();
+    }
+
+    @Query("""
+    select b.user.userId as userId, count(b) as v
+    from Bid b
+    join b.product p
+    where b.isWinned = com.example.auction.bid.domain.IsWinned.Y
+      and p.status = com.example.auction.product.domain.Status.SELLED
+      and p.updatedAt >= :start and p.updatedAt < :end
+      and p.delYn = com.example.auction.common.domain.DelYN.N
+      and p.blocked = false
+      and b.user.delYn = com.example.auction.common.domain.DelYN.N
+    group by b.user.userId
+    order by count(b) desc
+""")
+    List<UserLongRow> countWinningByBuyerBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+    select b.user.userId as userId, coalesce(sum(b.bidAmount), 0) as v
+    from Bid b
+    join b.product p
+    where b.isWinned = com.example.auction.bid.domain.IsWinned.Y
+      and p.status = com.example.auction.product.domain.Status.SELLED
+      and p.updatedAt >= :start and p.updatedAt < :end
+      and p.delYn = com.example.auction.common.domain.DelYN.N
+      and p.blocked = false
+      and b.user.delYn = com.example.auction.common.domain.DelYN.N
+    group by b.user.userId
+    order by coalesce(sum(b.bidAmount), 0) desc
+""")
+    List<UserLongRow> sumWinningAmountByBuyerBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    // 경매왕: 월간 참여
+    @Query("""
+    select b.user.userId as userId, count(distinct b.product.productId) as v
+    from Bid b
+    join b.product p
+    where b.createdAt >= :start and b.createdAt < :end
+      and p.delYn = com.example.auction.common.domain.DelYN.N
+      and p.blocked = false
+      and b.user.delYn = com.example.auction.common.domain.DelYN.N
+    group by b.user.userId
+    order by count(distinct b.product.productId) desc
+""")
+    List<UserLongRow> countDistinctProductsBidBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    // 저격왕용 분모
+    @Query("""
+    select b.user.userId as userId, count(distinct p.productId) as v
+    from Bid b
+    join b.product p
+    where p.status = com.example.auction.product.domain.Status.SELLED
+      and p.updatedAt >= :start and p.updatedAt < :end
+      and p.delYn = com.example.auction.common.domain.DelYN.N
+      and p.blocked = false
+      and b.user.delYn = com.example.auction.common.domain.DelYN.N
+    group by b.user.userId
+""")
+    List<UserLongRow> countDistinctEndedSoldProductsParticipatedBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
 }
