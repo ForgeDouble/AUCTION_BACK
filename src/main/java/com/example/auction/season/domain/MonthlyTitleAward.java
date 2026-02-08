@@ -17,7 +17,7 @@ import java.time.Instant;
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_monthly_title_award_ym_type_rank",
-                        columnNames = {"ym", "title_type", "rank"}
+                        columnNames = {"ym", "title_type", "award_rank"}
                 )
         },
         indexes = {
@@ -47,7 +47,7 @@ public class MonthlyTitleAward {
     @Column(length = 500)
     private String profileImageUrlSnapshot;
 
-    @Column(nullable = false)
+    @Column(name = "award_rank", nullable = false)
     private Integer rank;
     private Long metricLong;
     private Double metricDouble;

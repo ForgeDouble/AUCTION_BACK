@@ -18,7 +18,8 @@ public class SeasonMonthlyScheduler {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     // 매월 1일 00:10
-    @Scheduled(cron = "0 10 0 1 * *", zone = "Asia/Seoul")
+//    @Scheduled(cron = "0 10 0 1 * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "20 * * * * *", zone = "Asia/Seoul")
     public void run() {
         YearMonth target = YearMonth.now(KST).minusMonths(1);
         log.info("[Season] 달 스케줄러 시작 target={}", target);
