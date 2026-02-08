@@ -16,4 +16,5 @@ public enum SeasonBadgeType {
 
     private final String label;
     private final ReviewTag reviewTag;
+
 }

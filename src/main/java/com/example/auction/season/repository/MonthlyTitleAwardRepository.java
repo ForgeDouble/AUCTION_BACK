@@ -7,6 +7,7 @@ import com.example.auction.season.domain.SeasonTitleType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 
 public interface MonthlyTitleAwardRepository extends JpaRepository<MonthlyTitleAward, Long> {
@@ -17,4 +18,7 @@ public interface MonthlyTitleAwardRepository extends JpaRepository<MonthlyTitleA
     List<MonthlyTitleAward> findByYmAndTitleTypeOrderByRankAsc(String ym, SeasonTitleType titleType);
 
     List<MonthlyTitleAward> findByUserIdOrderByYmDesc(Long userId);
+    Optional<MonthlyTitleAward> findFirstByUserIdOrderByYmDesc(Long userId);
+    List<MonthlyTitleAward> findByYmAndUserIdOrderByTitleTypeAscRankAsc(String ym, Long userId);
+
 }

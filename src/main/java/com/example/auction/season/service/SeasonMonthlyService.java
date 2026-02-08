@@ -7,6 +7,8 @@ import com.example.auction.season.domain.MonthlyBadgeAward;
 import com.example.auction.season.domain.MonthlyTitleAward;
 import com.example.auction.season.domain.SeasonBadgeType;
 import com.example.auction.season.domain.SeasonTitleType;
+import com.example.auction.season.dto.MonthlyBadgeAwardCreateDto;
+import com.example.auction.season.dto.MonthlyTitleAwardCreateDto;
 import com.example.auction.season.repository.MonthlyBadgeAwardRepository;
 import com.example.auction.season.repository.MonthlyTitleAwardRepository;
 import com.example.auction.user.domain.Authority;
@@ -165,7 +167,8 @@ public class SeasonMonthlyService {
             try {
                 uid = (Long) object.getClass().getMethod("getUserId").invoke(object);
                 v = (Long) object.getClass().getMethod("getV").invoke(object);
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
             if (uid == null || v == null) continue;
             if (v < 0) continue;
             list.add(new SimpleRow(uid, v));
@@ -189,20 +192,9 @@ public class SeasonMonthlyService {
             User user = userMap.get(row.userId);
             if (!eligible(user)) continue;
 
-            awards.add(MonthlyTitleAward.builder()
-                    .ym(ymStr)
-                    .titleType(type)
-                    .userId(row.userId)
-                    .nicknameSnapshot(user.getNickname() != null ? user.getNickname() : user.getEmail())
-                    .profileImageUrlSnapshot(user.getProfileImageUrl())
-                    .rank(rank++)
-                    .metricLong(row.v)
-                    .metricDouble(null)
-                    .createdAt(Instant.now())
-                    .build());
+            var createDto = MonthlyTitleAwardCreateDto.of(ymStr, type, row.userId, user, rank++, row.v, null);
+            awards.add(createDto.toEntity());
         }
-
-        if (!awards.isEmpty()) monthlyTitleAwardRepository.saveAll(awards);
     }
 
     private void persistSniperKing(String ymStr, LocalDateTime start, LocalDateTime end, Map<Long, User> userMap) {
@@ -229,7 +221,7 @@ public class SeasonMonthlyService {
             long win = wins.getOrDefault(userId, 0L);
 
             if (participated < MIN_AUCTION_PARTICIPATION_FOR_KING) continue;
-            if (win <= 0) continue;
+            if (win < SNIPER_MIN_WINS) continue;
 
             double rate = (participated == 0) ? 0.0 : (double) win / (double) participated;
 
@@ -253,22 +245,12 @@ public class SeasonMonthlyService {
         int rank = 1;
         for (SniperRow r : top) {
             User u = userMap.get(r.userId);
-            if (u == null) continue;
+            if (!eligible(u)) continue;
 
-            awards.add(MonthlyTitleAward.builder()
-                    .ym(ymStr)
-                    .titleType(SeasonTitleType.SNIPER_KING)
-                    .userId(r.userId)
-                    .nicknameSnapshot(u.getNickname() != null ? u.getNickname() : u.getEmail())
-                    .profileImageUrlSnapshot(u.getProfileImageUrl())
-                    .rank(rank++)
-                    .metricLong(r.win)
-                    .metricDouble(r.rate)
-                    .createdAt(Instant.now())
-                    .build());
+            var createDto = MonthlyTitleAwardCreateDto.of(ymStr, SeasonTitleType.SNIPER_KING, r.userId, u, rank++, r.win, r.rate);
+            awards.add(createDto.toEntity());
         }
-
-        monthlyTitleAwardRepository.saveAll(awards);
+        if (!awards.isEmpty()) monthlyTitleAwardRepository.saveAll(awards);
     }
 
     private void saveBadgeAwards(String ymStr, LocalDateTime start, LocalDateTime end, Map<Long, User> userMap) {
@@ -322,23 +304,12 @@ public class SeasonMonthlyService {
             int rank = 1;
             for (BadgeRow r : top) {
                 User u = userMap.get(r.userId);
-                if (u == null) continue;
+                if (!eligible(u)) continue;
 
-                awards.add(MonthlyBadgeAward.builder()
-                        .ym(ymStr)
-                        .badgeType(badgeType)
-                        .userId(r.userId)
-                        .nicknameSnapshot(u.getNickname() != null ? u.getNickname() : u.getEmail())
-                        .profileImageUrlSnapshot(u.getProfileImageUrl())
-                        .rank(rank++)
-                        .tagCount(r.tagCount)
-                        .totalReviews(r.totalReviews)
-                        .ratio(r.ratio)
-                        .createdAt(Instant.now())
-                        .build());
+                var createDto = MonthlyBadgeAwardCreateDto.of(ymStr, badgeType, r.userId, u, rank++, r.tagCount, r.totalReviews, r.ratio);
+                awards.add(createDto.toEntity());
             }
-
-            monthlyBadgeAwardRepository.saveAll(awards);
+            if (!awards.isEmpty()) monthlyBadgeAwardRepository.saveAll(awards);
         }
     }
 

@@ -5,6 +5,7 @@ import com.example.auction.season.domain.SeasonBadgeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface MonthlyBadgeAwardRepository extends JpaRepository<MonthlyBadgeAward, Long> {
 
@@ -15,4 +16,6 @@ public interface MonthlyBadgeAwardRepository extends JpaRepository<MonthlyBadgeA
     List<MonthlyBadgeAward> findByYmAndBadgeTypeOrderByRankAsc(String ym, SeasonBadgeType badgeType);
 
     List<MonthlyBadgeAward> findByUserIdOrderByYmDesc(Long userId);
+    Optional<MonthlyBadgeAward> findFirstByUserIdOrderByYmDesc(Long userId);
+    List<MonthlyBadgeAward> findByYmAndUserIdOrderByBadgeTypeAscRankAsc(String ym, Long userId);
 }
