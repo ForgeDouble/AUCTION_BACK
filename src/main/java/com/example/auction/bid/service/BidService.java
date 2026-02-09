@@ -332,7 +332,10 @@ public class BidService {
             try {
                 bidEvents.add(objectMapper.readValue(obj.toString(), BidEvent.class));
             } catch (JsonProcessingException e) {
-                e.printStackTrace(); // 파싱 실패한 건 무시
+                log.error("[JsonProcessingException] message={}, cause={}",
+                        e.getMessage(),
+                        e.getCause() != null ? e.getCause().getClass().getSimpleName() : "none",
+                        e); // 파싱 실패한 건 무시
             }
         }
         return bidEvents;
