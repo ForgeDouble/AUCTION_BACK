@@ -488,7 +488,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Product getProduct(Long productId) {
         return productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다: " + productId));
+                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다 productId: " + productId));
     }
 
 
@@ -498,7 +498,7 @@ public class ProductService {
     public ProductDetailDto readProduct(Long productId) {
         Product product = productRepository
                 .findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
-                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다 productId: " + productId));
 
         ProductDetailDto dto = ProductDetailDto.fromEntity(product);
 
