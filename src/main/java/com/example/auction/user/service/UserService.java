@@ -3,6 +3,7 @@ package com.example.auction.user.service;
 import com.example.auction.common.auth.JwtTokenProvider;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.AccountSuspendedException;
+import com.example.auction.common.exception.InternalErrorException;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
@@ -370,7 +371,8 @@ public class UserService {
     @Transactional(readOnly = true)
     public SellerDto getSellerInfoByProductId(Long productId) {
        SellerDto dto = userRepository.findSellerInfoByProductId(productId)
-               .orElseThrow(() -> new ResourceNotFoundException("user"));
+               .orElseThrow(() -> new InternalErrorException("DATA_NOT_FOUND" ,"판매자를 찾을 수 없습니다."));
+       log.warn("[DATA_NOT_FOUND] productId={}", productId);
        return dto;
     }
 
