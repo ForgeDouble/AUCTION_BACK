@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/product")
 @RequiredArgsConstructor
+@Slf4j
 public class ProductController {
 	
 	private final ProductService productService;
@@ -148,6 +150,7 @@ public class ProductController {
             @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteIds,
             @RequestParam(value = "orderImageIds", required = false) List<Long> orderIds
     ) {
+        log.info("dto ={}", productUpdateDto.toString());
         productService.updateProduct(productUpdateDto, addFiles, deleteIds, orderIds);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 수정 성공", null));
     }
