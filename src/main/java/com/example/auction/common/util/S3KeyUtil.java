@@ -1,5 +1,6 @@
 package com.example.auction.common.util;
 
+
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -16,5 +17,9 @@ public class S3KeyUtil {
     // 상품 이미지 관련
     public String productImageKey(Long productId, String ext) {
         return "products/%d/images/%s%s".formatted(productId, UUID.randomUUID(), ext);
+    }
+    // 리뷰 이미지 관련
+    public String reviewImageKey(Long reviewId, String ext) {
+        return "reviews/%d/images/%s%s".formatted(reviewId, UUID.randomUUID(), ext);
     }
 }
