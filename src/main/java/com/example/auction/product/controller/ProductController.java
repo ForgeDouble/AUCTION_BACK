@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/product")
 @RequiredArgsConstructor
+@Slf4j
 public class ProductController {
 	
 	private final ProductService productService;
@@ -45,6 +47,13 @@ public class ProductController {
     public ResponseEntity<?> ReadProduct(@PathVariable("productId") Long productId) {
 			ProductDetailDto dto = productService.readProduct(productId);
 			return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", dto));
+    }
+
+    // 상품 단일 조회 (상품 수정 페이지)
+    @GetMapping("/update/{productId}")
+    public ResponseEntity<?> ReadEditProduct(@PathVariable("productId") Long productId) {
+        ProductReadUpdateDto dto = productService.readUpdateProduct(productId);
+        return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 조회 성공", dto));
     }
     
     /* 상품 목록 조회 */
@@ -141,6 +150,7 @@ public class ProductController {
             @RequestParam(value = "deleteImageIds", required = false) List<Long> deleteIds,
             @RequestParam(value = "orderImageIds", required = false) List<Long> orderIds
     ) {
+        log.info("dto ={}", productUpdateDto.toString());
         productService.updateProduct(productUpdateDto, addFiles, deleteIds, orderIds);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 정보 수정 성공", null));
     }

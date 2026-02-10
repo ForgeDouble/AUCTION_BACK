@@ -119,26 +119,36 @@ public class ProductImageService {
 
         loadOwnedProduct(productId);
 
-        if (!isEmpty(addFiles)) {
-            int current = (int) productImageRepository.countByProduct_ProductId(productId);
-            if (current + addFiles.size() > maxImages) {
-                throw new IllegalArgumentException("최대 " + maxImages + "장까지 업로드 가능합니다.");
-            }
-            uploadInitial(productId, addFiles);
-        }
-
-
+        // 삭제 먼저
         if (!isEmpty(deleteIds)) {
-            for (Long id : deleteIds) deleteOne(productId, id);
+            for (Long id : deleteIds) {
+                deleteOne(productId, id);
+            }
         }
 
+        // 기존 이미지만 reorder
+        if (!isEmpty(orderIds)) {
+            reorder(productId, orderIds);
+        }
+
+        // 신규 이미지 추가 (항상 마지막)
+        if (!isEmpty(addFiles)) {
+            int current = (int) productImageRepository
+                    .countByProduct_ProductId(productId);
+
+            if (current + addFiles.size() > maxImages) {
+                throw new IllegalArgumentException(
+                        "최대 " + maxImages + "장까지 업로드 가능합니다."
+                );
+            }
+
+            uploadInitial(productId, addFiles); // position은 뒤에 붙음
+        }
+
+        // 최소 1장 검증
         long remain = productImageRepository.countByProduct_ProductId(productId);
         if (remain == 0) {
             throw new IllegalArgumentException("이미지는 최소 1장 이상이어야 합니다.");
-        }
-
-        if (!isEmpty(orderIds)) {
-            reorder(productId, orderIds);
         }
     }
 

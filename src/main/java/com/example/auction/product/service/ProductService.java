@@ -488,7 +488,7 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Product getProduct(Long productId) {
         return productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다: " + productId));
+                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다 productId: " + productId));
     }
 
 
@@ -498,9 +498,29 @@ public class ProductService {
     public ProductDetailDto readProduct(Long productId) {
         Product product = productRepository
                 .findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
-                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다 productId: " + productId));
 
         ProductDetailDto dto = ProductDetailDto.fromEntity(product);
+
+        List<ProductImageDto> images = productImageRepository
+                .findByProduct_ProductIdOrderByPositionAsc(productId)
+                .stream()
+                .map(ProductImageDto::from)
+                .toList();
+
+        dto.setImages(images);
+        return dto;
+    }
+
+    // DelYN.N 인것을 조회
+    // 아이템 상세 조회
+    @Transactional(readOnly = true)
+    public ProductReadUpdateDto readUpdateProduct(Long productId) {
+        Product product = productRepository
+                .findByProductIdAndDelYnAndBlocked(productId, DelYN.N, false)
+                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+
+        ProductReadUpdateDto dto = ProductReadUpdateDto.fromEntity(product);
 
         List<ProductImageDto> images = productImageRepository
                 .findByProduct_ProductIdOrderByPositionAsc(productId)

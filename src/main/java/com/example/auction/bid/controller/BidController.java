@@ -73,7 +73,7 @@ public class BidController {
 
         catch (Exception e) {
             log.warn("[WebSocket] 입찰 실패 (예외 처리) - {}", e.getMessage());
-            return BidResponseDto.error(e.getMessage(), "INTERNAL_ERROR");
+            return BidResponseDto.error(e.getMessage(), "INTERNAL_SERVER_ERROR");
         }
     }
 
@@ -109,7 +109,9 @@ public class BidController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status
     ) {
-        Status statusEnum = status != null ? Status.valueOf(status.toUpperCase()) : null;
+        Status statusEnum = (status != null && !status.isBlank() && !status.equalsIgnoreCase("null"))
+                ? Status.valueOf(status.toUpperCase())
+                : null;
         Page<BidAllByUserDto> bidAllByUserDtos = bidService.readBidAllByUser(page, size, statusEnum);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "입찰 목록 조회 성공", bidAllByUserDtos));
     }

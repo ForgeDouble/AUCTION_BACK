@@ -77,26 +77,22 @@ public class BidService {
         User user = userRepository.findByEmailAndDelYn(userEmail, DelYN.N)
                 .orElseThrow(() ->
                 {
-                    log.warn("[USER_NOT_FOUND] 존재하지 않거나 만료된 유저 userEmail={}", userEmail);
-                    return new ResourceNotFoundException("USER_NOT_FOUND", "존재하지 않거나 만료된 유저입니다.");
+                    log.warn("[INVALID_USER] 존재하지 않거나 유효하지 않은 유저 email={}", userEmail);
+                    throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
                 });
 
         Product product = productRepository.findByProductIdAndDelYn(bidCreateDto.getProductId(), DelYN.N)
-                .orElseThrow(() ->
-                {
-                    log.warn("[PRODUCT_NOT_FOUND] 존재하지 않거나 만료된 상품 productId={}", bidCreateDto.getProductId());
-                    return new ResourceNotFoundException("PRODUCT_NOT_FOUND","존재하지 않거나 만료된 경매입니다.");
-                });
+                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다 productId: " + bidCreateDto.getProductId()));
+
 
         if (product.getStatus() != Status.PROCESSING) {
             log.warn("[PASSED_AUCTION] 경매의 진행상태가 PROCESSING 이 아님 productId={}, productStatus={}"
                     , product.getProductId(), product.getStatus());
-            throw new UnauthorizedAccessException("NOT_ALLOWED", "경매중인 상품이 아닙니다.");
+            throw new UnauthorizedAccessException("NOT_PROCESSING", "경매중인 상품이 아닙니다.");
         }
 //        접속중인 유저가 판매자일 경우 입찰 불가능
 //        개발중에는 주석 처리
-        else if (product.getUser().getUserId() == user.getUserId()) {
-            log.warn("[SELLER_NOT_ALLOWED] 판매자가 입찰을 시도");
+        else if (product.getUser().getUserId().equals(user.getUserId())) {
             throw new UnauthorizedAccessException("SELLER_NOT_ALLOWED", "판매자는 입찰 할 수 없습니다.");
         }
 
@@ -131,7 +127,7 @@ public class BidService {
             bidWebsocketService.broadcastBidEvent(bidEvent);
         } catch (Exception e) {
             log.warn("[WEBSOCKET_ERROR] broadCast중 오류 발생 bidEvent={}", bidEvent.toString());
-            throw new InternalErrorException("INTERNAL_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
+            throw new InternalErrorException("INTERNAL_SERVER_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
         }
 
         return bidEvent;
@@ -237,15 +233,15 @@ public class BidService {
                         "bidEventJson={}" +
                         "currentTimeMillis={}"
                         , bidZSetKey, bidHashKey, auctionTimeKey, uuid, bidDto.getBidAmount(), bidEventJson, currentTimeMillis);
-                throw new InternalErrorException("INTERNAL_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
+                throw new InternalErrorException("INTERNAL_SERVER_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
             } else if (result == -2) {
-                log.warn("[NOT_FOUND] Redis에서 경매 종료 시간 조회 실패 productId={}"
+                log.warn("[DATA_NOT_FOUND] Redis에서 경매 종료 시간 조회 실패 productId={}"
                         , product.getProductId());
-                throw new ResourceNotFoundException("PRODUCT_NOT_FOUND", "존재하지 않거나 만료된 경매입니다.");
+                throw new ResourceNotFoundException("DATA_NOT_FOUND", "존재하지 않거나 만료된 경매입니다.");
             } else if (result == -1) {
                 log.warn("[PASSED_AUCTION] 경매시간 종료 productId={}, productEndTime={}"
                         , product.getProductId(), product.getAuctionEndTime());
-                throw new UnauthorizedAccessException("NOT_ALLOWED", "접근할 권한이 없습니다.");
+                throw new UnauthorizedAccessException("NOT_PROCESSING", "접근할 권한이 없습니다.");
             } else if (result == 0) {
                 log.warn("[LOW_PRICE] 최고가보다 낮은 금액으로 입찰 bidAmount={}", bidDto.getBidAmount());
                 throw new BadRequestException("LOW_PRICE", "현재 최고가보다 높은 금액만 입찰 가능합니다.");
@@ -256,7 +252,7 @@ public class BidService {
 
         } catch (JsonProcessingException e) {
             log.warn("[JSON_ERROR] BidEvent JSON 변환 실패 bidEvent={}", bidEvent.toString());
-            throw new InternalErrorException("INTERNAL_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
+            throw new InternalErrorException("INTERNAL_SERVER_ERROR", "입찰 처리중 내부 오류가 발생했습니다.");
         }
         // 직전 최고 입찰자에게 푸시
         try {
@@ -332,7 +328,10 @@ public class BidService {
             try {
                 bidEvents.add(objectMapper.readValue(obj.toString(), BidEvent.class));
             } catch (JsonProcessingException e) {
-                e.printStackTrace(); // 파싱 실패한 건 무시
+                log.error("[JsonProcessingException] message={}, cause={}",
+                        e.getMessage(),
+                        e.getCause() != null ? e.getCause().getClass().getSimpleName() : "none",
+                        e); // 파싱 실패한 건 무시
             }
         }
         return bidEvents;

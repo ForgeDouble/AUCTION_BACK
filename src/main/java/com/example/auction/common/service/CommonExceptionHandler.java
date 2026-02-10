@@ -109,7 +109,7 @@ public class CommonExceptionHandler {
                 e.getErrorCode(),
                 e.getMessage()
         );
-        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler(AccountSuspendedException.class)
