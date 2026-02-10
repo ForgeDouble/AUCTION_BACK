@@ -27,7 +27,8 @@ public class SeasonController {
 
     @GetMapping("/latest")
     public ResponseEntity<CommonResDto> latestAll() {
-        YearMonth ym = YearMonth.now(ZoneId.of("Asia/Seoul")).minusMonths(1);
+//        YearMonth ym = YearMonth.now(ZoneId.of("Asia/Seoul")).minusMonths(1);
+        YearMonth ym = YearMonth.now(ZoneId.of("Asia/Seoul"));
         String key = ym.toString();
 
         Map<String, Object> payload = Map.of(

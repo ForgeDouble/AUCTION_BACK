@@ -194,7 +194,9 @@ public class SeasonMonthlyService {
 
             var createDto = MonthlyTitleAwardCreateDto.of(ymStr, type, row.userId, user, rank++, row.v, null);
             awards.add(createDto.toEntity());
+
         }
+        if (!awards.isEmpty()) monthlyTitleAwardRepository.saveAll(awards);
     }
 
     private void persistSniperKing(String ymStr, LocalDateTime start, LocalDateTime end, Map<Long, User> userMap) {
