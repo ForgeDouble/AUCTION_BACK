@@ -5,6 +5,7 @@ import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.common.domain.DelYN;
 import com.example.auction.common.exception.BadRequestException;
+import com.example.auction.common.exception.InternalErrorException;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.Product;
@@ -17,6 +18,7 @@ import com.example.auction.review.dto.*;
 import com.example.auction.review.repository.ReviewRepository;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,7 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
-
+@Slf4j
 @Service
 public class ReviewService {
 
@@ -50,33 +52,38 @@ public class ReviewService {
     private User me() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("USER_NOT_FOUND", "로그인 유저를 찾을 수 없습니다."));
+                .orElseThrow(() -> {
+                            log.warn("[INVALID_USER] 존재하지 않거나 유효하지 않은 유저 email={}", email);
+                            throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
+                        }
+                );
     }
 
     // 임시제한 여부 확인
+    /* 계정 권한 자체의 무넺라 UnauthorizedAccessException */
     private void ensureUserCanWrite(User user) {
         if (Boolean.TRUE.equals(user.getViewOnly())) {
-            throw new UnauthorizedAccessException("NOT_ALLOWED", "임시 제한(view-only) 상태라 리뷰를 작성할 수 없습니다.");
+            throw new UnauthorizedAccessException("ACCOUNT_WARNING_STATE", "임시 제한(view-only) 상태라 리뷰를 작성할 수 없습니다.");
         }
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
-            throw new UnauthorizedAccessException("NOT_ALLOWED", "정지된 계정은 리뷰를 작성할 수 없습니다.");
+            throw new UnauthorizedAccessException("ACCOUNT_SUSPENDED", "정지된 계정은 리뷰를 작성할 수 없습니다.");
         }
     }
 
     // 별 정책 (0.5 단위, 0.0~5.0)
     private BigDecimal parseRatingHalf(Double rating) {
         if (rating == null) {
-            throw new BadRequestException("BAD_REQUEST", "만족도(rating)는 필수입니다.");
+            throw new InternalErrorException("RATING_REQUIRED", "만족도는 필수입니다.");
         }
 
         BigDecimal r = BigDecimal.valueOf(rating);
         if (r.compareTo(BigDecimal.ZERO) < 0 || r.compareTo(BigDecimal.valueOf(5)) > 0) {
-            throw new BadRequestException("BAD_REQUEST", "만족도는 0.0 ~ 5.0 사이여야 합니다.");
+            throw new BadRequestException("RATING_OUT_OF_RANGE", "만족도는 0.0 ~ 5.0 사이여야 합니다.");
         }
         try {
             r.multiply(BigDecimal.valueOf(2)).intValueExact();
         } catch (ArithmeticException ex) {
-            throw new BadRequestException("BAD_REQUEST", "만족도는 0.5점 단위로 입력해야 합니다.");
+            throw new BadRequestException("RATING_STEP_INVALID", "만족도는 0.5점 단위로 입력해야 합니다.");
         }
         return r.setScale(1);
     }
@@ -84,46 +91,46 @@ public class ReviewService {
     // 태그 정책
     private void validateTags(List<ReviewTag> tags) {
         if (tags == null || tags.isEmpty()) {
-            throw new BadRequestException("BAD_REQUEST", "리뷰 태그는 최소 1개 이상 선택해야 합니다.");
+            throw new InternalErrorException("TAG_REQUIRED", "리뷰 태그는 최소 1개 이상 선택해야 합니다.");
         }
-        if (tags.size() > 10) {
-            throw new BadRequestException("BAD_REQUEST", "리뷰 태그 선택 개수가 너무 많습니다.");
-        }
+//        if (tags.size() > 10) {
+//            throw new BadRequestException("BAD_REQUEST", "리뷰 태그 선택 개수가 너무 많습니다.");
+//        }
     }
 
     // 리뷰 생성
     @Transactional
-    public ReviewDetailDto create(ReviewCreateDto req, List<MultipartFile> files) {
+    public ReviewDetailDto create(ReviewCreateDto reviewCreateDto, List<MultipartFile> files) {
         User reviewer = me();
         ensureUserCanWrite(reviewer);
 
-        if (req == null || req.getProductId() == null) {
-            throw new BadRequestException("BAD_REQUEST", "productId가 필요합니다.");
-        }
+//        if (reviewCreateDto == null || reviewCreateDto.getProductId() == null) {
+//            throw new BadRequestException("BAD_REQUEST", "productId가 필요합니다.");
+//        }
 
-        Product product = productRepository.findByProductIdAndDelYnAndBlocked(req.getProductId(), DelYN.N, false)
+        Product product = productRepository.findByProductIdAndDelYnAndBlocked(reviewCreateDto.getProductId(), DelYN.N, false)
                 .orElseThrow(() -> new ResourceNotFoundException("PRODUCT_NOT_FOUND", "존재하지 않거나 차단된 상품입니다."));
 
         if (product.getStatus() != Status.SELLED) {
-            throw new UnauthorizedAccessException("NOT_ALLOWED", "판매 완료된 상품만 리뷰를 작성할 수 있습니다.");
+            throw new ResourceNotFoundException("PRODUCT_BE_SELL", "판매 완료된 상품만 리뷰를 작성할 수 있습니다.");
         }
 
         // 판매자
         User seller = product.getUser();
-        if (seller == null) {
-            throw new ResourceNotFoundException("SELLER_NOT_FOUND", "판매자 정보를 찾을 수 없습니다.");
-        }
+//        if (seller == null) {
+//            throw new ResourceNotFoundException("SELLER_NOT_FOUND", "판매자 정보를 찾을 수 없습니다.");
+//        }
 
         if (Objects.equals(seller.getUserId(), reviewer.getUserId())) {
-            throw new UnauthorizedAccessException("NOT_ALLOWED", "본인 상품에는 리뷰를 작성할 수 없습니다.");
+            throw new BadRequestException("SELF_REVIEW_FORBIDDEN", "본인 상품에는 리뷰를 작성할 수 없습니다.");
         }
 
         // 낙찰자 검증
         Bid winnerBid = bidRepository.findByProduct_ProductIdAndIsWinned(product.getProductId(), IsWinned.Y)
-                .orElseThrow(() -> new UnauthorizedAccessException("NOT_ALLOWED", "낙찰자만 리뷰를 작성할 수 있습니다."));
+                .orElseThrow(() -> new BadRequestException("BUYER_REQUIRED", "낙찰자만 리뷰를 작성할 수 있습니다."));
 
         if (!Objects.equals(winnerBid.getUser().getUserId(), reviewer.getUserId())) {
-            throw new UnauthorizedAccessException("NOT_ALLOWED", "낙찰자만 리뷰를 작성할 수 있습니다.");
+            throw new UnauthorizedAccessException("BUYER_REQUIRED", "낙찰자만 리뷰를 작성할 수 있습니다.");
         }
 
         // 리뷰 중복 방지
@@ -136,12 +143,12 @@ public class ReviewService {
             throw new BadRequestException("DUPLICATE_REVIEW", "이미 해당 상품에 대한 리뷰를 작성했습니다.");
         }
 
-        BigDecimal rating = parseRatingHalf(req.getRating());
-        validateTags(req.getTags());
+        BigDecimal rating = parseRatingHalf(reviewCreateDto.getRating());
+        validateTags(reviewCreateDto.getTags());
 
         String content = null;
-        if (req.getContent() != null && !req.getContent().isBlank()) {
-            content = req.getContent().trim();
+        if (reviewCreateDto.getContent() != null && !reviewCreateDto.getContent().isBlank()) {
+            content = reviewCreateDto.getContent().trim();
         }
 
         Review review = Review.builder()
@@ -150,7 +157,7 @@ public class ReviewService {
                 .reviewer(reviewer)
                 .rating(rating)
                 .content(content)
-                .tags(new ArrayList<>(req.getTags()))
+                .tags(new ArrayList<>(reviewCreateDto.getTags()))
                 .build();
 
         Review saved = reviewRepository.save(review);
