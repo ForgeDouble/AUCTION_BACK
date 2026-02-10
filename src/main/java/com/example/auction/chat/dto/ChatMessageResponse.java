@@ -26,13 +26,13 @@ public class ChatMessageResponse {
     private String message;
     private List<ChatFileRequest> files;
     private Instant createdAt;
+    private ChatUserSummary sender;
 
     public static ChatMessageResponse fromEntity(ChatMessage chatMessage, User sender) {
         ChatUserSummary summary = sender != null ? ChatUserSummary.from(sender) : null;
         return fromEntity(chatMessage, summary);
     }
 
-    // 2) 새로 추가: ChatUserSummary 기반 fromEntity
     public static ChatMessageResponse fromEntity(ChatMessage chatMessage, ChatUserSummary sender) {
         List<ChatFileRequest> fileDtos = chatMessage.getFiles().stream()
                 .map(ChatFile::fromEntity)
@@ -46,6 +46,7 @@ public class ChatMessageResponse {
                 .roomId(chatMessage.getRoomId())
                 .senderId(chatMessage.getSenderId())
                 .senderNickname(nickname)
+                .sender(sender)
                 .senderProfileImageUrl(profileUrl)
                 .messageType(chatMessage.getMessageType())
                 .message(chatMessage.getMessage())

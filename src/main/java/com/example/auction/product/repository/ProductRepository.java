@@ -331,4 +331,44 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             Collection<Status> statuses,
             DelYN delYn
     );
+
+    // 상품 등록 조회를 위한(season)
+    interface UserLongRow {
+        Long getUserId();
+        Long getV();
+    }
+
+    @Query("""
+    select p.user.userId as userId, count(p) as v
+    from Product p
+    where p.status = com.example.auction.product.domain.Status.SELLED
+      and p.updatedAt >= :start and p.updatedAt < :end
+      and p.delYn = com.example.auction.common.domain.DelYN.N
+      and (p.blocked = false or p.blocked is null)
+      and p.user.delYn = com.example.auction.common.domain.DelYN.N
+    group by p.user.userId
+    order by count(p) desc
+""")
+    List<UserLongRow> countSoldBySellerBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
+
+    @Query("""
+    select p.user.userId as userId, coalesce(sum(b.bidAmount), 0) as v
+    from Bid b
+    join b.product p
+    where b.isWinned = com.example.auction.bid.domain.IsWinned.Y
+      and p.status = com.example.auction.product.domain.Status.SELLED
+      and p.updatedAt >= :start and p.updatedAt < :end
+      and p.delYn = com.example.auction.common.domain.DelYN.N
+      and (p.blocked = false or p.blocked is null)
+      and p.user.delYn = com.example.auction.common.domain.DelYN.N
+    group by p.user.userId
+    order by coalesce(sum(b.bidAmount), 0) desc
+""")
+    List<UserLongRow> sumSoldGmvBySellerBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end
+    );
 }
