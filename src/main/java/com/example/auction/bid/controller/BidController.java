@@ -73,7 +73,7 @@ public class BidController {
 
         catch (Exception e) {
             log.warn("[WebSocket] 입찰 실패 (예외 처리) - {}", e.getMessage());
-            return BidResponseDto.error(e.getMessage(), "INTERNAL_ERROR");
+            return BidResponseDto.error(e.getMessage(), "INTERNAL_SERVER_ERROR");
         }
     }
 
