@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class BidEventProducer {
 
-    private final BidRepository bidRepository;
     private final RabbitTemplate rabbitTemplate;
 
     public void publishBidEvent(BidEvent bidEvent) {
