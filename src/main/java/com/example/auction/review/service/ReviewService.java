@@ -127,10 +127,10 @@ public class ReviewService {
 
         // 낙찰자 검증
         Bid winnerBid = bidRepository.findByProduct_ProductIdAndIsWinned(product.getProductId(), IsWinned.Y)
-                .orElseThrow(() -> new BadRequestException("BUYER_REQUIRED", "낙찰자만 리뷰를 작성할 수 있습니다."));
+                .orElseThrow(() -> new BadRequestException("WINNER_BID_NOT_FOUND", "낙찰자만 리뷰를 작성할 수 있습니다."));
 
         if (!Objects.equals(winnerBid.getUser().getUserId(), reviewer.getUserId())) {
-            throw new UnauthorizedAccessException("BUYER_REQUIRED", "낙찰자만 리뷰를 작성할 수 있습니다.");
+            throw new UnauthorizedAccessException("REVIEWER_NOT_WINNER", "낙찰자만 리뷰를 작성할 수 있습니다.");
         }
 
         // 리뷰 중복 방지
@@ -140,7 +140,7 @@ public class ReviewService {
                 DelYN.N
         );
         if (exists) {
-            throw new BadRequestException("DUPLICATE_REVIEW", "이미 해당 상품에 대한 리뷰를 작성했습니다.");
+            throw new InternalErrorException("DUPLICATE_REVIEW", "이미 해당 상품에 대한 리뷰를 작성했습니다.");
         }
 
         BigDecimal rating = parseRatingHalf(reviewCreateDto.getRating());
@@ -285,7 +285,7 @@ public class ReviewService {
     // 리뷰 상세 (이미지 전체)
     @Transactional(readOnly = true)
     public ReviewDetailDto detail(Long reviewId) {
-        if (reviewId == null) throw new BadRequestException("BAD_REQUEST", "reviewId가 필요합니다.");
+        if (reviewId == null) throw new BadRequestException("REVIEW_ID_SELECT", "reviewId가 필요합니다.");
 
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("REVIEW_NOT_FOUND", "리뷰를 찾을 수 없습니다."));
