@@ -155,6 +155,7 @@ public class JwtTokenProvider {
             long nowMillis = System.currentTimeMillis();
             return Math.max(0, (expMillis - nowMillis) / 1000);
         } catch (Exception e) {
+            log.warn("JWT expired: {}", e.toString());
             return 0;
         }
     }
