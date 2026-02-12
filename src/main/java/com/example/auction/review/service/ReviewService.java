@@ -73,7 +73,7 @@ public class ReviewService {
     // 별 정책 (0.5 단위, 0.0~5.0)
     private BigDecimal parseRatingHalf(Double rating) {
         if (rating == null) {
-            throw new InternalErrorException("RATING_REQUIRED", "만족도는 필수입니다.");
+            throw new BadRequestException("RATING_REQUIRED", "만족도는 필수입니다.");
         }
 
         BigDecimal r = BigDecimal.valueOf(rating);
@@ -91,7 +91,7 @@ public class ReviewService {
     // 태그 정책
     private void validateTags(List<ReviewTag> tags) {
         if (tags == null || tags.isEmpty()) {
-            throw new InternalErrorException("TAG_REQUIRED", "리뷰 태그는 최소 1개 이상 선택해야 합니다.");
+            throw new BadRequestException("TAG_REQUIRED", "리뷰 태그는 최소 1개 이상 선택해야 합니다.");
         }
 //        if (tags.size() > 10) {
 //            throw new BadRequestException("BAD_REQUEST", "리뷰 태그 선택 개수가 너무 많습니다.");
@@ -112,7 +112,7 @@ public class ReviewService {
                 .orElseThrow(() -> new ResourceNotFoundException("PRODUCT_NOT_FOUND", "존재하지 않거나 차단된 상품입니다."));
 
         if (product.getStatus() != Status.SELLED) {
-            throw new ResourceNotFoundException("PRODUCT_BE_SELL", "판매 완료된 상품만 리뷰를 작성할 수 있습니다.");
+            throw new BadRequestException("PRODUCT_BE_SELL", "판매 완료된 상품만 리뷰를 작성할 수 있습니다.");
         }
 
         // 판매자
@@ -285,7 +285,7 @@ public class ReviewService {
     // 리뷰 상세 (이미지 전체)
     @Transactional(readOnly = true)
     public ReviewDetailDto detail(Long reviewId) {
-        if (reviewId == null) throw new BadRequestException("REVIEW_ID_SELECT", "reviewId가 필요합니다.");
+        if (reviewId == null) throw new BadRequestException("REVIEW_ID_REQUIRED", "reviewId가 필요합니다.");
 
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("REVIEW_NOT_FOUND", "리뷰를 찾을 수 없습니다."));
