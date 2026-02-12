@@ -94,27 +94,27 @@ public class UserService {
     public String login(UserLoginDto dto) {
         User user = userRepository.findByEmail(dto.getEmail())
                 .orElseThrow(() -> {
-                    log.warn("[EMAIL_NOT_FOUND] 존재하지 않는 이메일 email={}",dto.getEmail());
-                    return new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+                    log.warn("[INVALID_LOGIN_CREDENTIALS] email={}",dto.getEmail());
+                    return new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
                 }
         );
 
         if (user.getDelYn() == DelYN.Y) {
-            log.warn("[DELETED_ACCOUNT] 탈퇴된 계정 email={}", dto.getEmail());
-            throw new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+            log.warn("[DELETED_ACCOUNT] email={}", dto.getEmail());
+            throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
             String until = user.getSuspendedUntil()
                     .truncatedTo(ChronoUnit.SECONDS)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            log.warn("[SUSPENDED_ACCOUNT] 정지된 계정 email={} until={}", dto.getEmail(), until);
+            log.warn("[SUSPENDED_ACCOUNT] email={} until={}", dto.getEmail(), until);
             throw new AccountSuspendedException("정지된 계정입니다." , until);
         }
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            log.warn("[INVALID_PASSWORD] 일치하지 않는 비밀번호");
-            throw new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+            log.warn("[INVALID_LOGIN_CREDENTIALS] email:{}", dto.getEmail());
+            throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
         String token = jwtTokenProvider.createAccessToken(user);
