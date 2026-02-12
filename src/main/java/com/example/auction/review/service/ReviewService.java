@@ -104,15 +104,15 @@ public class ReviewService {
         User reviewer = me();
         ensureUserCanWrite(reviewer);
 
-//        if (reviewCreateDto == null || reviewCreateDto.getProductId() == null) {
-//            throw new BadRequestException("BAD_REQUEST", "productId가 필요합니다.");
-//        }
+        if (reviewCreateDto == null || reviewCreateDto.getProductId() == null) {
+            throw new BadRequestException("PRODUCT_ID_REQUIRED", "productId가 필요합니다.");
+        }
 
         Product product = productRepository.findByProductIdAndDelYnAndBlocked(reviewCreateDto.getProductId(), DelYN.N, false)
                 .orElseThrow(() -> new ResourceNotFoundException("PRODUCT_NOT_FOUND", "존재하지 않거나 차단된 상품입니다."));
 
         if (product.getStatus() != Status.SELLED) {
-            throw new BadRequestException("PRODUCT_BE_SELL", "판매 완료된 상품만 리뷰를 작성할 수 있습니다.");
+            throw new BadRequestException("PRODUCT_BE_SELLED", "판매 완료된 상품만 리뷰를 작성할 수 있습니다.");
         }
 
         // 판매자
@@ -140,7 +140,7 @@ public class ReviewService {
                 DelYN.N
         );
         if (exists) {
-            throw new InternalErrorException("DUPLICATE_REVIEW", "이미 해당 상품에 대한 리뷰를 작성했습니다.");
+            throw new BadRequestException("DUPLICATE_REVIEW", "이미 해당 상품에 대한 리뷰를 작성했습니다.");
         }
 
         BigDecimal rating = parseRatingHalf(reviewCreateDto.getRating());
