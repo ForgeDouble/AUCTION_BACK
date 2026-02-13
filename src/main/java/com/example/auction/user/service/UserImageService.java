@@ -1,6 +1,7 @@
 package com.example.auction.user.service;
 
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.common.service.S3ObjectService;
 import com.example.auction.common.util.FileValidationUtil;
 import com.example.auction.common.util.S3KeyUtil;
@@ -28,7 +29,7 @@ public class UserImageService {
     private Long currentUserId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("User"))
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email))
                 .getUserId();
     }
 
@@ -37,7 +38,8 @@ public class UserImageService {
         Long userId = currentUserId();
         validator.ensureImage(file);
 
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다."));
 
         String ext = validator.ext(file.getContentType(), file.getOriginalFilename());
         String newKey = keyUtil.userAvatarKey(userId, ext);
