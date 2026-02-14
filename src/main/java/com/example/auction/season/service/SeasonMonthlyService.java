@@ -1,6 +1,8 @@
 package com.example.auction.season.service;
 
 import com.example.auction.bid.repository.BidRepository;
+import com.example.auction.common.exception.BadRequestException;
+import com.example.auction.common.exception.InternalErrorException;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.review.repository.ReviewRepository;
 import com.example.auction.season.domain.MonthlyBadgeAward;
@@ -66,15 +68,27 @@ public class SeasonMonthlyService {
 
     @Transactional
     public void runForMonth(YearMonth ym, boolean overwrite) {
+        if (ym == null) {
+            throw new BadRequestException("YM_REQUIRED", "ym(YearMonth)값 이 필요합니다.");
+        }
+
         String ymStr = ymString(ym);
         String lockKey = "lock:season:monthly:" + ymStr;
 
         RLock lock = redissonClient.getLock(lockKey);
 
         try {
-            boolean acquired = lock.tryLock(0, 10, TimeUnit.MINUTES);
+            boolean acquired;
+            try {
+                acquired = lock.tryLock(0, 10, TimeUnit.MINUTES);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                log.warn("[SEASON_LOCK_INTERRUPTED] ym={} key={}", ymStr, lockKey, ie);
+                throw new InternalErrorException("SEASON_LOCK_INTERRUPTED", "시즌 집계 락 대기 중 인터럽트가 발생했습니다.");
+            }
+
             if (!acquired) {
-                log.warn("[Season] lock 획득 실패 ym={}", ymStr);
+                log.warn("[SEASON_LOCK_NOT_ACQUIRED] ym={} key={}", ymStr, lockKey);
                 return;
             }
 
@@ -88,20 +102,24 @@ public class SeasonMonthlyService {
 
             Map<Long, User> userMap = new HashMap<>();
 
-            // 타이틀(왕) 집계
             saveTitleAwards(ymStr, start, end, userMap);
-            // 리뷰 태그 기반 집계
             saveBadgeAwards(ymStr, start, end, userMap);
 
             log.info("[Season] 월간 시즌 집계 완료 ym={}", ymStr);
 
-        } catch (Exception e) {
-            log.error("[Season] 월간 시즌 집계 실패 ym={}", ymStr, e);
-            throw new RuntimeException(e);
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (InternalErrorException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("[SEASON_MONTHLY_RUNTIME_ERROR] ym={}", ymStr, e);
+            throw new InternalErrorException("SEASON_MONTHLY_FAILED", "월간 시즌 집계 중 오류가 발생했습니다.");
         } finally {
             try {
                 if (lock.isHeldByCurrentThread()) lock.unlock();
-            } catch (Exception ignored) {}
+            } catch (Exception unlockEx) {
+                log.warn("[SEASON_LOCK_UNLOCK_FAIL] ym={} key={}", ymStr, lockKey, unlockEx);
+            }
         }
     }
 
@@ -162,18 +180,23 @@ public class SeasonMonthlyService {
     ) {
         List<SimpleRow> list = new ArrayList<>();
         for (Object object : rows) {
-            Long uid = null;
-            Long v = null;
+            if (object == null) continue;
+
+            Long uid;
+            Long v;
             try {
                 uid = (Long) object.getClass().getMethod("getUserId").invoke(object);
                 v = (Long) object.getClass().getMethod("getV").invoke(object);
-            } catch (Exception ignored) {
+            } catch (Exception ex) {
+                log.warn("[SEASON_ROW_PARSE_FAIL] type={} rowClass={}", type,
+                        object.getClass().getName(), ex);
+                continue;
             }
+
             if (uid == null || v == null) continue;
             if (v < 0) continue;
             list.add(new SimpleRow(uid, v));
         }
-
         if (list.isEmpty()) return;
 
         list.sort((a, b) -> Long.compare(b.v, a.v));

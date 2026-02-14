@@ -4,10 +4,7 @@ import com.example.auction.bid.domain.Bid;
 import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.common.domain.DelYN;
-import com.example.auction.common.exception.BadRequestException;
-import com.example.auction.common.exception.InternalErrorException;
-import com.example.auction.common.exception.ResourceNotFoundException;
-import com.example.auction.common.exception.UnauthorizedAccessException;
+import com.example.auction.common.exception.*;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
@@ -66,7 +63,7 @@ public class ReviewService {
             throw new UnauthorizedAccessException("ACCOUNT_WARNING_STATE", "임시 제한(view-only) 상태라 리뷰를 작성할 수 없습니다.");
         }
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
-            throw new UnauthorizedAccessException("ACCOUNT_SUSPENDED", "정지된 계정은 리뷰를 작성할 수 없습니다.");
+            throw new AccountSuspendedException("ACCOUNT_SUSPENDED", "정지된 계정은 리뷰를 작성할 수 없습니다.");
         }
     }
 
