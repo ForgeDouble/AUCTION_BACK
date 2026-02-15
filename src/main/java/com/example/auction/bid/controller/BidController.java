@@ -19,6 +19,7 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.annotation.SendToUser;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -103,6 +104,7 @@ public class BidController {
     }
 
     /* 마이페이지 user 입찰 내역 조회 */
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/allByUser")
     public ResponseEntity<?> getBidAllByUser(
             @RequestParam(defaultValue = "0") int page,

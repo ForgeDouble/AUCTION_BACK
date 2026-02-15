@@ -46,7 +46,7 @@ public class PasswordResetService {
 //        if (userOpt.isEmpty()) {
 //            // 보안을 위해 사용자 존재 여부를 노출하지 않음
 //            // 하지만 이메일은 보내지 않음
-//            log.info("[USER_NOT_FOUND] 존재하지 않거나 만료된 계정 email={}", email);
+//            log.warn("[USER_NOT_FOUND] 존재하지 않거나 만료된 계정 email={}", email);
 //            return;
 //        }
 

@@ -111,6 +111,7 @@ public class ProductController {
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "상품 목록 조회 성공", productPage));
     }
 
+    @PreAuthorize("isAuthenticated()")
     @GetMapping("/myPageProductUser")
     public ResponseEntity<?> myPageProductsByUser(
             @RequestParam(defaultValue = "0") int page,

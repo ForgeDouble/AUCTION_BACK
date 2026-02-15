@@ -14,6 +14,7 @@ import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.category.dto.CategoryBasicDto;
+import com.example.auction.common.exception.InternalErrorException;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.notification.service.AuctionNotificationService;
@@ -569,7 +570,7 @@ public class ProductService {
 
         if (categoryId != null && categoryId != 0) {
             Category category = categoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new IllegalArgumentException("Category not found"));
+                    .orElseThrow(() -> new InternalErrorException("DATA_NOT_FOUND", "카테고리를 찾을 수 없습니다."));
             categoryIds = getAllChildCategoryIds(category);
         }
 

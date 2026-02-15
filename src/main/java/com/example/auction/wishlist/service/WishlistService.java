@@ -45,11 +45,7 @@ public class WishlistService {
 	public Wishlist createWishlist(WishlistCreateDto dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> {
-                            log.warn("[INVALID_USER] 존재하지 않거나 유효하지 않은 유저 email={}", email);
-                            throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
-                        }
-                );
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
 		Product product = productRepository.findByProductIdAndDelYn(dto.getProductId(), DelYN.N)
 				.orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다 productId: " + dto.getProductId()));
@@ -89,11 +85,7 @@ public class WishlistService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> {
-                            log.warn("[INVALID_USER] 존재하지 않거나 유효하지 않은 유저 email={}", email);
-                            throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
-                        }
-                );
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
         // Product 존재 여부 확인 (필요한 경우)
         if (!productRepository.existsById(productId)) {
@@ -114,11 +106,8 @@ public class WishlistService {
     public void deleteWishlistById(Long wishlistId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> {
-                    log.warn("[INVALID_USER] 존재하지 않거나 유효하지 않은 유저 email={}", email);
-                    throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
-                }
-        );
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
+
 
         Wishlist wishlist = wishlistRepository.findByWishlistId(wishlistId)
                 .orElseThrow(() ->

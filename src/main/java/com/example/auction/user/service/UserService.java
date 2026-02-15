@@ -2,10 +2,7 @@ package com.example.auction.user.service;
 
 import com.example.auction.common.auth.JwtTokenProvider;
 import com.example.auction.common.domain.DelYN;
-import com.example.auction.common.exception.AccountSuspendedException;
-import com.example.auction.common.exception.InternalErrorException;
-import com.example.auction.common.exception.ResourceNotFoundException;
-import com.example.auction.common.exception.UnauthorizedAccessException;
+import com.example.auction.common.exception.*;
 import com.example.auction.common.service.CustomTokenExpiredStrategy;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.repository.ProductRepository;
@@ -94,27 +91,27 @@ public class UserService {
     public String login(UserLoginDto dto) {
         User user = userRepository.findByEmail(dto.getEmail())
                 .orElseThrow(() -> {
-                    log.warn("[EMAIL_NOT_FOUND] 존재하지 않는 이메일 email={}",dto.getEmail());
-                    return new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+                    log.warn("[INVALID_LOGIN_CREDENTIALS] email={}",dto.getEmail());
+                    return new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
                 }
         );
 
         if (user.getDelYn() == DelYN.Y) {
-            log.warn("[DELETED_ACCOUNT] 탈퇴된 계정 email={}", dto.getEmail());
-            throw new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+            log.warn("[DELETED_ACCOUNT] email={}", dto.getEmail());
+            throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
             String until = user.getSuspendedUntil()
                     .truncatedTo(ChronoUnit.SECONDS)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            log.warn("[SUSPENDED_ACCOUNT] 정지된 계정 email={} until={}", dto.getEmail(), until);
+            log.warn("[SUSPENDED_ACCOUNT] email={} until={}", dto.getEmail(), until);
             throw new AccountSuspendedException("정지된 계정입니다." , until);
         }
 
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            log.warn("[INVALID_PASSWORD] 일치하지 않는 비밀번호");
-            throw new UnauthorizedAccessException("LOGIN_FAILED" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+            log.warn("[INVALID_LOGIN_CREDENTIALS] email:{}", dto.getEmail());
+            throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
         String token = jwtTokenProvider.createAccessToken(user);
@@ -138,19 +135,12 @@ public class UserService {
 
     /* 회원정보 수정 */
     @Transactional
-    public User updateUser(UserUpdateDto dto) {
+    public void updateUser(UserUpdateDto dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() ->
-                {
-                    log.warn("[DATA_NOT_FOUND] 존재하지 않는 이메일 email={}", email);
-                    return new ResourceNotFoundException("존재하지 않거나 삭제된 계정입니다.");
-                }
-                        );
-
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
         user.update(dto);
-
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
     /* 회원 탈퇴 */
@@ -190,7 +180,9 @@ public class UserService {
     public UserDetailDto getMyDetail() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
+
+
         return UserDetailDto.fromEntity(user);
     }
 
@@ -255,31 +247,31 @@ public class UserService {
     public void updateNickname(UserNicknameUpdateDto dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
         if (Boolean.TRUE.equals(user.getViewOnly())) {
-            throw new RuntimeException("임시 제한 상태라 닉네임을 변경할 수 없습니다.");
+            throw new UnauthorizedAccessException("USER_TEMPORARY_RESTRICTED", "임시 제한 상태라 닉네임을 변경할 수 없습니다.");
         }
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
             String until = user.getSuspendedUntil()
                     .truncatedTo(ChronoUnit.SECONDS)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            throw new RuntimeException("정지된 계정입니다. 해제 시각: " + until);
+            throw new AccountSuspendedException("정지된 계정입니다." , until);
         }
 
         String newNickname = dto.getNickname();
         if (newNickname == null || newNickname.trim().isEmpty()) {
-            throw new RuntimeException("닉네임을 입력해 주세요.");
+            throw new BadRequestException("BLANK_NICKNAME", "닉네임을 입력해 주세요.");
         }
 
         newNickname = newNickname.trim();
 
         // 닉네임 2~8 , 제한문자 추가
         if (newNickname.length() < 2 || newNickname.length() > 8) {
-            throw new RuntimeException("닉네임은 2~8자로 입력해 주세요.");
+            throw new BadRequestException("INVALID_NICKNAME_LENGTH", "닉네임은 2~8자로 입력해 주세요.");
         }
         if (!newNickname.matches("^[A-Za-z0-9가-힣_]+$")) {
-            throw new RuntimeException("닉네임은 영문,숫자,한글,_ 만 사용가능합니다.");
+            throw new BadRequestException("INVALID_NICKNAME_FORMAT", "닉네임은 영문,숫자,한글,_ 만 사용가능합니다.");
         }
 
         if (newNickname.equals(user.getNickname())) {
@@ -291,14 +283,14 @@ public class UserService {
             long days = ChronoUnit.DAYS.between(user.getLastNicknameChangedAt(), LocalDateTime.now());
             if (days < 7) {
                 long remain = 7 - days;
-                throw new RuntimeException("닉네임은 " + remain + "일 이후 변경 가능합니다.");
+                throw new UnauthorizedAccessException("NICKNAME_CHANGE_COOLDOWN", "닉네임은 " + remain + "일 이후 변경 가능합니다.");
             }
         }
 
         // 중복 체크
         boolean exists = userRepository.existsByNicknameAndDelYn(newNickname, DelYN.N);
         if (exists) {
-            throw new RuntimeException("이미 사용 중인 닉네임입니다.");
+            throw new BadRequestException("ALREADY_USED_NICKNAME", "이미 사용 중인 닉네임입니다.");
         }
 
         user.changeNickname(newNickname);
