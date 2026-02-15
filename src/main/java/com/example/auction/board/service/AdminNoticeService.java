@@ -11,12 +11,14 @@ import com.example.auction.board.repository.NoticeAckRepository;
 import com.example.auction.board.repository.NoticeRepository;
 import com.example.auction.common.auth.SecurityUserContext;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.BadRequestException;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +34,7 @@ import java.time.ZoneId;
 import java.util.*;
 
 @Service
+@Slf4j
 public class AdminNoticeService {
 
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
@@ -52,26 +55,44 @@ public class AdminNoticeService {
 //            throw new IllegalStateException("ADMIN 권한 혹은 INQUIRY 권한이 필요합니다.");
 //        }
 //    }
-    private void checkAdmin() {
+    // 로그인 유저 엔티티
+    private User me() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
-        if (user.getAuthority() != Authority.ADMIN && user.getAuthority() != Authority.INQUIRY) {
-            throw new UnauthorizedAccessException("관리자 외 권한이 없습니다.");
-        }
+        return userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> {
+                    log.warn("[INVALID_USER] 존재하지 않거나 유효하지 않은 유저 email={}", email);
+                    throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
+                });
     }
 
-    private User currentAdminEntity() {
-        var p = SecurityUserContext.principal();
-        return userRepository.findByEmailAndDelYn(p.getEmail(), DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("관리자 계정을 찾을 수 없습니다."));
+    // ADMIN/INQUIRY 권한 확인 + 엔티티 반환
+    private User admin() {
+        User user = me();
+        if (user.getAuthority() != Authority.ADMIN && user.getAuthority() != Authority.INQUIRY) {
+            log.warn("[UNAUTHORIZED_ACCESS] 관리자 외 권한 접근 userId={} authority={}", user.getUserId(), user.getAuthority());
+            throw new UnauthorizedAccessException("UNAUTHORIZED_ACCESS", "관리자 외 권한이 없습니다.");
+        }
+        return user;
+    }
+    private Notice noticeOrThrow(Long id) {
+        if (id == null) throw new BadRequestException("NOTICE_ID_REQUIRED", "noticeId가 필요합니다.");
+        return noticeRepository.findById(id)
+                .filter(x -> x.getDelYn() == DelYN.N)
+                .orElseThrow(() -> new ResourceNotFoundException("NOTICE_NOT_FOUND", "공지(인수인계)가 존재하지 않습니다."));
     }
 
     // 인수인계 생성
     @Transactional
     public Long create(NoticeCreateRequest request) {
-        checkAdmin();
-        User admin = currentAdminEntity();
+        User admin = admin();
+//        User admin = currentAdminEntity();
+
+        if (request.getTitle() == null || request.getTitle().isBlank()) {
+            throw new BadRequestException("TITLE_REQUIRED", "제목은 필수입니다.");
+        }
+        if (request.getContent() == null || request.getContent().isBlank()) {
+            throw new BadRequestException("CONTENT_REQUIRED", "내용은 필수입니다.");
+        }
 
         if (request.getCategory() == null) request.setCategory(NoticeCategory.HANDOVER);
         if (request.getPinned() == null) request.setPinned(false);
@@ -90,8 +111,8 @@ public class AdminNoticeService {
     }
     @Transactional(readOnly = true)
     public NoticePageResponse list(NoticeCategory category, Boolean pinned, String q, LocalDate from, LocalDate to, int page, int size) {
-        checkAdmin();
-        User admin = currentAdminEntity();
+        User admin = admin();
+//        User admin = currentAdminEntity();
 
         int pg = Math.max(page, 0);
         int sz = Math.min(Math.max(size, 1), 200);
@@ -146,36 +167,53 @@ public class AdminNoticeService {
 //    }
 
     @Transactional
-    public void update(Long id, NoticeUpdateRequest noticeUpdateRequest) {
-        checkAdmin();
-        Notice notice = noticeRepository.findById(id)
-                .filter(x -> x.getDelYn() == DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("공지(인수인계)가 존재하지 않습니다."));
-        notice.update(noticeUpdateRequest.getCategory(), noticeUpdateRequest.getTitle(), noticeUpdateRequest.getContent(), noticeUpdateRequest.getPinned(), noticeUpdateRequest.getImportance());
+    public void update(Long id, NoticeUpdateRequest req) {
+        admin();
+
+//        if (req == null) throw new BadRequestException("INVALID_INPUT_FORMAT", "요청 바디가 비어있습니다.");
+
+        Notice notice = noticeOrThrow(id);
+
+        // 필요하면 제목/내용 null 방어 (도메인 update 정책에 맞춰 조정)
+        if (req.getTitle() != null && req.getTitle().isBlank()) {
+            throw new BadRequestException("TITLE_REQUIRED", "제목은 공백일 수 없습니다.");
+        }
+        if (req.getContent() != null && req.getContent().isBlank()) {
+            throw new BadRequestException("CONTENT_REQUIRED", "내용은 공백일 수 없습니다.");
+        }
+
+        notice.update(
+                req.getCategory(),
+                req.getTitle(),
+                req.getContent(),
+                req.getPinned(),
+                req.getImportance()
+        );
+
+        log.info("[NOTICE_UPDATED] noticeId={}", notice.getId());
     }
 
     @Transactional
     public void delete(Long id) {
-        checkAdmin();
-        Notice notice = noticeRepository.findById(id)
-                .filter(x -> x.getDelYn() == DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("공지(인수인계)가 존재하지 않습니다."));
+        admin();
+        Notice notice = noticeOrThrow(id);
         notice.setDelYn(DelYN.Y);
         notice.setDeletedAt(LocalDateTime.now(KST));
+
+        log.info("[NOTICE_DELETED] noticeId={}", notice.getId());
     }
 
     @Transactional
     public void ack(Long noticeId) {
-        checkAdmin();
-        User admin = currentAdminEntity();
+        User admin = admin();
+//        User admin = currentAdminEntity();
 
-        Notice notice = noticeRepository.findById(noticeId)
-                .filter(x -> x.getDelYn() == DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("공지(인수인계)가 존재하지 않습니다."));
+        Notice notice = noticeOrThrow(noticeId);
 
         boolean exists = noticeAckRepository.existsByNotice_IdAndUser_UserId(notice.getId(), admin.getUserId());
         if (!exists) {
             noticeAckRepository.save(NoticeAck.of(notice, admin, LocalDateTime.now(KST)));
+            log.info("[NOTICE_ACKED] noticeId={} adminId={}", notice.getId(), admin.getUserId());
         }
     }
 
