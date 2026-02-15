@@ -45,6 +45,8 @@ public class SeasonAwardQueryService {
                 return new SeasonUserAwardsDto(null, Collections.emptyList(), Collections.emptyList());
             }
 
+            validateYmOrThrow(ym);
+
             return getForUserByYm(userId, ym);
 
         } catch (BadRequestException e) {
