@@ -75,7 +75,7 @@ public class AdminNoticeService {
                 });
     }
 
-    // ADMIN/INQUIRY 권한 확인 + 엔티티 반환
+    // ADMIN/INQUIRY 권한 확인
     private User admin() {
         User user = me();
         if (user.getAuthority() != Authority.ADMIN && user.getAuthority() != Authority.INQUIRY) {
@@ -84,11 +84,26 @@ public class AdminNoticeService {
         }
         return user;
     }
+    // 데이터 유무 관련
     private Notice noticeOrThrow(Long id) {
         if (id == null) throw new BadRequestException("NOTICE_ID_REQUIRED", "noticeId가 필요합니다.");
         return noticeRepository.findById(id)
                 .filter(x -> x.getDelYn() == DelYN.N)
                 .orElseThrow(() -> new ResourceNotFoundException("NOTICE_NOT_FOUND", "공지(인수인계)가 존재하지 않습니다."));
+    }
+
+    // 페이징 처리 관련
+    private void validatePaging(int page, int size) {
+        if (page < 0) throw new BadRequestException("PAGE_INVALID", "page는 0 이상이어야 합니다.");
+        if (size < 1) throw new BadRequestException("SIZE_INVALID", "size는 1 이상이어야 합니다.");
+        if (size > 200) throw new BadRequestException("SIZE_TOO_LARGE", "size는 200 이하여야 합니다.");
+    }
+
+    //
+    private void validateDateRange(LocalDate from, LocalDate to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new BadRequestException("DATE_RANGE_INVALID", "from은 to보다 클 수 없습니다.");
+        }
     }
 
     // 인수인계 생성
@@ -123,12 +138,11 @@ public class AdminNoticeService {
     public NoticePageResponse list(NoticeCategory category, Boolean pinned, String q, LocalDate from, LocalDate to, int page, int size) {
         User admin = admin();
 //        User admin = currentAdminEntity();
-
-        int pg = Math.max(page, 0);
-        int sz = Math.min(Math.max(size, 1), 200);
+        validatePaging(page, size);
+        validateDateRange(from, to);
 
         Sort sort = Sort.by(Sort.Order.desc("pinned"), Sort.Order.desc("createdAt"));
-        Pageable pageable = PageRequest.of(pg, sz, sort);
+        Pageable pageable = PageRequest.of(page, size, sort);
 
         Specification<Notice> specification = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -181,15 +195,27 @@ public class AdminNoticeService {
         admin();
 
 //        if (req == null) throw new BadRequestException("INVALID_INPUT_FORMAT", "요청 바디가 비어있습니다.");
+        boolean noFields =
+                req.getCategory() == null &&
+                        req.getTitle() == null &&
+                        req.getContent() == null &&
+                        req.getPinned() == null &&
+                        req.getImportance() == null;
+
+        if (noFields) {
+            throw new BadRequestException("NO_FIELDS_TO_UPDATE", "수정할 항목이 없습니다.");
+        }
 
         Notice notice = noticeOrThrow(id);
 
-        // 필요하면 제목/내용 null 방어 (도메인 update 정책에 맞춰 조정)
         if (req.getTitle() != null && req.getTitle().isBlank()) {
             throw new BadRequestException("TITLE_REQUIRED", "제목은 공백일 수 없습니다.");
         }
         if (req.getContent() != null && req.getContent().isBlank()) {
             throw new BadRequestException("CONTENT_REQUIRED", "내용은 공백일 수 없습니다.");
+        }
+        if (req.getImportance() != null && (req.getImportance() < 0 || req.getImportance() > 100)) {
+            throw new BadRequestException("IMPORTANCE_RANGE_INVALID", "중요도는 0~100 범위여야 합니다.");
         }
 
         notice.update(
