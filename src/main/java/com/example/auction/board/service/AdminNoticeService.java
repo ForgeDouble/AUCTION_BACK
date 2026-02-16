@@ -24,6 +24,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +57,15 @@ public class AdminNoticeService {
 //        }
 //    }
     // 로그인 유저 엔티티
+    private String currentEmailOrThrow() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null || auth.getName().isBlank() || "anonymousUser".equals(auth.getName())) {
+            log.warn("[UNAUTHENTICATED] 인증 정보 없음");
+            throw new UnauthorizedAccessException("UNAUTHENTICATED", "로그인이 필요합니다.");
+        }
+        return auth.getName();
+    }
+
     private User me() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmailAndDelYn(email, DelYN.N)
