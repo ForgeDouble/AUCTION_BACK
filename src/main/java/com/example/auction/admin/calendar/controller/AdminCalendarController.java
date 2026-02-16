@@ -6,6 +6,7 @@ import com.example.auction.admin.calendar.dto.AdminCalendarEventResponseDto;
 import com.example.auction.admin.calendar.dto.AdminCalendarEventUpdateDto;
 import com.example.auction.admin.calendar.service.AdminCalendarService;
 import com.example.auction.common.dto.CommonResDto;
+import com.example.auction.common.exception.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,10 +25,18 @@ public class AdminCalendarController {
     }
 
     private Long parseEventId(String eventId) {
-        if (eventId == null || eventId.isBlank()) throw new IllegalArgumentException("eventId가 비었습니다.");
+        if (eventId == null || eventId.isBlank()) {
+            throw new BadRequestException("EVENT_ID_REQUIRED", "eventId가 비었습니다.");
+        }
+
         String raw = eventId.trim();
         if (raw.startsWith("E-")) raw = raw.substring(2);
-        return Long.parseLong(raw);
+
+        try {
+            return Long.parseLong(raw);
+        } catch (NumberFormatException e) {
+            throw new BadRequestException("EVENT_ID_INVALID", "eventId 형식이 올바르지 않습니다. eventId=" + eventId);
+        }
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','INQUIRY')")
