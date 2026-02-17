@@ -193,7 +193,6 @@ public class AdminAuctionService {
                 }
             }
 
-            // baseline 포함해서 2개 이상이면 “실제 입찰 존재”로 판단하는 기존 정책 유지
             boolean hasRealWinner = (zcount >= 2) && (winnerBid != null) && (winnerBid.getUserId() != null);
 
             if (hasRealWinner) {
