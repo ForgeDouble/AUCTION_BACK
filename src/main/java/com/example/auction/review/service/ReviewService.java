@@ -49,21 +49,24 @@ public class ReviewService {
 
     private String currentEmailOrThrow() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getName() == null || auth.getName().isBlank() || "anonymousUser".equals(auth.getName())) {
+        if (auth == null || auth.getName() == null) {
             throw new UnauthorizedAccessException("UNAUTHENTICATED", "로그인이 필요합니다.");
         }
-        return auth.getName();
+        String email = auth.getName();
+        if (email.isBlank() || "anonymousUser".equals(email)) {
+            throw new UnauthorizedAccessException("UNAUTHENTICATED", "로그인이 필요합니다.");
+        }
+        return email;
     }
 
     // 유저 여부 확인
     private User me() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = currentEmailOrThrow();
         return userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> {
-                            log.warn("[INVALID_USER] 존재하지 않거나 유효하지 않은 유저 email={}", email);
-                            throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
-                        }
-                );
+                    log.warn("[INVALID_USER] email={}", email);
+                    return new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
+                });
     }
 
     // 임시제한 여부 확인
@@ -73,11 +76,14 @@ public class ReviewService {
             throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
         }
         if (Boolean.TRUE.equals(user.getViewOnly())) {
-            throw new UnauthorizedAccessException("ACCOUNT_WARNING_STATE", "임시 제한(view-only) 상태라 리뷰를 작성할 수 없습니다.");
+            throw new UnauthorizedAccessException("REVIEW_TEMPORARY_RESTRICTED", "임시 제한(view-only) 상태라 리뷰를 작성할 수 없습니다.");
         }
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
-            String until = user.getSuspendedUntil().truncatedTo(ChronoUnit.SECONDS).toString().replace('T', ' ');
-            throw new AccountSuspendedException("ACCOUNT_SUSPENDED", "정지된 계정은 리뷰를 작성할 수 없습니다. 해제 시각: " + until, until);
+            String until = user.getSuspendedUntil()
+                    .truncatedTo(ChronoUnit.SECONDS)
+                    .toString()
+                    .replace('T', ' ');
+            throw new AccountSuspendedException("정지된 계정은 리뷰를 작성할 수 없습니다.", until);
         }
     }
 
@@ -244,7 +250,7 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public ReviewSellerSummaryDto sellerSummary(Long sellerId) {
         if (sellerId == null || sellerId <= 0) {
-            throw new BadRequestException("SELLER_ID_REQUIRED", "유효한 판매자 id가 필요합니다.");
+            throw new BadRequestException("SELLER_ID_REQUIRED", "유효한 sellerId가 필요합니다.");
         }
 
         Page<Review> page = reviewRepository.findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(sellerId, DelYN.N, Pageable.unpaged());
