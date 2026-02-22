@@ -14,6 +14,7 @@ import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.BidEvent;
 import com.example.auction.bid.repository.BidRepository;
 import com.example.auction.category.dto.CategoryBasicDto;
+import com.example.auction.common.exception.AccountSuspendedException;
 import com.example.auction.common.exception.InternalErrorException;
 import com.example.auction.common.exception.ResourceNotFoundException;
 import com.example.auction.common.exception.UnauthorizedAccessException;
@@ -100,11 +101,11 @@ public class ProductService {
     /* 상품 임시정지 / 정지 함수 */
 	private void ensureCanMutateProducts(User user, String action) {
 		if (Boolean.TRUE.equals(user.getViewOnly())) {
-			throw new UnauthorizedAccessException("임시 제한(view-only) 상태라 " + action + "할 수 없습니다.");
+			throw new UnauthorizedAccessException("USER_TEMPORARY_RESTRICTED", "임시 제한(view-only) 상태라 " + action + "할 수 없습니다.");
 		}
 		if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
 			String until = user.getSuspendedUntil().truncatedTo(ChronoUnit.SECONDS).toString().replace('T', ' ');
-			throw new UnauthorizedAccessException("정지된 계정입니다. 해제 시각: " + until);
+			throw new AccountSuspendedException("정지된 계정입니다.", until);
 		}
 	}
 
@@ -114,19 +115,16 @@ public class ProductService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> {
-                    log.warn("[USER_NOT_FOUND] 존재하지 않거나 만료된 사용자 email={}", email);
-                    return new ResourceNotFoundException("USER_NOT_FOUND", "접속중인 계정을 찾을 수 없습니다. 고객센터에 문의해주세요.");
-                });
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
         /* 관리자 또는 고객센터는 접근 제한 */
         if(user.getAuthority().equals(Authority.ADMIN) | user.getAuthority().equals(Authority.INQUIRY)){
-            log.warn("[NOT_ALLOWED] ADMIN 또는 INQUIRY의 접근 user.authority={}", user.getAuthority());
+            log.warn("[NOT_ALLOWED] ADMIN 또는 INQUIRY의 접근 userId={}", user.getUserId());
             throw  new UnauthorizedAccessException("NOT_ALLOWED", "해당 계정은 접근할 권한이 없습니다.");
         }
 
         // 실제 DataBase에 Product 생성
-        Product savedProduct = createProduct(dto, files);
+        Product savedProduct = createProduct(dto, files, user);
         // 생성된 Product를 기준으로 입찰의 시작 가격을 bid테이블에 삽입
         // bid Redis data, 실제 DataBase bid data 삽입
         setFirstBid(savedProduct.getProductId());
@@ -134,7 +132,7 @@ public class ProductService {
 
     // 아이템 생성
     @Transactional
-    public Product createProduct(ProductCreateDto dto, List<MultipartFile> files) {
+    public Product createProduct(ProductCreateDto dto, List<MultipartFile> files, User user) {
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -142,15 +140,10 @@ public class ProductService {
             throw new IllegalArgumentException("최소 1장의 이미지가 필요합니다.");
         }
 
-        // 검증
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
-
         ensureCanMutateProducts(user, "상품 등록");
 
         Category category = categoryRepository.findById(dto.getCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("Category"));
+                .orElseThrow(() -> new InternalErrorException("CATEGORY_NOT_FOUND","category를 조회하지 못했습니다. categoryId:" + dto.getCategoryId()));
 
         Product product = dto.toProduct();
         product.setCategory(category);
@@ -206,7 +199,7 @@ public class ProductService {
     @Transactional
     public void setFirstBid(Long productId) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("상품을 찾을 수 없습니다."));
+                .orElseThrow(() -> new InternalErrorException("PRODUCT_NOT_FOUND", "상품을 조회하지 못했습니다. productId:" + productId));
 
         // 종료(판매) 여부 확인
         if (product.getStatus() != Status.READY) return;
@@ -284,7 +277,7 @@ public class ProductService {
 //                auctionNotificationService.notifyAuctionStarted(productId);
             }
              else if (result == 2) {
-                throw new RuntimeException("Redis 초기 입찰 세팅 실패 - ZSET 입력을 실패했습니다.");
+                throw new InternalErrorException("REDIS_SET_ERROR", "Redis 초기 입찰 세팅 실패 - ZSET 입력을 실패했습니다.");
             }
         } catch (JsonProcessingException e) {
             log.warn("[Auction] baseline 직렬화 실패 pid={}", productId, e);
@@ -696,17 +689,17 @@ public class ProductService {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
         Product product = productRepository.findById(dto.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product"));
+                .orElseThrow(() -> new InternalErrorException("PRODUCT_NOT_FOUND", "상품을 조회하지 못했습니다. productId:" + dto.getProductId()));
         Category category = null;
         if (dto.getCategoryId() != null) {
             category = categoryRepository.findById(dto.getCategoryId())
-                    .orElseThrow(() -> new IllegalArgumentException("Category"));
+                    .orElseThrow(() -> new InternalErrorException("CATEGORY_NOT_FOUND", "카테고리를 조회하지 못했습니다. categoryId:" + dto.getCategoryId()));
         }
         if (user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
-            throw new UnauthorizedAccessException("해당 상품을 수정할 권한이 없습니다.");
+            throw new UnauthorizedAccessException("NOT_ALLOWED", "해당 상품을 수정할 권한이 없습니다.");
         }
         ensureCanMutateProducts(user, "상품 수정");
 

@@ -125,7 +125,7 @@ public class WishlistService {
     public Page<ProductListDto> getWishlistProducts(int page, int size) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
         PageRequest pageable = PageRequest.of(page, size);
         Page<Wishlist> wishPage = wishlistRepository.findAllByUser(user, pageable);
