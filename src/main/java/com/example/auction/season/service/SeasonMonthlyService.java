@@ -45,6 +45,9 @@ public class SeasonMonthlyService {
     private final MonthlyTitleAwardRepository monthlyTitleAwardRepository;
     private final MonthlyBadgeAwardRepository monthlyBadgeAwardRepository;
 
+    private static final long LOCK_WAIT_SEC = 0;
+    private static final long LOCK_LEASE_MIN = 30;
+
     private final UserRepository userRepository;
     private final RedissonClient redissonClient;
 
@@ -60,6 +63,17 @@ public class SeasonMonthlyService {
         return ym.plusMonths(1).atDay(1).atStartOfDay();
     }
 
+    private void validateMonthOrThrow(YearMonth ym) {
+        if (ym == null) {
+            throw new BadRequestException("YM_REQUIRED", "ym(YearMonth)값이 필요합니다.");
+        }
+
+        // YearMonth now = YearMonth.now();
+        // if (ym.isAfter(now)) {
+        //     throw new BadRequestException("YM_IN_FUTURE", "미래 월은 집계할 수 없습니다.");
+        // }
+    }
+
     private boolean eligible(User u) {
         if (u == null) return false;
         if (!AWARD_ONLY_USER_AUTHORITY) return true;
@@ -68,9 +82,7 @@ public class SeasonMonthlyService {
 
     @Transactional
     public void runForMonth(YearMonth ym, boolean overwrite) {
-        if (ym == null) {
-            throw new BadRequestException("YM_REQUIRED", "ym(YearMonth)값 이 필요합니다.");
-        }
+        validateMonthOrThrow(ym);
 
         String ymStr = ymString(ym);
         String lockKey = "lock:season:monthly:" + ymStr;
@@ -80,7 +92,7 @@ public class SeasonMonthlyService {
         try {
             boolean acquired;
             try {
-                acquired = lock.tryLock(0, 10, TimeUnit.MINUTES);
+                acquired = lock.tryLock(LOCK_WAIT_SEC, LOCK_LEASE_MIN, TimeUnit.MINUTES);
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
                 log.warn("[SEASON_LOCK_INTERRUPTED] ym={} key={}", ymStr, lockKey, ie);
@@ -105,7 +117,7 @@ public class SeasonMonthlyService {
             saveTitleAwards(ymStr, start, end, userMap);
             saveBadgeAwards(ymStr, start, end, userMap);
 
-            log.info("[Season] 월간 시즌 집계 완료 ym={}", ymStr);
+            log.info("[SEASON_MONTHLY_DONE] ym={} overwrite={}", ymStr, overwrite);
 
         } catch (BadRequestException e) {
             throw e;
@@ -178,6 +190,8 @@ public class SeasonMonthlyService {
             long minValue,
             boolean requireMinForRank1
     ) {
+        if (rows == null || rows.isEmpty()) return;
+
         List<SimpleRow> list = new ArrayList<>();
         for (Object object : rows) {
             if (object == null) continue;
@@ -341,4 +355,5 @@ public class SeasonMonthlyService {
     private record SimpleRow(Long userId, Long v) {}
     private record SniperRow(Long userId, Long participated, Long win, Double rate) {}
     private record BadgeRow(Long userId, Long tagCount, Long totalReviews, Double ratio) {}
+
 }

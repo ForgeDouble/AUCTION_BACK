@@ -97,6 +97,8 @@ public class SeasonAwardQueryService {
 
         } catch (BadRequestException e) {
             throw e;
+        } catch (InternalErrorException e) {
+            throw e;
         } catch (RuntimeException e) {
             log.error("[SEASON_AWARD_BY_YM_FAILED] userId={} ym={}", userId, ym, e);
             throw new InternalErrorException("SEASON_AWARD_QUERY_FAILED", "시즌 수상 조회 중 오류가 발생했습니다.");
@@ -105,7 +107,7 @@ public class SeasonAwardQueryService {
 
     private void validateYmOrThrow(String ym) {
         if (ym == null || ym.isBlank()) {
-            throw new BadRequestException("YM_REQUIRED", "ym(YYYY-MM)이 필요합니다.");
+            throw new BadRequestException("YM_REQUIRED", "ym(YYYY-MM) 값이 필요합니다.");
         }
         try {
             YearMonth.parse(ym);

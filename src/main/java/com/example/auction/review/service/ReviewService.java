@@ -18,6 +18,7 @@ import com.example.auction.user.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 @Slf4j
 @Service
@@ -45,25 +47,43 @@ public class ReviewService {
         this.reviewImageService = reviewImageService;
     }
 
+    private String currentEmailOrThrow() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) {
+            throw new UnauthorizedAccessException("UNAUTHENTICATED", "로그인이 필요합니다.");
+        }
+        String email = auth.getName();
+        if (email.isBlank() || "anonymousUser".equals(email)) {
+            throw new UnauthorizedAccessException("UNAUTHENTICATED", "로그인이 필요합니다.");
+        }
+        return email;
+    }
+
     // 유저 여부 확인
     private User me() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = currentEmailOrThrow();
         return userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> {
-                            log.warn("[INVALID_USER] 존재하지 않거나 유효하지 않은 유저 email={}", email);
-                            throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
-                        }
-                );
+                    log.warn("[INVALID_USER] email={}", email);
+                    return new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
+                });
     }
 
     // 임시제한 여부 확인
     /* 계정 권한 자체의 무넺라 UnauthorizedAccessException */
     private void ensureUserCanWrite(User user) {
+        if (user == null) {
+            throw new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
+        }
         if (Boolean.TRUE.equals(user.getViewOnly())) {
-            throw new UnauthorizedAccessException("ACCOUNT_WARNING_STATE", "임시 제한(view-only) 상태라 리뷰를 작성할 수 없습니다.");
+            throw new UnauthorizedAccessException("REVIEW_TEMPORARY_RESTRICTED", "임시 제한(view-only) 상태라 리뷰를 작성할 수 없습니다.");
         }
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
-            throw new AccountSuspendedException("ACCOUNT_SUSPENDED", "정지된 계정은 리뷰를 작성할 수 없습니다.");
+            String until = user.getSuspendedUntil()
+                    .truncatedTo(ChronoUnit.SECONDS)
+                    .toString()
+                    .replace('T', ' ');
+            throw new AccountSuspendedException("정지된 계정은 리뷰를 작성할 수 없습니다.", until);
         }
     }
 
@@ -90,7 +110,10 @@ public class ReviewService {
         if (tags == null || tags.isEmpty()) {
             throw new BadRequestException("TAG_REQUIRED", "리뷰 태그는 최소 1개 이상 선택해야 합니다.");
         }
-//        if (tags.size() > 10) {
+        if (tags.stream().anyMatch(Objects::isNull)) {
+            throw new BadRequestException("TAG_INVALID", "리뷰 태그 값이 올바르지 않습니다.");
+        }
+//        if (tags.size() > 5) {
 //            throw new BadRequestException("BAD_REQUEST", "리뷰 태그 선택 개수가 너무 많습니다.");
 //        }
     }
@@ -109,22 +132,26 @@ public class ReviewService {
                 .orElseThrow(() -> new ResourceNotFoundException("PRODUCT_NOT_FOUND", "존재하지 않거나 차단된 상품입니다."));
 
         if (product.getStatus() != Status.SELLED) {
-            throw new BadRequestException("PRODUCT_BE_SELLED", "판매 완료된 상품만 리뷰를 작성할 수 있습니다.");
+            throw new BadRequestException("PRODUCT_NOT_SELLED", "판매 완료된 상품만 리뷰를 작성할 수 있습니다.");
         }
 
         // 판매자
         User seller = product.getUser();
-//        if (seller == null) {
-//            throw new ResourceNotFoundException("SELLER_NOT_FOUND", "판매자 정보를 찾을 수 없습니다.");
-//        }
+        if (seller == null) {
+            throw new ResourceNotFoundException("SELLER_NOT_FOUND", "판매자 정보를 찾을 수 없습니다.");
+        }
 
         if (Objects.equals(seller.getUserId(), reviewer.getUserId())) {
             throw new BadRequestException("SELF_REVIEW_FORBIDDEN", "본인 상품에는 리뷰를 작성할 수 없습니다.");
         }
 
-        // 낙찰자 검증
+        // 낙찰자 여부 검증 및 확인
         Bid winnerBid = bidRepository.findByProduct_ProductIdAndIsWinned(product.getProductId(), IsWinned.Y)
                 .orElseThrow(() -> new BadRequestException("WINNER_BID_NOT_FOUND", "낙찰자만 리뷰를 작성할 수 있습니다."));
+
+        if (winnerBid.getUser() == null) {
+            throw new InternalErrorException("WINNER_USER_MISSING", "낙찰자 정보가 올바르지 않습니다.");
+        }
 
         if (!Objects.equals(winnerBid.getUser().getUserId(), reviewer.getUserId())) {
             throw new UnauthorizedAccessException("REVIEWER_NOT_WINNER", "낙찰자만 리뷰를 작성할 수 있습니다.");
@@ -159,16 +186,30 @@ public class ReviewService {
 
         Review saved = reviewRepository.save(review);
 
-        List<ReviewImage> imgs = reviewImageService.uploadAll(saved, files);
-        List<ReviewImageDto> imageDtos = imgs.stream().map(ReviewImageDto::from).toList();
-
-        return ReviewDetailDto.from(saved, imageDtos);
+        try {
+            List<ReviewImage> imgs = reviewImageService.uploadAll(saved, files);
+            List<ReviewImageDto> imageDtos = (imgs == null ? List.of() : imgs.stream().map(ReviewImageDto::from).toList());
+            return ReviewDetailDto.from(saved, imageDtos);
+        } catch (BadRequestException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("[REVIEW_IMAGE_UPLOAD_FAILED] reviewId={} productId={}", saved.getReviewId(), product.getProductId(), e);
+            throw new InternalErrorException("REVIEW_IMAGE_UPLOAD_FAILED", "리뷰 이미지 업로드 중 오류가 발생했습니다.");
+        }
     }
 
     // 작성 가능 여부
     @Transactional(readOnly = true)
     public CanWriteReviewDto canWrite(Long productId) {
         User reviewer = me();
+
+        if (Boolean.TRUE.equals(reviewer.getViewOnly())) {
+            return CanWriteReviewDto.builder().canWrite(false).reason("임시 제한(view-only) 상태입니다.").build();
+        }
+        if (reviewer.getSuspendedUntil() != null && LocalDateTime.now().isBefore(reviewer.getSuspendedUntil())) {
+            String until = reviewer.getSuspendedUntil().truncatedTo(ChronoUnit.SECONDS).toString().replace('T', ' ');
+            return CanWriteReviewDto.builder().canWrite(false).reason("정지된 계정입니다. 해제 시각: " + until).build();
+        }
 
         if (productId == null) {
             return CanWriteReviewDto.builder().canWrite(false).reason("productId가 필요합니다.").build();
@@ -208,6 +249,10 @@ public class ReviewService {
     // 판매자 요약
     @Transactional(readOnly = true)
     public ReviewSellerSummaryDto sellerSummary(Long sellerId) {
+        if (sellerId == null || sellerId <= 0) {
+            throw new BadRequestException("SELLER_ID_REQUIRED", "유효한 sellerId가 필요합니다.");
+        }
+
         Page<Review> page = reviewRepository.findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(sellerId, DelYN.N, Pageable.unpaged());
         List<Review> reviews = page.getContent();
 
@@ -239,6 +284,9 @@ public class ReviewService {
     // 상품별 리뷰 목록
     @Transactional(readOnly = true)
     public Page<ReviewListDto> listByProduct(Long productId, Pageable pageable) {
+        if (productId == null || productId <= 0) {
+            throw new BadRequestException("PRODUCT_ID_REQUIRED", "유효한 productId가 필요합니다.");
+        }
         Page<Review> page = reviewRepository.findAllByProduct_ProductIdAndDelYnOrderByCreatedAtDesc(productId, DelYN.N, pageable);
         return page.map(this::toListDto);
     }
@@ -246,6 +294,9 @@ public class ReviewService {
     // 판매자 받은 리뷰 목록
     @Transactional(readOnly = true)
     public Page<ReviewListDto> listBySeller(Long sellerId, Pageable pageable) {
+        if (sellerId == null || sellerId <= 0) {
+            throw new BadRequestException("SELLER_ID_REQUIRED", "유효한 sellerId가 필요합니다.");
+        }
         Page<Review> page = reviewRepository.findAllBySeller_UserIdAndDelYnOrderByCreatedAtDesc(sellerId, DelYN.N, pageable);
         return page.map(this::toListDto);
     }
@@ -266,6 +317,9 @@ public class ReviewService {
 
         return bids.map(b -> {
             Product product = b.getProduct();
+            if (product == null) {
+                throw new InternalErrorException("BID_PRODUCT_MISSING", "입찰 데이터의 상품 정보가 올바르지 않습니다.");
+            }
             User seller = (product != null ? product.getUser() : null);
 
             return PendingReviewRowDto.builder()
@@ -282,7 +336,9 @@ public class ReviewService {
     // 리뷰 상세 (이미지 전체)
     @Transactional(readOnly = true)
     public ReviewDetailDto detail(Long reviewId) {
-        if (reviewId == null) throw new BadRequestException("REVIEW_ID_REQUIRED", "reviewId가 필요합니다.");
+        if (reviewId == null || reviewId <= 0) {
+            throw new BadRequestException("REVIEW_ID_REQUIRED", "유효한 reviewId가 필요합니다.");
+        }
 
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new ResourceNotFoundException("REVIEW_NOT_FOUND", "리뷰를 찾을 수 없습니다."));
@@ -295,8 +351,13 @@ public class ReviewService {
 
     private ReviewListDto toListDto(Review review) {
         String firstImageUrl = null;
-        List<ReviewImage> imgs = reviewImageService.findByReviewId(review.getReviewId());
-        if (imgs != null && !imgs.isEmpty()) firstImageUrl = imgs.get(0).getUrl();
+
+        try {
+            List<ReviewImage> imgs = reviewImageService.findByReviewId(review.getReviewId());
+            if (imgs != null && !imgs.isEmpty()) firstImageUrl = imgs.get(0).getUrl();
+        } catch (Exception e) {
+            log.warn("[REVIEW_IMAGE_PREVIEW_LOAD_FAIL] reviewId={}", review.getReviewId(), e);
+        }
 
         return ReviewListDto.builder()
                 .reviewId(review.getReviewId())

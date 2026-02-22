@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AuctionNotificationService {
 
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
     private final PushService pushService;
     private final BidService bidService;
     private final ProductRepository productRepository;
@@ -33,8 +35,14 @@ public class AuctionNotificationService {
     private final RedisTemplate<String, String> bidStringRedisTemplate;
     private final WishlistQueryPort wishlistQueryPort;
 
-    public AuctionNotificationService(PushService pushService, BidService bidService, ProductRepository productRepository, TaskScheduler taskScheduler, @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
-                                      WishlistQueryPort wishlistQueryPort) {
+    public AuctionNotificationService(
+            PushService pushService,
+            BidService bidService,
+            ProductRepository productRepository,
+            TaskScheduler taskScheduler,
+            @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
+            WishlistQueryPort wishlistQueryPort
+    ) {
         this.pushService = pushService;
         this.bidService = bidService;
         this.productRepository = productRepository;
@@ -43,49 +51,63 @@ public class AuctionNotificationService {
         this.wishlistQueryPort = wishlistQueryPort;
     }
 
+    private String kStart(Long pid) { return "notify:auction:start:" + pid; }
+    private String kEnd(Long pid) { return "notify:auction:end:" + pid; }
+    private String kStartSoon(Long pid, int m) { return "notify:auction:startSoon:" + m + ":" + pid; }
+    private String kEndSoon(Long pid, int m) { return "notify:auction:ending:" + m + ":" + pid; }
 
-    private String kStart(Long pid) {
-        return "notify:auction:start:" + pid;
-    }
-    private String kEnd(Long pid)   {
-        return "notify:auction:end:" + pid;
-    }
-    private String kStartSoon(Long pid, int m) {
-        return "notify:auction:startSoon:" + m + ":" + pid;
-    }
-    private String kEndSoon(Long pid, int m) {
-        return "notify:auction:ending:" + m + ":" + pid;
+    private Optional<Product> findActiveProduct(Long productId) {
+        if (productId == null) return Optional.empty();
+        try {
+            return productRepository.findById(productId)
+                    .filter(x -> x.getDelYn() == DelYN.N)
+                    .filter(x -> !Boolean.TRUE.equals(x.getBlocked()));
+        } catch (Exception e) {
+            log.warn("[Notify] 상품 조회 실패 pid={}", productId, e);
+            return Optional.empty();
+        }
     }
 
-    private boolean setOnce(String key, long ttlSeconds) {
-        Boolean ok = bidStringRedisTemplate.opsForValue().setIfAbsent(key, "1", ttlSeconds, TimeUnit.SECONDS);
-        return Boolean.TRUE.equals(ok);
+    private Instant toInstantOrNull(LocalDateTime ldt) {
+        if (ldt == null) return null;
+        return ldt.atZone(KST).toInstant();
     }
+
     private long ttlUntil(Instant when, long bufferSec) {
+        if (when == null) return 60;
         long secs = Duration.between(Instant.now(), when).getSeconds();
         return Math.max(60, secs + bufferSec);
     }
+
     private long ttlFixed(long seconds) {
         return Math.max(60, seconds);
     }
 
-    //  경매 시작 10/5분 전 알림 (판매자만)
+    // Redis 장애가 있어도 전체 알림 흐름이 죽지 않게 fail-open
+    private boolean setOnce(String key, long ttlSeconds) {
+        try {
+            Boolean ok = bidStringRedisTemplate.opsForValue()
+                    .setIfAbsent(key, "1", ttlSeconds, TimeUnit.SECONDS);
+            return Boolean.TRUE.equals(ok);
+        } catch (Exception e) {
+            log.warn("[Notify] Redis dedupe 실패 key={} ttl={}s", key, ttlSeconds, e);
+            return true;
+        }
+    }
+
+    // 경매 시작 10/5분 전 알림 (판매자만)
     public void notifyStartingSoon(Long productId, int minutes) {
         if (minutes != 10 && minutes != 5) return;
 
-        Product product = productRepository.findById(productId)
-                .filter(x -> x.getDelYn() == DelYN.N && !Boolean.TRUE.equals(x.getBlocked()))
-                .orElse(null);
+        Product product = findActiveProduct(productId).orElse(null);
         if (product == null) return;
 
-        Long sellerId = product.getUser() != null ? product.getUser().getUserId() : null;
+        Long sellerId = (product.getUser() != null) ? product.getUser().getUserId() : null;
         if (sellerId == null) return;
 
-        Instant startInstant = product.getAuctionStartTime()
-                .atZone(ZoneId.systemDefault())
-                .toInstant();
+        Instant startInstant = toInstantOrNull(product.getAuctionStartTime());
+        if (startInstant == null) return;
 
-        // 시작 직전 알림은 중복 방지 (시작 이후에도 재처리될 수 있으니 TTL은 시작+1시간 정도로)
         if (!setOnce(kStartSoon(productId, minutes), ttlUntil(startInstant, 3600))) return;
 
         String title = "경매 시작 " + minutes + "분 전";
@@ -111,18 +133,17 @@ public class AuctionNotificationService {
         }
     }
 
-    /* 판매자: 경매 시작 알림 */
+    // 판매자 + 찜 유저 : 경매 시작 알림
     public void notifyAuctionStarted(Long productId) {
-        Product product = productRepository.findById(productId)
-                .filter(x -> x.getDelYn() == DelYN.N && !Boolean.TRUE.equals(x.getBlocked()))
-                .orElse(null);
+        Product product = findActiveProduct(productId).orElse(null);
         if (product == null) return;
 
-        Instant endInstant = product.getAuctionEndTime()
-                .atZone(ZoneId.systemDefault())
-                .toInstant();
+        Instant endInstant = toInstantOrNull(product.getAuctionEndTime());
+        long ttl = (endInstant != null) ? ttlUntil(endInstant, 3600) : ttlFixed(6 * 60 * 60);
 
-        Long sellerId = product.getUser() != null ? product.getUser().getUserId() : null;
+        if (!setOnce(kStart(productId), ttl)) return;
+
+        Long sellerId = (product.getUser() != null) ? product.getUser().getUserId() : null;
 
         Set<Long> recipients = new HashSet<>();
         if (sellerId != null) recipients.add(sellerId);
@@ -130,7 +151,9 @@ public class AuctionNotificationService {
         try {
             Set<Long> wishlisters = wishlistQueryPort.findWishlisterUserIdsByProductId(productId);
             if (wishlisters != null) recipients.addAll(wishlisters);
-        } catch (Exception ignore) { }
+        } catch (Exception e) {
+            log.warn("[Notify] 찜 유저 조회 실패 pid={}", productId, e);
+        }
 
         if (recipients.isEmpty()) return;
 
@@ -155,29 +178,24 @@ public class AuctionNotificationService {
     }
 
     // 경매 종료 10분 전 -> 판매자 + 전체 입찰자 + 찜 유저
-    // 경매 종료 5분 전 -> 판매자
+// 경매 종료 5분 전 -> 판매자만
     public void notifyEndingSoon(Long productId, int minutes) {
         if (minutes != 10 && minutes != 5) return;
 
-        Product product = productRepository.findById(productId)
-                .filter(x -> x.getDelYn() == DelYN.N && !Boolean.TRUE.equals(x.getBlocked()))
-                .orElse(null);
+        Product product = findActiveProduct(productId).orElse(null);
         if (product == null) return;
 
-        Instant endInstant = product.getAuctionEndTime()
-                .atZone(ZoneId.systemDefault())
-                .toInstant();
+        Instant endInstant = toInstantOrNull(product.getAuctionEndTime());
+        if (endInstant == null) return;
 
         if (!setOnce(kEndSoon(productId, minutes), ttlUntil(endInstant, 3600))) return;
 
-        Long sellerId = product.getUser() != null ? product.getUser().getUserId() : null;
-
+        Long sellerId = (product.getUser() != null) ? product.getUser().getUserId() : null;
         Set<Long> recipients = new HashSet<>();
 
         if (minutes == 10) {
             if (sellerId != null) recipients.add(sellerId);
 
-            // 전체 입찰자
             try {
                 List<BidEvent> history = bidService.getAllBidHistory(productId, true);
                 if (history != null) {
@@ -189,14 +207,13 @@ public class AuctionNotificationService {
                 log.warn("[Notify] 입찰자 조회 실패 pid={}", productId, e);
             }
 
-            // 찜 유저
             try {
                 Set<Long> wishlisters = wishlistQueryPort.findWishlisterUserIdsByProductId(productId);
                 if (wishlisters != null) recipients.addAll(wishlisters);
-            } catch (Exception ignore) { }
-
+            } catch (Exception e) {
+                log.warn("[Notify] 찜 유저 조회 실패 pid={}", productId, e);
+            }
         } else {
-            // 5분 전은 판매자만
             if (sellerId != null) recipients.add(sellerId);
         }
 
@@ -220,27 +237,23 @@ public class AuctionNotificationService {
         }
     }
 
-    /* 상품 판매자&낙찰자 : 경매 종료 알림 */
+    // 상품 판매자 & 낙찰자 : 경매 종료 알림
     public void notifyAuctionEndedWithWinner(Long productId, BidEvent winner, String productName) {
         if (winner == null || winner.getUserId() == null) {
             log.warn("[AuctionNotify] winner null 또는 userId null productId={}", productId);
             return;
         }
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("상품이 존재하지 않습니다."));
+        Product product = findActiveProduct(productId).orElse(null);
+        if (product == null) return;
 
         if (!setOnce(kEnd(productId), ttlFixed(3 * 24 * 60 * 60))) return;
 
-        Long sellerId = product.getUser() != null ? product.getUser().getUserId() : null;
-        String safeName = (productName != null && !productName.isBlank())
-                ? productName
-                : product.getProductName();
+        Long sellerId = (product.getUser() != null) ? product.getUser().getUserId() : null;
+        String safeName = (productName != null && !productName.isBlank()) ? productName : product.getProductName();
 
-        String amountStr = NumberFormat.getInstance(Locale.KOREA)
-                .format(winner.getBidAmount());
+        String amountStr = NumberFormat.getInstance(Locale.KOREA).format(winner.getBidAmount());
 
-        // 판매자 알림
         if (sellerId != null) {
             try {
                 pushService.sendToUser(
@@ -261,7 +274,6 @@ public class AuctionNotificationService {
             }
         }
 
-        // 낙찰자 알림
         try {
             pushService.sendToUser(
                     winner.getUserId(),
@@ -280,19 +292,17 @@ public class AuctionNotificationService {
         }
     }
 
-    // 낙찰자가 없는 경우의 경매 종료 알림
+    // 낙찰자 없음: 판매자에게만 종료 알림
     public void notifyAuctionEndedNoWinner(Long productId, String productName) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("상품이 존재하지 않습니다."));
+        Product product = findActiveProduct(productId).orElse(null);
+        if (product == null) return;
 
         if (!setOnce(kEnd(productId), ttlFixed(3 * 24 * 60 * 60))) return;
 
-        Long sellerId = product.getUser() != null ? product.getUser().getUserId() : null;
-        String safeName = (productName != null && !productName.isBlank())
-                ? productName
-                : product.getProductName();
-
+        Long sellerId = (product.getUser() != null) ? product.getUser().getUserId() : null;
         if (sellerId == null) return;
+
+        String safeName = (productName != null && !productName.isBlank()) ? productName : product.getProductName();
 
         try {
             pushService.sendToUser(
@@ -311,47 +321,49 @@ public class AuctionNotificationService {
         }
     }
 
-
-    /* 종료 10분전 + 5분 전 알림 */
+    // 종료 10분전 + 5분전 스케줄
     public void scheduleEndingSoonJobs(Long productId, Instant endInstant) {
+        if (productId == null || endInstant == null) return;
+
         Instant ten = endInstant.minus(Duration.ofMinutes(10));
         Instant five = endInstant.minus(Duration.ofMinutes(5));
 
         if (ten.isAfter(Instant.now())) {
             taskScheduler.schedule(() -> {
-                try { notifyEndingSoon(productId, 10); } catch (Exception ignore) {}
+                try { notifyEndingSoon(productId, 10); }
+                catch (Exception e) { log.warn("[Notify] schedule(ending 10m) 실패 pid={}", productId, e); }
             }, ten);
         }
+
         if (five.isAfter(Instant.now())) {
             taskScheduler.schedule(() -> {
-                try { notifyEndingSoon(productId, 5); } catch (Exception ignore) {}
+                try { notifyEndingSoon(productId, 5); }
+                catch (Exception e) { log.warn("[Notify] schedule(ending 5m) 실패 pid={}", productId, e); }
             }, five);
         }
     }
 
-    /* 직전 최고 입찰자가 다른 유저에게 밀렸을 때 알림 */
+    // 직전 최고 입찰자가 밀렸을 때
     public void notifyOutbid(Long productId, Long previousUserId, Long lastAmount, Long newAmount, String productName) {
         if (previousUserId == null) {
             log.warn("[AuctionNotify] previousUserId null Outbid 스킵 productId={}", productId);
             return;
         }
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new ResourceNotFoundException("상품이 존재하지 않습니다."));
+        Product product = findActiveProduct(productId).orElse(null);
+        if (product == null) return;
 
-        String safeName = (productName != null && !productName.isBlank())
-                ? productName
-                : product.getProductName();
+        String safeName = (productName != null && !productName.isBlank()) ? productName : product.getProductName();
 
         String lastStr = NumberFormat.getInstance(Locale.KOREA).format(lastAmount);
-        String newStr  = NumberFormat.getInstance(Locale.KOREA).format(newAmount);
+        String newStr = NumberFormat.getInstance(Locale.KOREA).format(newAmount);
 
         String title = "입찰가가 추월되었습니다";
-        String body  = "[" + safeName + "] 경매에서 "
+        String body = "[" + safeName + "] 경매에서 "
                 + newStr + "원으로 새로운 최고 입찰가가 등록되어 "
                 + lastStr + "원 입찰이 밀렸습니다.";
 
-        Map<String,String> data = Map.of(
+        Map<String, String> data = Map.of(
                 "type", "BID_OUTBID",
                 "productId", String.valueOf(productId),
                 "lastAmount", String.valueOf(lastAmount),
