@@ -1,6 +1,9 @@
 package com.example.auction.report.service;
 
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.common.exception.InternalErrorException;
+import com.example.auction.common.exception.ResourceNotFoundException;
+import com.example.auction.common.exception.UnauthorizedAccessException;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.report.domain.Report;
@@ -13,9 +16,11 @@ import com.example.auction.report.repository.ReportRepository;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.user.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
+@Slf4j
 public class ProductReportService {
 
     private final ProductRepository productRepository;
@@ -34,11 +40,13 @@ public class ProductReportService {
     @Value("${report.product.threshold:5}")   // 기본 5건
     private long productReportThreshold;
 
-    public ProductReportService(ProductRepository productRepository,
-                                ReportRepository reportRepository,
-                                UserRepository userRepository,
-                                UserService userService,
-                                @Qualifier("reportCounter") StringRedisTemplate reportCounter) {
+    public ProductReportService(
+            ProductRepository productRepository,
+            ReportRepository reportRepository,
+            UserRepository userRepository,
+            UserService userService,
+            @Qualifier("reportCounter") StringRedisTemplate reportCounter
+    ) {
         this.productRepository = productRepository;
         this.reportRepository = reportRepository;
         this.userRepository = userRepository;
@@ -49,41 +57,134 @@ public class ProductReportService {
     private String productCountKey(Long productId) {
         return "report:product:count:{" + productId + "}";
     }
-    private long incr(String key, long delta) {
-        Long v = reportCounter.opsForValue().increment(key, delta);
-        return v == null ? 0L : v;
+
+    private String currentEmailOrThrow() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new UnauthorizedAccessException("AUTH_REQUIRED", "로그인이 필요합니다.");
+        }
+        String email = auth.getName();
+        if (email == null || email.isBlank() || "anonymousUser".equalsIgnoreCase(email)) {
+            throw new UnauthorizedAccessException("AUTH_REQUIRED", "로그인이 필요합니다.");
+        }
+        return email;
     }
-    private long getLong(String key) {
-        String v = reportCounter.opsForValue().get(key);
-        return (v == null) ? 0L : Long.parseLong(v);
+
+    private User currentUserOrThrow() {
+        String email = currentEmailOrThrow();
+        return userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> {
+                    log.warn("[USER_NOT_FOUND] 존재하지 않거나 만료된 사용자 email={}", email);
+                    return new ResourceNotFoundException(
+                            "USER_NOT_FOUND",
+                            "접속중인 계정을 찾을 수 없습니다. 고객센터에 문의해주세요."
+                    );
+                });
     }
-    private void reset(String key) { reportCounter.delete(key); }
+
+    private long incrSafe(String key, long delta) {
+        try {
+            Long v = reportCounter.opsForValue().increment(key, delta);
+            return v == null ? 0L : v;
+        } catch (Exception e) {
+            log.warn("[REPORT_COUNTER_FAIL] incr failed key={}, delta={}", key, delta, e);
+            return 0L;
+        }
+    }
+
+    private long getLongSafe(String key) {
+        try {
+            String v = reportCounter.opsForValue().get(key);
+            if (v == null || v.isBlank()) return 0L;
+            try {
+                return Long.parseLong(v);
+            } catch (NumberFormatException nfe) {
+                log.warn("[REPORT_COUNTER_PARSE_FAIL] key={}, raw={}", key, v);
+                return 0L;
+            }
+        } catch (Exception e) {
+            log.warn("[REPORT_COUNTER_FAIL] get failed key={}", key, e);
+            return 0L;
+        }
+    }
+
+    private void resetSafe(String key) {
+        try {
+            reportCounter.delete(key);
+        } catch (Exception e) {
+            log.warn("[REPORT_COUNTER_FAIL] reset failed key={}", key, e);
+        }
+    }
 
     // [유저] 상품 신고
     @Transactional
     public void reportProduct(ProductReportCreateDto dto) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User reporter = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("존재하지 않는 유저입니다."));
+        User reporter = currentUserOrThrow();
 
-        if (dto.getProductId() == null) throw new IllegalArgumentException("상품 ID가 필요합니다.");
+        if (dto == null || dto.getProductId() == null) {
+            throw new IllegalArgumentException("상품 ID가 필요합니다.");
+        }
 
-        Product product = productRepository.findByProductIdAndDelYn(dto.getProductId(), DelYN.N)
-                .orElseThrow(() -> new RuntimeException("대상 상품이 존재하지 않거나 비활성화 상태입니다."));
+        Long productId = dto.getProductId();
 
-        // 같은 유저가 같은 상품을 중복 신고 못 하게(카테고리 불문)
-        boolean dup = reportRepository.existsByReporter_UserIdAndTargetTypeAndTargetId(
-                reporter.getUserId(), ReportTargetType.PRODUCT, dto.getProductId());
-        if (dup) throw new RuntimeException("이미 해당 상품을 신고하셨습니다.");
+        Product product = productRepository.findByProductIdAndDelYn(productId, DelYN.N)
+                .orElseThrow(() -> {
+                    log.warn("[PRODUCT_NOT_FOUND] productId={}", productId);
+                    return new ResourceNotFoundException(
+                            "PRODUCT_NOT_FOUND",
+                            "대상 상품이 존재하지 않거나 비활성화 상태입니다."
+                    );
+                });
 
-        Report report = Report.create(reporter, ReportTargetType.PRODUCT, dto.getProductId(),
-                ReportCategory.OTHER, dto.getContent());
-        reportRepository.save(report);
+        boolean dup;
+        try {
+            dup = reportRepository.existsByReporter_UserIdAndTargetTypeAndTargetId(
+                    reporter.getUserId(),
+                    ReportTargetType.PRODUCT,
+                    productId
+            );
+        } catch (Exception e) {
+            log.error("[REPORT_DUP_CHECK_FAIL] reporterId={}, productId={}", reporter.getUserId(), productId, e);
+            throw new InternalErrorException(
+                    "REPORT_DUP_CHECK_FAIL",
+                    "서버 내부에서 오류가 발생했습니다. 관리자에게 문의해주세요."
+            );
+        }
 
-        long count = incr(productCountKey(dto.getProductId()), 1L);
-        if (count >= productReportThreshold && !Boolean.TRUE.equals(product.getBlocked())) {
-            product.block("신고 임계치 초과(" + count + "건)");
-            productRepository.save(product);
+        if (dup) {
+            log.warn("[DUPLICATE_REPORT] reporterId={}, productId={}", reporter.getUserId(), productId);
+            throw new UnauthorizedAccessException(
+                    "DUPLICATE_REPORT",
+                    "이미 해당 상품을 신고하셨습니다."
+            );
+        }
+
+        try {
+            Report report = Report.create(
+                    reporter,
+                    ReportTargetType.PRODUCT,
+                    productId,
+                    ReportCategory.OTHER,
+                    dto.getContent()
+            );
+            reportRepository.save(report);
+        } catch (Exception e) {
+            log.error("[REPORT_SAVE_FAIL] reporterId={}, productId={}", reporter.getUserId(), productId, e);
+            throw new InternalErrorException(
+                    "REPORT_SAVE_FAIL",
+                    "서버 내부에서 오류가 발생했습니다. 관리자에게 문의해주세요."
+            );
+        }
+
+        long count = incrSafe(productCountKey(productId), 1L);
+
+        try {
+            if (count >= productReportThreshold && !Boolean.TRUE.equals(product.getBlocked())) {
+                product.block("신고 임계치 초과(" + count + "건)");
+                productRepository.save(product);
+            }
+        } catch (Exception e) {
+            log.warn("[PRODUCT_BLOCK_FAIL] productId={}, count={}", productId, count, e);
         }
     }
 
@@ -91,15 +192,24 @@ public class ProductReportService {
     @Transactional(readOnly = true)
     public List<AdminBlockedProductDto> listBlockedProducts() {
         userService.checkAdminAuthority();
-        return productRepository.findByBlockedAndDelYn(true, DelYN.N).stream()
-                .map(p -> AdminBlockedProductDto.builder()
-                        .productId(p.getProductId())
-                        .productName(p.getProductName())
-                        .reportCount(getLong(productCountKey(p.getProductId())))
-                        .blockedAt(p.getBlockedAt())
-                        .blockedReason(p.getBlockedReason())
-                        .build())
-                .toList();
+
+        try {
+            return productRepository.findByBlockedAndDelYn(true, DelYN.N).stream()
+                    .map(p -> AdminBlockedProductDto.builder()
+                            .productId(p.getProductId())
+                            .productName(p.getProductName())
+                            .reportCount(getLongSafe(productCountKey(p.getProductId())))
+                            .blockedAt(p.getBlockedAt())
+                            .blockedReason(p.getBlockedReason())
+                            .build())
+                    .toList();
+        } catch (Exception e) {
+            log.error("[BLOCKED_PRODUCTS_LIST_FAIL]", e);
+            throw new InternalErrorException(
+                    "BLOCKED_PRODUCTS_LIST_FAIL",
+                    "서버 내부에서 오류가 발생했습니다. 관리자에게 문의해주세요."
+            );
+        }
     }
 
     // [관리자] 차단 해제
@@ -110,24 +220,38 @@ public class ProductReportService {
         if (req == null || req.getProductId() == null) {
             throw new IllegalArgumentException("productId는 필수입니다.");
         }
+
+        Long productId = req.getProductId();
         boolean reset = (req.getResetCounter() == null) ? true : req.getResetCounter();
 
-        Product product = productRepository.findByProductIdAndDelYn(req.getProductId(), DelYN.N)
-                .orElseThrow(() -> new RuntimeException("대상 상품이 존재하지 않거나 비활성화 상태입니다."));
+        Product product = productRepository.findByProductIdAndDelYn(productId, DelYN.N)
+                .orElseThrow(() -> {
+                    log.warn("[PRODUCT_NOT_FOUND] productId={}", productId);
+                    return new ResourceNotFoundException(
+                            "PRODUCT_NOT_FOUND",
+                            "대상 상품이 존재하지 않거나 비활성화 상태입니다."
+                    );
+                });
 
-        // 차단 해제
-        product.unblock();
-        // 해제 사유를 남기고 싶다면(운영 메모 용도): 차단이 해제되었더라도 메모로 보관
-        if (req.getReason() != null && !req.getReason().isBlank()) {
-            product.setBlockedReason(req.getReason().trim());
+        try {
+            product.unblock();
+
+            // NOTE: set 지양이면 Product 도메인 메서드로 옮기기 권장
+            if (req.getReason() != null && !req.getReason().isBlank()) {
+                product.setBlockedReason(req.getReason().trim());
+            }
+
+            productRepository.save(product);
+        } catch (Exception e) {
+            log.error("[PRODUCT_UNBLOCK_FAIL] productId={}", productId, e);
+            throw new InternalErrorException(
+                    "PRODUCT_UNBLOCK_FAIL",
+                    "서버 내부에서 오류가 발생했습니다. 관리자에게 문의해주세요."
+            );
         }
-        productRepository.save(product);
 
-        // 카운터 초기화(정책상 기본 true)
         if (reset) {
-            reset(productCountKey(req.getProductId()));
+            resetSafe(productCountKey(productId));
         }
     }
-
 }
-
