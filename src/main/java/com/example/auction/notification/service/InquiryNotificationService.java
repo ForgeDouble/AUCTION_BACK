@@ -29,7 +29,6 @@ public class InquiryNotificationService {
     private final ChatUserCacheService chatUserCacheService;
     private final ChatStateService chatStateService;
 
-
     // 새 문의방 생성 알림: 고객 → 담당자 1명
     public void notifyNewInquiryRoom(ChatRoom room, ChatUserSummary customer, User inquirer) {
         if (room == null || customer == null || inquirer == null) {
@@ -38,31 +37,40 @@ public class InquiryNotificationService {
         }
 
         String title = "새 문의가 접수되었습니다";
-        String body = customer.getNickname() + "님의 문의가 접수되었습니다.";
+        String body = safeNick(customer) + "님의 문의가 접수되었습니다.";
 
         Map<String, String> data = Map.of(
                 "type", "INQUIRY_NEW_ROOM",
                 "roomId", room.getId(),
                 "customerUserId", String.valueOf(customer.getUserId()),
-                "customerNickname", customer.getNickname()
+                "customerNickname", safeNick(customer)
         );
 
         try {
             pushService.sendToUser(inquirer.getUserId(), title, body, data, NotificationCategory.INQUIRY, true);
         } catch (Exception e) {
-            log.warn("[InquiryNotify] 새 문의 알림 실패 roomId={}, inquirerId={}",
-                    room.getId(), inquirer.getUserId(), e);
+            log.warn("[InquiryNotify] 새 문의 알림 실패 roomId={}, inquirerId={}", room.getId(), inquirer.getUserId(), e);
         }
     }
 
-    //  문의방 내 새 메시지 알림 (유저 ↔ 담당자)
+    // 문의방 내 새 메시지 알림 (유저 ↔ 담당자)
     public void notifyOnNewMessage(ChatRoom room, ChatUserSummary sender, String preview) {
         if (room == null || sender == null) return;
 
         // 운영/문의 채팅만
         if (!room.isAdminChat()) return;
 
-        Map<String, ChatUserSummary> map = chatUserCacheService.getByEmails(room.getParticipantIds());
+        List<String> participantIds = room.getParticipantIds();
+        if (participantIds == null || participantIds.isEmpty()) return;
+
+        Map<String, ChatUserSummary> map;
+        try {
+            map = chatUserCacheService.getByEmails(participantIds);
+        } catch (Exception e) {
+            log.warn("[InquiryNotify] 참여자 캐시 조회 실패 roomId={}", room.getId(), e);
+            return;
+        }
+
         List<ChatUserSummary> participants = map.values().stream()
                 .filter(Objects::nonNull)
                 .toList();
@@ -70,10 +78,9 @@ public class InquiryNotificationService {
         if (participants.isEmpty()) return;
 
         String snippet = trimPreview(preview);
-
         boolean hasUser = participants.stream().anyMatch(u -> u.getAuthority() == Authority.USER);
 
-        // 운영진 단체방 -> 운영진끼리 서로 알림
+        // 운영진 단체방
         boolean isStaffGroup =
                 room.getRoomType() == ChatRoomType.ADMIN_GROUP
                         || room.getRoomType() == ChatRoomType.STAFF_GROUP
@@ -81,13 +88,13 @@ public class InquiryNotificationService {
 
         if (isStaffGroup) {
             String title = "새 운영 메시지";
-            String body = sender.getNickname() + " : " + snippet;
+            String body = safeNick(sender) + " : " + snippet;
 
             Map<String, String> data = Map.of(
                     "type", "STAFF_NEW_MESSAGE",
                     "roomId", room.getId(),
                     "fromUserId", String.valueOf(sender.getUserId()),
-                    "fromNickname", sender.getNickname()
+                    "fromNickname", safeNick(sender)
             );
 
             for (ChatUserSummary p : participants) {
@@ -96,7 +103,6 @@ public class InquiryNotificationService {
                     if (Objects.equals(p.getUserId(), sender.getUserId())) continue;
                     if (p.getAuthority() != Authority.ADMIN && p.getAuthority() != Authority.INQUIRY) continue;
 
-                    // 운영진 단체방은 CHAT 카테고리로 저장/표시 추천
                     pushService.sendToUser(p.getUserId(), title, body, data, NotificationCategory.CHAT, true);
                 } catch (Exception e) {
                     log.warn("[InquiryNotify] STAFF_GROUP 알림 실패 roomId={}, toUserId={}", room.getId(), p.getUserId(), e);
@@ -104,7 +110,6 @@ public class InquiryNotificationService {
             }
             return;
         }
-
 
         List<ChatUserSummary> customers = participants.stream()
                 .filter(u -> u.getAuthority() == Authority.USER)
@@ -122,13 +127,13 @@ public class InquiryNotificationService {
         if (senderIsCustomer) {
             // 고객 -> 운영진 전체
             String title = "새 문의 메시지";
-            String body = sender.getNickname() + "님의 새 문의 메시지: " + snippet;
+            String body = safeNick(sender) + "님의 새 문의 메시지: " + snippet;
 
             Map<String, String> data = Map.of(
                     "type", "INQUIRY_NEW_MESSAGE",
                     "roomId", room.getId(),
                     "fromUserId", String.valueOf(sender.getUserId()),
-                    "fromNickname", sender.getNickname()
+                    "fromNickname", safeNick(sender)
             );
 
             for (ChatUserSummary h : handlers) {
@@ -144,7 +149,7 @@ public class InquiryNotificationService {
             return;
         }
 
-        // 운영진(ADMIN/INQUIRY) -> 고객 + 다른 운영진(본인 제외)
+        // 운영진 -> 고객 + 다른 운영진(본인 제외)
         String title = "문의 답변이 도착했습니다";
         String body = "담당자의 답변: " + snippet;
 
@@ -152,9 +157,9 @@ public class InquiryNotificationService {
                 "type", "INQUIRY_REPLY",
                 "roomId", room.getId(),
                 "fromUserId", String.valueOf(sender.getUserId()),
-                "fromNickname", sender.getNickname()
+                "fromNickname", safeNick(sender)
         );
-        //  고객
+
         for (ChatUserSummary c : customers) {
             try {
                 if (c.getUserId() == null) continue;
@@ -163,9 +168,9 @@ public class InquiryNotificationService {
                 log.warn("[InquiryNotify] 운영진->고객 알림 실패 roomId={}, customerId={}", room.getId(), c.getUserId(), e);
             }
         }
-        // 다른 운영진에게도(관리자 모니터링)
+
         String staffTitle = "문의방 새 메시지";
-        String staffBody = sender.getNickname() + " : " + snippet;
+        String staffBody = safeNick(sender) + " : " + snippet;
 
         for (ChatUserSummary h : handlers) {
             try {
@@ -178,10 +183,11 @@ public class InquiryNotificationService {
             }
         }
     }
+
     private String safeNick(ChatUserSummary u) {
-        if (u == null) return "";
+        if (u == null) return "알 수 없음";
         if (u.getNickname() != null && !u.getNickname().isBlank()) return u.getNickname();
-        if (u.getEmail() != null) return u.getEmail();
+        if (u.getEmail() != null && !u.getEmail().isBlank()) return u.getEmail();
         return "알 수 없음";
     }
 

@@ -63,7 +63,7 @@ public class UserService {
     @Transactional
     public User createSpecialUser(AdminUserRegisterDto adminUserRegisterDto, Authority authority) {
         if (userRepository.findByEmail(adminUserRegisterDto.getEmail()).isPresent()) {
-            throw new RuntimeException("이미 존재하는 이메일입니다.");
+            throw new BadRequestException("EMAIL_ALREADY_EXISTS", "이미 존재하는 이메일입니다.");
         }
 
         String encodedPassword = passwordEncoder.encode(adminUserRegisterDto.getPassword());
