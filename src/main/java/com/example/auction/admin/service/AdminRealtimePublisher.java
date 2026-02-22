@@ -22,7 +22,7 @@ public class AdminRealtimePublisher {
             AdminOverviewResponse dto = adminOverviewService.getOverview();
             messagingTemplate.convertAndSend("/topic/admin/overview", dto);
         } catch (Exception e) {
-            log.warn("admin overview push failed: {}", e.getMessage());
+//            log.warn("admin overview push failed: {}", e.getMessage());
         }
     }
 }

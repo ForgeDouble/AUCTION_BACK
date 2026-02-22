@@ -162,7 +162,7 @@ public class AuctionTickScheduler {
     }
 
     /**
-     * 4) 알림 Tick: 10분/5분 전 알림을 각 ZSET에서 드레인
+     * Tick: 10분/5분 전 알림을 각 ZSET에서 드레인
      *    - 각 알림마다 락으로 한번만 발송
      */
     @Scheduled(fixedDelay = 5_000L, initialDelay = 40_000L)
