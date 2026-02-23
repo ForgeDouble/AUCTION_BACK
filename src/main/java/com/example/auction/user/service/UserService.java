@@ -37,20 +37,25 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomTokenExpiredStrategy customTokenExpiredStrategy;
     private final UserStatusService userStatusService;
-    public UserService(UserRepository userRepository, ProductRepository productRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy, UserStatusService userStatusService) {
+    private final ValidationService validationService;
+
+    public UserService(UserRepository userRepository, ProductRepository productRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider, CustomTokenExpiredStrategy customTokenExpiredStrategy, UserStatusService userStatusService, ValidationService validationService) {
         this.userRepository = userRepository;
         this.productRepository = productRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.customTokenExpiredStrategy = customTokenExpiredStrategy;
         this.userStatusService = userStatusService;
+        this.validationService = validationService;
     }
 
     /* 회원가입 */
     @Transactional
     public User register(UserRegisterDto registerDto) {
+        validationService.validateRegister(registerDto);
+
         if (userRepository.findByEmail(registerDto.getEmail()).isPresent()) {
-            throw new RuntimeException("이미 존재하는 이메일입니다.");
+            throw new BadRequestException("EMAIL_ALREADY_EXISTS", "이미 존재하는 이메일입니다.");
         }
         String encodedPassword = passwordEncoder.encode(registerDto.getPassword());
         User newUser = registerDto.toEntity();
