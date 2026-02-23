@@ -148,30 +148,49 @@ public class UserService {
     public void delete(UserDeleteDto deleteDto, String deletedBy) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new RuntimeException("현재 로그인한 유저 정보를 찾을 수 없습니다."));
+        if (deleteDto == null || deleteDto.getUserId() == null) {
+            log.warn("[USER_ID_REQUIRED] deleteDto or userId null. email={}", email);
+            throw new BadRequestException("USER_ID_REQUIRED", "탈퇴할 사용자 ID가 필요합니다.");
+        }
 
-        User targetUser = userRepository.findById(deleteDto.getUserId())
-                .orElseThrow(() -> new RuntimeException("삭제하려는 유저가 존재하지 않습니다."));
+        User me = userRepository.findByEmailAndDelYn(email, DelYN.N)
+                .orElseThrow(() -> {
+                    log.warn("[INVALID_USER] delete requester not found. email={}", email);
+                    return new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다.");
+                });
 
-        //  본인 탈퇴 허용
-        if (user.getUserId().equals(targetUser.getUserId())) {
-        // 자기 자신 삭제는 허용
-        } else {
-            // 본인이 ADMIN 이 아니면, 남을 지울 수 없음
-            if (user.getAuthority() != Authority.ADMIN) {
-                throw new RuntimeException("본인 또는 관리자만 탈퇴할 수 있습니다.");
+        User target = userRepository.findById(deleteDto.getUserId())
+                .filter(user -> user.getDelYn() == DelYN.N)
+                .orElseThrow(() -> {
+                    log.warn("[USER_NOT_FOUND] delete target not found. targetUserId={}", deleteDto.getUserId());
+                    return new ResourceNotFoundException("USER_NOT_FOUND", "삭제하려는 유저가 존재하지 않습니다.");
+                });
+
+        // 본인 탈퇴 허용
+        if (!me.getUserId().equals(target.getUserId())) {
+            // 본인이 ADMIN이 아니면 남 삭제 불가
+            if (me.getAuthority() != Authority.ADMIN) {
+                log.warn("[USER_DELETE_FORBIDDEN] meUserId={}, targetUserId={}", me.getUserId(), target.getUserId());
+                throw new UnauthorizedAccessException("USER_DELETE_FORBIDDEN", "본인 또는 관리자만 탈퇴할 수 있습니다.");
             }
 
-            // 타겟이 ADMIN 인 경우, 상위 ADMIN 만 삭제 가능 -> USERID 가 더 작은 쪽으로 셋팅
-            if (targetUser.getAuthority() == Authority.ADMIN) {
-                if (user.getUserId() >= targetUser.getUserId()) {
-                    throw new RuntimeException("상위 ADMIN만 하위 ADMIN 계정을 삭제할 수 있습니다.");
+            // 타겟이 ADMIN이면 상위 ADMIN만 삭제 가능 (userId 작은 쪽이 상위)
+            if (target.getAuthority() == Authority.ADMIN) {
+                if (me.getUserId() >= target.getUserId()) {
+                    log.warn("[ADMIN_DELETE_FORBIDDEN] meUserId={}, targetAdminId={}", me.getUserId(), target.getUserId());
+                    throw new UnauthorizedAccessException("ADMIN_DELETE_FORBIDDEN", "상위 ADMIN만 하위 ADMIN 계정을 삭제할 수 있습니다.");
                 }
             }
         }
-        targetUser.softDelete();
-        userRepository.save(targetUser);
+
+        try {
+            target.softDelete();
+            userRepository.save(target);
+        } catch (Exception e) {
+            log.error("[USER_DELETE_FAILED] soft delete fail. meUserId={}, targetUserId={}",
+                    me.getUserId(), target.getUserId(), e);
+            throw new InternalErrorException("USER_DELETE_FAILED", "탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+        }
     }
 
 
