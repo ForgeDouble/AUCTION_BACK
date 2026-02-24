@@ -2,6 +2,7 @@ package com.example.auction.user.service;
 
 import com.example.auction.common.exception.BadRequestException;
 import com.example.auction.user.dto.UserRegisterDto;
+import com.example.auction.user.dto.UserUpdateDto;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,6 +17,12 @@ public class ValidationService {
         validateAddress(dto.getAddress());
         validatePassword(dto.getPassword());
         validateGender(dto.getGender());
+    }
+
+    public void validateUpdateProfile(UserUpdateDto dto) {
+        validateNickname(dto.getNickname());
+        validatePhone(dto.getPhone());
+        validateAddress(dto.getAddress());
     }
 
     private void validateEmail(String email) {
