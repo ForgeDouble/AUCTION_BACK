@@ -144,6 +144,8 @@ public class UserService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
+
+        validationService.validateUpdateProfile(dto);
         user.update(dto);
         userRepository.save(user);
     }
