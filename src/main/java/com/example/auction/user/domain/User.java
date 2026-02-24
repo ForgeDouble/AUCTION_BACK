@@ -76,8 +76,8 @@ public class User extends BaseTimeEntity {
     private Boolean birthdayCalendarEnabled = false;
 
     public void update(UserUpdateDto dto) {
-        if (dto.getName() != null && !dto.getName().isBlank()) {
-            this.name = dto.getName().trim();
+        if (dto.getNickname() != null && !dto.getNickname().isBlank()) {
+            this.name = dto.getNickname().trim();
         }
         if (dto.getAddress() != null && !dto.getAddress().isBlank()) {
             this.address = dto.getAddress().trim();
