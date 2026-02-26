@@ -179,16 +179,30 @@ public class NotificationService {
         int sz = Math.min(Math.max(size, 1), 50);
         PageRequest pageRequest = PageRequest.of(pg, sz);
 
-        Page<Notification> result;
-        if (category == null) {
-            result = notificationRepository.findByUserAndDelYnOrderByCreatedAtDesc(user, DelYN.N, pageRequest);
-        } else {
-            result = notificationRepository.findByUserAndCategoryAndDelYnOrderByCreatedAtDesc(user, category, DelYN.N, pageRequest);
+        try {
+            Page<Notification> result;
+            if (category == null) {
+                result = notificationRepository.findByUserAndDelYnOrderByCreatedAtDesc(user, DelYN.N, pageRequest);
+            } else {
+                result = notificationRepository.findByUserAndCategoryAndDelYnOrderByCreatedAtDesc(
+                        user, category, DelYN.N, pageRequest
+                );
+            }
+
+            return result.stream()
+                    .map(NotificationResponseDto::fromEntity)
+                    .toList();
+
+        } catch (Exception e) {
+            log.error("[NOTIFICATION_LIST_FAILED] 알림 목록 조회 실패 userId={}, email={}, category={}, page={}, size={}",
+                    user.getUserId(), user.getEmail(), category, pg, sz, e);
+
+            throw new InternalErrorException(
+                    "NOTIFICATION_LIST_FAILED",
+                    "알림을 불러오지 못했습니다. 잠시 후 다시 시도해주세요."
+            );
         }
 
-        return result.stream()
-                .map(NotificationResponseDto::fromEntity)
-                .toList();
     }
 
     @Transactional(readOnly = true)
