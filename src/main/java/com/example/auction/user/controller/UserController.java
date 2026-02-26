@@ -7,6 +7,7 @@ import com.example.auction.user.service.AdminBirthdayCalendarService;
 import com.example.auction.user.service.UserImageService;
 import com.example.auction.user.service.UserService;
 import com.example.auction.user.service.UserStatusService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/user")
 public class UserController {

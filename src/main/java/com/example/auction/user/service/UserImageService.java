@@ -65,7 +65,8 @@ public class UserImageService {
     @Transactional
     public void deleteAvatar() {
         Long userId = currentUserId();
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다."));
 
         String oldKey = user.getProfileImageKey();
         user.setProfileImageKey(null);
