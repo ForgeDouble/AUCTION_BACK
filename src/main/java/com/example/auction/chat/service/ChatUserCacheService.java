@@ -3,12 +3,11 @@ package com.example.auction.chat.service;
 import com.example.auction.chat.dto.ChatUserSummary;
 import com.example.auction.common.auth.SecurityUserContext;
 import com.example.auction.common.domain.DelYN;
-import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
 import com.example.auction.user.repository.UserSummaryProjection;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -21,13 +20,14 @@ public class ChatUserCacheService {
 
     private final UserRepository userRepository;
     private final RedisTemplate<String, Object> redisTemplate;
-
+    private final ObjectMapper objectMapper;
     public ChatUserCacheService(
             UserRepository userRepository,
-            @Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate
-    ) {
+            @Qualifier("chatRoom") RedisTemplate<String, Object> redisTemplate,
+            ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
 
     private String key(String email) {
@@ -45,17 +45,41 @@ public class ChatUserCacheService {
             throw new RuntimeException("유저를 찾을 수 없습니다. email=" + email);
         return summary;
     }
+    private ChatUserSummary toSummary(Object cached) {
+        if (cached == null) return null;
 
+        if (cached instanceof ChatUserSummary s) return s;
+
+        if (cached instanceof java.util.Map<?, ?> map) {
+            try {
+                return objectMapper.convertValue(map, ChatUserSummary.class);
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+        if (cached instanceof String str) {
+            try {
+                return objectMapper.readValue(str, ChatUserSummary.class);
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+
+        return null;
+    }
     // 현재 로그인 유저용 헬퍼
     public Map<String, ChatUserSummary> getByEmails(Collection<String> emails) {
         if (emails == null || emails.isEmpty()) return Map.of();
 
         List<String> emailList = emails.stream()
-                .filter(email -> email != null && !email.isBlank()).distinct().toList();
+                .filter(email -> email != null && !email.isBlank())
+                .distinct()
+                .toList();
 
         List<String> keys = emailList.stream().map(this::key).toList();
 
         List<Object> cachedList = redisTemplate.opsForValue().multiGet(keys);
+
         Map<String, ChatUserSummary> result = new HashMap<>();
         List<String> missing = new ArrayList<>();
 
@@ -63,7 +87,8 @@ public class ChatUserCacheService {
             Object c = (cachedList == null) ? null : cachedList.get(i);
             String email = emailList.get(i);
 
-            if (c instanceof ChatUserSummary summary) {
+            ChatUserSummary summary = toSummary(c);
+            if (summary != null) {
                 result.put(email, summary);
             } else {
                 missing.add(email);
@@ -73,19 +98,22 @@ public class ChatUserCacheService {
         if (!missing.isEmpty()) {
             List<UserSummaryProjection> rows = userRepository.findUserSummariesByEmails(missing, DelYN.N);
 
-            for (UserSummaryProjection userSummaryProjection : rows) {
+            for (UserSummaryProjection row : rows) {
                 ChatUserSummary summary = ChatUserSummary.builder()
-                        .userId(userSummaryProjection.getUserId())
-                        .email(userSummaryProjection.getEmail())
-                        .nickname(userSummaryProjection.getNickname())
-                        .authority(userSummaryProjection.getAuthority())
-                        .profileImageUrl(userSummaryProjection.getProfileImageUrl())
+                        .userId(row.getUserId())
+                        .email(row.getEmail())
+                        .nickname(row.getNickname())
+                        .authority(row.getAuthority())
+                        .profileImageUrl(row.getProfileImageUrl())
                         .build();
 
-                result.put(userSummaryProjection.getEmail(), summary);
+                result.put(row.getEmail(), summary);
 
-                // 캐시 저장
-                redisTemplate.opsForValue().set(key(userSummaryProjection.getEmail()), summary, Duration.ofHours(2));
+                redisTemplate.opsForValue().set(
+                        key(row.getEmail()),
+                        summary,
+                        Duration.ofHours(2)
+                );
             }
         }
 
