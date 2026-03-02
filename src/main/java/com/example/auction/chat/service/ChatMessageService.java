@@ -56,6 +56,35 @@ public class ChatMessageService {
         this.chatUserCacheService = chatUserCacheService;
     }
 
+    private static final int MAX_TALK_LEN = 1000;
+    private static final int MAX_URL_LEN = 2000;
+    private static final int MAX_PREVIEW_LEN = 120;
+
+    private void validateMessage(ChatMessageRequest req) {
+        MessageType type = req.getMessageType() == null ? MessageType.TALK : req.getMessageType();
+        String msg = req.getMessage();
+
+        if (type == MessageType.TALK) {
+            if (msg == null || msg.trim().isEmpty()) {
+                throw new IllegalArgumentException("메시지는 비어 있을 수 없습니다.");
+            }
+            if (msg.length() > MAX_TALK_LEN) {
+                throw new IllegalArgumentException("메시지는 최대 " + MAX_TALK_LEN + "자까지 입력할 수 있습니다.");
+            }
+            return;
+        }
+        if (msg != null) {
+            int limit = (type == MessageType.IMAGE || type == MessageType.FILE) ? MAX_URL_LEN : MAX_TALK_LEN;
+            if (msg.length() > limit) {
+                throw new IllegalArgumentException("메시지는 최대 " + limit + "자까지 입력할 수 있습니다.");
+            }
+        }
+    }
+    private String clip(String s, int max) {
+        if (s == null) return null;
+        String t = s.trim();
+        return (t.length() <= max) ? t : t.substring(0, max) + "…";
+    }
 
     // 최신 메시지 조회
     public List<ChatMessageResponse> getRecent(String roomId, int size) {
@@ -80,7 +109,7 @@ public class ChatMessageService {
     }
 
     public void send(ChatMessageRequest chatMessageRequest) {
-
+        validateMessage(chatMessageRequest);
         ChatUserSummary senderSummary = chatUserCacheService.getCurrentUser();
 
         String senderEmail = senderSummary.getEmail();
@@ -99,7 +128,7 @@ public class ChatMessageService {
         chatMessage = chatMessageRepository.save(chatMessage);
 
         // 최근 메시지 미리보기 + 시간 업데이트
-        String preview = previewText(chatMessageRequest);
+        String preview = clip(previewText(chatMessageRequest), MAX_PREVIEW_LEN);
         room.updateRecent(preview, Instant.now());
         chatRoomRepository.save(room);
 
