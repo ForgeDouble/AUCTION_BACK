@@ -20,6 +20,7 @@ public class ChatMessageResponse {
     private String id;
     private String roomId;
     private String senderId;
+    private Long senderUserId;
     private String senderNickname;
     private String senderProfileImageUrl;
     private MessageType messageType;
@@ -45,6 +46,7 @@ public class ChatMessageResponse {
                 .id(chatMessage.getId())
                 .roomId(chatMessage.getRoomId())
                 .senderId(chatMessage.getSenderId())
+                .senderUserId(sender != null ? sender.getUserId() : null)
                 .senderNickname(nickname)
                 .sender(sender)
                 .senderProfileImageUrl(profileUrl)
