@@ -721,12 +721,12 @@ public class ProductService {
 	public void deleteProduct(Long productId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
-                .orElseThrow(() -> new ResourceNotFoundException("로그인중인 User"));
+                .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
 		ensureCanMutateProducts(user, "상품 삭제");
 
 		Product product = productRepository.findById(productId)
-				.orElseThrow(() -> new ResourceNotFoundException("Product"));
+				.orElseThrow(() -> new InternalErrorException("PRODUCT_NOT_FOUND", "유효하지 않은 상품입니다. productId:" + productId));
 
         if(user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
             throw new UnauthorizedAccessException("해당 상품을 삭제할 권한이 없습니다.");
