@@ -359,12 +359,12 @@ public class BidService {
 
     /* 마이페이지 user 입찰 내역 조회 */
     @Transactional(readOnly = true)
-    public Page<BidAllByUserDto> readBidAllByUser(int page, int size, Status status) {
+    public Page<BidAllByUserDto> readBidAllByUser(int page, int size, List<Status> statuses, IsWinned isWinned) {
 
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<BidAllByUserDto> bidListDto = bidRepository.findBidAllByUser(email, status, pageable);
+        Page<BidAllByUserDto> bidListDto = bidRepository.findBidAllByUser(email, statuses, isWinned, pageable);
 
         return bidListDto;
     }

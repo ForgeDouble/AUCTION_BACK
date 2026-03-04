@@ -5,6 +5,8 @@ import com.example.auction.user.dto.UserRegisterDto;
 import com.example.auction.user.dto.UserUpdateDto;
 import org.springframework.stereotype.Service;
 
+
+
 @Service
 public class ValidationService {
 
@@ -20,7 +22,6 @@ public class ValidationService {
     }
 
     public void validateUpdateProfile(UserUpdateDto dto) {
-        validateNickname(dto.getNickname());
         validatePhone(dto.getPhone());
         validateAddress(dto.getAddress());
     }
@@ -40,9 +41,11 @@ public class ValidationService {
     }
 
     private void validateNickname(String nickname) {
-        if (nickname == null || nickname.isBlank()) return;
+        if (nickname == null || nickname.trim().isEmpty()) return;
+
         if (!nickname.matches("^[\\w가-힣]{2,8}$"))
             throw new BadRequestException("INVALID_NICKNAME_FORMAT", "닉네임은 2~8자 (한글/영문/숫자)만 가능합니다.");
+
     }
 
     private void validateBirthday(String birthday) {
