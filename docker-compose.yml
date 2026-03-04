@@ -17,6 +17,18 @@ services:
     networks:
       - auction-net
 
+  rabbitmq_auction:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq_auction
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: auction_user
+      RABBITMQ_DEFAULT_PASS: auction_pass
+    networks:
+      - auction-net
 volumes:
   mongo_auction_data:
 
