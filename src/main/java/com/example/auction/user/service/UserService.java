@@ -142,8 +142,20 @@ public class UserService {
     @Transactional
     public void updateUser(UserUpdateDto dto) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
+
+        if (Boolean.TRUE.equals(user.getViewOnly())) {
+            throw new UnauthorizedAccessException("USER_TEMPORARY_RESTRICTED", "임시 제한 상태라 닉네임을 변경할 수 없습니다.");
+        }
+
+        if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
+            String until = user.getSuspendedUntil()
+                    .truncatedTo(ChronoUnit.SECONDS)
+                    .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            throw new AccountSuspendedException("정지된 계정입니다." , until);
+        }
 
         validationService.validateUpdateProfile(dto);
         user.update(dto);
