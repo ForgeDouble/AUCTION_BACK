@@ -355,7 +355,6 @@ public class ChatRoomService {
             Iterable<Product> products = productRepository.findAllById(productIds);
             for (Product p : products) {
                 if (p == null) continue;
-                // 프로젝트 필드명이 productName이 아닐 수 있어서 필요하면 여기만 수정
                 productNameMap.put(p.getProductId(), p.getProductName());
             }
         }

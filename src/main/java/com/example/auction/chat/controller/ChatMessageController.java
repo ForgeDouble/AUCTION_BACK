@@ -4,6 +4,7 @@ import com.example.auction.chat.dto.ChatMessageRequest;
 import com.example.auction.chat.dto.ChatMessageResponse;
 import com.example.auction.chat.service.ChatMessageService;
 import com.example.auction.common.dto.CommonResDto;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,7 +23,7 @@ public class ChatMessageController {
     // 메시지 전송(REST 경유)
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/send")
-    public ResponseEntity<CommonResDto> send(@RequestBody ChatMessageRequest chatMessageRequest) {
+    public ResponseEntity<CommonResDto> send(@Valid @RequestBody ChatMessageRequest chatMessageRequest) {
         chatMessageService.send(chatMessageRequest);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "메시지 전송", null));
     }

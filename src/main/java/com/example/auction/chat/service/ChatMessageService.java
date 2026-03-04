@@ -9,6 +9,7 @@ import com.example.auction.chat.dto.ChatUserSummary;
 import com.example.auction.chat.repository.ChatMessageRepository;
 import com.example.auction.chat.repository.ChatRoomRepository;
 import com.example.auction.common.domain.DelYN;
+import com.example.auction.notification.domain.NotificationCategory;
 import com.example.auction.notification.service.InquiryNotificationService;
 import com.example.auction.push.service.PushService;
 import com.example.auction.user.domain.User;
@@ -56,10 +57,39 @@ public class ChatMessageService {
         this.chatUserCacheService = chatUserCacheService;
     }
 
+    private static final int MAX_TALK_LEN = 1000;
+    private static final int MAX_URL_LEN = 2000;
+    private static final int MAX_PREVIEW_LEN = 120;
+
+    private void validateMessage(ChatMessageRequest req) {
+        MessageType type = req.getMessageType() == null ? MessageType.TALK : req.getMessageType();
+        String msg = req.getMessage();
+
+        if (type == MessageType.TALK) {
+            if (msg == null || msg.trim().isEmpty()) {
+                throw new IllegalArgumentException("메시지는 비어 있을 수 없습니다.");
+            }
+            if (msg.length() > MAX_TALK_LEN) {
+                throw new IllegalArgumentException("메시지는 최대 " + MAX_TALK_LEN + "자까지 입력할 수 있습니다.");
+            }
+            return;
+        }
+        if (msg != null) {
+            int limit = (type == MessageType.IMAGE || type == MessageType.FILE) ? MAX_URL_LEN : MAX_TALK_LEN;
+            if (msg.length() > limit) {
+                throw new IllegalArgumentException("메시지는 최대 " + limit + "자까지 입력할 수 있습니다.");
+            }
+        }
+    }
+    private String clip(String s, int max) {
+        if (s == null) return null;
+        String t = s.trim();
+        return (t.length() <= max) ? t : t.substring(0, max) + "…";
+    }
 
     // 최신 메시지 조회
     public List<ChatMessageResponse> getRecent(String roomId, int size) {
-        //  메시지 목록 조회 (기존과 동일)
+        //  메시지 목록 조회
         List<ChatMessage> messages = chatMessageRepository
                 .findByRoomIdOrderByCreatedAtDesc(roomId, PageRequest.of(0, size));
 
@@ -80,7 +110,7 @@ public class ChatMessageService {
     }
 
     public void send(ChatMessageRequest chatMessageRequest) {
-
+        validateMessage(chatMessageRequest);
         ChatUserSummary senderSummary = chatUserCacheService.getCurrentUser();
 
         String senderEmail = senderSummary.getEmail();
@@ -89,7 +119,7 @@ public class ChatMessageService {
         ChatRoom room = chatRoomRepository.findById(chatMessageRequest.getRoomId())
                 .orElseThrow(() -> new IllegalArgumentException("방을 찾을 수 없습니다."));
 
-        // 방 참가자인지 검증
+        // 방 참가자 검증
         if (!room.getParticipantIds().contains(senderEmail)) {
             throw new IllegalStateException("해당 채팅방 참가자만 메시지를 보낼 수 있습니다.");
         }
@@ -99,18 +129,18 @@ public class ChatMessageService {
         chatMessage = chatMessageRepository.save(chatMessage);
 
         // 최근 메시지 미리보기 + 시간 업데이트
-        String preview = previewText(chatMessageRequest);
+        String preview = clip(previewText(chatMessageRequest), MAX_PREVIEW_LEN);
         room.updateRecent(preview, Instant.now());
         chatRoomRepository.save(room);
 
-        // 문의방이면 담당자/고객 알림 (기존 로직 유지)
+        // 문의방이면 담당자/고객 알림
         try {
             inquiryNotificationService.notifyOnNewMessage(room, senderSummary, preview);
         } catch (Exception e) {
             log.warn("[ChatNotify] 문의 메시지 알림 처리 중 예외 roomId={}", room.getId(), e);
         }
 
-        // 상대방 읽음/알림 처리 (기존 로직 그대로)
+        // 상대방 읽음/알림 처리
         for (String uid : room.getParticipantIds()) {
             if (uid.equals(senderEmail)) continue;
 
@@ -118,6 +148,10 @@ public class ChatMessageService {
             if (presentRoom == null || !presentRoom.equals(room.getId())) {
                 chatStateService.incUnread(room.getId(), uid);
                 chatStateService.incAlarm(uid);
+
+                if (!room.isAdminChat()) {
+                    notifyNormalChat(uid, room, senderSummary, preview);
+                }
             }
         }
         // sendInquiryPushIfNeeded(room, chatMessage, preview);
@@ -155,7 +189,50 @@ public class ChatMessageService {
         };
     }
 
+    private void notifyNormalChat(String receiverEmail, ChatRoom room, ChatUserSummary sender, String preview) {
+        try {
+            ChatUserSummary receiver = null;
+            try {
+                receiver = chatUserCacheService.getByEmail(receiverEmail);
+            } catch (Exception ignored) {}
 
+            if (receiver == null || receiver.getUserId() == null) return;
+
+            String senderName =
+                    (sender.getNickname() != null && !sender.getNickname().isBlank())
+                            ? sender.getNickname()
+                            : (sender.getEmail() != null ? sender.getEmail() : "상대");
+
+            String snippet = trimPreview(preview);
+
+            String title = "새 채팅 메시지";
+            String body  = senderName + " : " + snippet;
+
+            Map<String, String> data = Map.of(
+                    "type", "CHAT_NEW_MESSAGE",
+                    "roomId", room.getId(),
+                    "fromUserId", String.valueOf(sender.getUserId()),
+                    "fromNickname", senderName
+            );
+
+            pushService.sendToUser(
+                    receiver.getUserId(),
+                    title,
+                    body,
+                    data,
+                    NotificationCategory.CHAT,
+                    true
+            );
+
+        } catch (Exception e) {
+            log.warn("[ChatNotify] NORMAL chat notify fail roomId={}, to={}", room.getId(), receiverEmail, e);
+        }
+    }
+    private String trimPreview(String text) {
+        if (text == null) return "";
+        int limit = 30;
+        return (text.length() <= limit) ? text : text.substring(0, limit) + "...";
+    }
 
 //    private void sendInquiryPushIfNeeded(ChatRoom room, ChatMessage chatMessage, String preview) {
 //        try {
