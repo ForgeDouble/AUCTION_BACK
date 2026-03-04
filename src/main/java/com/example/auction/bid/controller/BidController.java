@@ -1,5 +1,6 @@
 package com.example.auction.bid.controller;
 
+import com.example.auction.bid.domain.IsWinned;
 import com.example.auction.bid.dto.*;
 import com.example.auction.bid.service.BidService;
 import com.example.auction.common.dto.CommonResDto;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -109,12 +111,20 @@ public class BidController {
     public ResponseEntity<?> getBidAllByUser(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) List<String> statuses,
+            @RequestParam(required = false) String isWinned
     ) {
-        Status statusEnum = (status != null && !status.isBlank() && !status.equalsIgnoreCase("null"))
-                ? Status.valueOf(status.toUpperCase())
+        List<Status> statusEnums = null;
+        if (statuses != null && !statuses.isEmpty()) {
+            statusEnums = statuses.stream()
+                    .map(Status::valueOf)
+                    .collect(Collectors.toList());
+        }
+        IsWinned isWinnedEnum = (isWinned != null && !isWinned.isBlank() && !isWinned.equalsIgnoreCase("null"))
+                ? IsWinned.valueOf(isWinned.toUpperCase())
                 : null;
-        Page<BidAllByUserDto> bidAllByUserDtos = bidService.readBidAllByUser(page, size, statusEnum);
+
+        Page<BidAllByUserDto> bidAllByUserDtos = bidService.readBidAllByUser(page, size, statusEnums, isWinnedEnum);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "입찰 목록 조회 성공", bidAllByUserDtos));
     }
 

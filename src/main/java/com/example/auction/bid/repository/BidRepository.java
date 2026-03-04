@@ -42,11 +42,13 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
             WHERE img2.product.productId = p.productId
         )
     WHERE b.user.email = :email
-    AND (:status IS NULL OR p.status = :status)
+    AND (:statuses IS NULL OR p.status IN :statuses)
+    AND (:isWinned IS NULL OR b.isWinned = :isWinned)
     ORDER BY b.createdAt DESC
 """)
     Page<BidAllByUserDto> findBidAllByUser(@Param("email") String email,
-                                           @Param("status") Status status,
+                                           @Param("statuses") List<Status> statuses,
+                                           @Param("isWinned") IsWinned isWinned,
                                            Pageable pageable);
 
     Optional<Bid> findBidByUuid(String uuid);
