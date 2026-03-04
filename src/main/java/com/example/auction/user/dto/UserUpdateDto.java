@@ -10,7 +10,6 @@ import lombok.*;
 @Builder
 @ToString
 public class UserUpdateDto {
-    private String nickname;
     private String phone;
     private String address;
 }
