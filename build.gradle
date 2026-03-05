@@ -76,4 +76,45 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    systemProperty 'file.encoding', 'UTF-8'
+
+    testLogging {
+        events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
+        exceptionFormat 'full'
+        showExceptions true
+        showCauses true
+        showStackTraces true
+    }
+
+    afterTest { descriptor, result ->
+        def status
+        switch (result.resultType) {
+            case org.gradle.api.tasks.testing.TestResult.ResultType.SUCCESS:
+                status = 'PASS'
+                break
+            case org.gradle.api.tasks.testing.TestResult.ResultType.FAILURE:
+                status = 'FAIL'
+                break
+            case org.gradle.api.tasks.testing.TestResult.ResultType.SKIPPED:
+                status = 'SKIP'
+                break
+            default:
+                status = result.resultType.toString()
+        }
+
+        println "[${status}] ${descriptor.className} > ${descriptor.name}"
+    }
+
+    afterSuite { descriptor, result ->
+        if (descriptor.parent == null) {
+            println ''
+            println '==================== TEST SUMMARY ===================='
+            println "ALL TEST     : ${result.testCount}"
+            println "SUCCESS      : ${result.successfulTestCount}"
+            println "FAILURE      : ${result.failedTestCount}"
+            println "SKIP         : ${result.skippedTestCount}"
+            println "RESULT       : ${result.resultType}"
+            println '======================================================'
+        }
+    }
 }
