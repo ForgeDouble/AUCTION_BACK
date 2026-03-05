@@ -99,3 +99,20 @@ storage:
   public-base-url: ""
   # 허용 타입
   allowed-mime: image/jpeg,image/png,image/webp,image/gif
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: auction-back
+    distribution:
+      percentiles-histogram:
+        "http.server.requests": true
+      slo:
+        "http.server.requests": 100ms, 200ms, 500ms, 1s, 3s
