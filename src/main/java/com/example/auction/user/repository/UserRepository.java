@@ -10,13 +10,26 @@ import com.example.auction.user.dto.SellerDto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
+import com.example.auction.user.repository.LoginUserProjection;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
+    @Query("""
+    select u.userId as userId,
+           u.email as email,
+           u.password as password,
+           u.authority as authority,
+           u.nickname as nickname,
+           u.profileImageUrl as profileImageUrl,
+           u.delYn as delYn,
+           u.suspendedUntil as suspendedUntil
+    from User u
+    where u.email = :email
+""")
+    Optional<LoginUserProjection> findLoginUserByEmail(@Param("email") String email);
     Optional<User> findByEmail(String email);
     Optional<User> findByEmailAndDelYn(String email, DelYN delyn);
     Optional<User> findByUserIdAndDelYn(Long userId, DelYN delyn);

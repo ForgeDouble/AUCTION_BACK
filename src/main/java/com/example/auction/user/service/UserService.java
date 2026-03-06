@@ -11,6 +11,7 @@ import com.example.auction.user.domain.User;
 import com.example.auction.user.domain.UserStatus;
 import com.example.auction.user.dto.*;
 import com.example.auction.user.repository.UserRepository;
+import com.example.auction.user.repository.LoginUserProjection;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -94,12 +95,11 @@ public class UserService {
     /* 로그인 */
     @Transactional(readOnly = true)
     public String login(UserLoginDto dto) {
-        User user = userRepository.findByEmail(dto.getEmail())
+        LoginUserProjection user = userRepository.findLoginUserByEmail(dto.getEmail())
                 .orElseThrow(() -> {
-                    log.warn("[INVALID_LOGIN_CREDENTIALS] email={}",dto.getEmail());
-                    return new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
-                }
-        );
+                    log.warn("[INVALID_LOGIN_CREDENTIALS] email={}", dto.getEmail());
+                    return new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS", "이메일 또는 비밀번호가 일치하지 않습니다.");
+                });
 
         if (user.getDelYn() == DelYN.Y) {
             log.warn("[DELETED_ACCOUNT] email={}", dto.getEmail());
@@ -119,7 +119,13 @@ public class UserService {
             throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
-        String token = jwtTokenProvider.createAccessToken(user);
+        String token = jwtTokenProvider.createAccessToken(
+                user.getUserId(),
+                user.getEmail(),
+                user.getNickname(),
+                user.getProfileImageUrl(),
+                user.getAuthority()
+        );
 
         long ttl = jwtTokenProvider.getRemainingSeconds(token);
         customTokenExpiredStrategy.save(user.getEmail(), token, ttl);
@@ -355,7 +361,13 @@ public class UserService {
             throw new RuntimeException("정지된 계정입니다.");
         }
 
-        String newToken = jwtTokenProvider.createAccessToken(user);
+        String newToken = jwtTokenProvider.createAccessToken(
+                user.getUserId(),
+                user.getEmail(),
+                user.getNickname(),
+                user.getProfileImageUrl(),
+                user.getAuthority()
+        );
 
         long ttl = jwtTokenProvider.getRemainingSeconds(newToken);
         customTokenExpiredStrategy.save(email, newToken, ttl);
