@@ -75,7 +75,7 @@ app:
 
 jwt:
   secretKeyRT: mySuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSecretKey
-  expirationRT: 3600000
+  expirationRT: 7200000 # 2시간 설정
 
 logging:
   level:
