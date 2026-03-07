@@ -32,13 +32,13 @@ spring:
     url: jdbc:mariadb://localhost:3306/auction?allowPublicKeyRetrieval=true&useSsl=false
     username: root
     password: 0569
-#    hikari:
-#      pool-name: AuctionHikariPool
-#      maximum-pool-size: 20
-##      minimum-idle: 20
-#      connection-timeout: 5000
-#      idle-timeout: 600000
-#      max-lifetime: 1800000
+    hikari:
+      pool-name: AuctionHikariPool
+      maximum-pool-size: 20
+#      minimum-idle: 20
+      connection-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
     open-in-view: false

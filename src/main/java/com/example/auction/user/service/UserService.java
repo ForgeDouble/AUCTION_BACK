@@ -93,7 +93,7 @@ public class UserService {
     }
 
     /* 로그인 */
-    @Transactional(readOnly = true)
+//    @Transactional(readOnly = true)
     public String login(UserLoginDto dto) {
         LoginUserProjection user = userRepository.findLoginUserByEmail(dto.getEmail())
                 .orElseThrow(() -> {
