@@ -95,15 +95,19 @@ public class UserService {
     /* 로그인 */
 //    @Transactional(readOnly = true)
     public String login(UserLoginDto dto) {
+//        long totalStart = System.nanoTime();
+//
+//        long t1 = System.nanoTime();
         LoginUserProjection user = userRepository.findLoginUserByEmail(dto.getEmail())
                 .orElseThrow(() -> {
                     log.warn("[INVALID_LOGIN_CREDENTIALS] email={}", dto.getEmail());
                     return new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS", "이메일 또는 비밀번호가 일치하지 않습니다.");
                 });
+//        long findUserMs = (System.nanoTime() - t1) / 1_000_000;
 
         if (user.getDelYn() == DelYN.Y) {
             log.warn("[DELETED_ACCOUNT] email={}", dto.getEmail());
-            throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+            throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS", "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
         if (user.getSuspendedUntil() != null && LocalDateTime.now().isBefore(user.getSuspendedUntil())) {
@@ -111,14 +115,19 @@ public class UserService {
                     .truncatedTo(ChronoUnit.SECONDS)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             log.warn("[SUSPENDED_ACCOUNT] email={} until={}", dto.getEmail(), until);
-            throw new AccountSuspendedException("정지된 계정입니다." , until);
+            throw new AccountSuspendedException("정지된 계정입니다.", until);
         }
 
-        if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            log.warn("[INVALID_LOGIN_CREDENTIALS] email:{}", dto.getEmail());
-            throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS" , "이메일 또는 비밀번호가 일치하지 않습니다.");
+//        long t2 = System.nanoTime();
+        boolean passwordMatched = passwordEncoder.matches(dto.getPassword(), user.getPassword());
+//        long passwordMatchMs = (System.nanoTime() - t2) / 1_000_000;
+
+        if (!passwordMatched) {
+            log.warn("[INVALID_LOGIN_CREDENTIALS] email={}", dto.getEmail());
+            throw new UnauthorizedAccessException("INVALID_LOGIN_CREDENTIALS", "이메일 또는 비밀번호가 일치하지 않습니다.");
         }
 
+//        long t3 = System.nanoTime();
         String token = jwtTokenProvider.createAccessToken(
                 user.getUserId(),
                 user.getEmail(),
@@ -126,12 +135,42 @@ public class UserService {
                 user.getProfileImageUrl(),
                 user.getAuthority()
         );
+//        long tokenCreateMs = (System.nanoTime() - t3) / 1_000_000;
 
+//        long t4 = System.nanoTime();
         long ttl = jwtTokenProvider.getRemainingSeconds(token);
         customTokenExpiredStrategy.save(user.getEmail(), token, ttl);
+//        long redisSaveMs = (System.nanoTime() - t4) / 1_000_000;
 
-        // 로그인 시점부터 접속중 처리
+//        long t5 = System.nanoTime();
         userStatusService.touch(user.getEmail());
+//        long touchMs = (System.nanoTime() - t5) / 1_000_000;
+//
+//        long totalMs = (System.nanoTime() - totalStart) / 1_000_000;
+//
+//        if (totalMs >= 300) {
+//            log.warn(
+//                    "[LOGIN_TIMING] email={}, total={}ms, findUser={}ms, passwordMatch={}ms, tokenCreate={}ms, redisSave={}ms, touch={}ms",
+//                    dto.getEmail(),
+//                    totalMs,
+//                    findUserMs,
+//                    passwordMatchMs,
+//                    tokenCreateMs,
+//                    redisSaveMs,
+//                    touchMs
+//            );
+//        } else {
+//            log.info(
+//                    "[LOGIN_TIMING] email={}, total={}ms, findUser={}ms, passwordMatch={}ms, tokenCreate={}ms, redisSave={}ms, touch={}ms",
+//                    dto.getEmail(),
+//                    totalMs,
+//                    findUserMs,
+//                    passwordMatchMs,
+//                    tokenCreateMs,
+//                    redisSaveMs,
+//                    touchMs
+//            );
+//        }
 
         return token;
     }
