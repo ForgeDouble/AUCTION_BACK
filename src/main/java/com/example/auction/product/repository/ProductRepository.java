@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.ProductListDto;
+import com.example.auction.product.dto.ProductListPageRowDto;
 import com.example.auction.product.dto.ProductWithBidDto;
 import com.example.auction.product.dto.Top3ProductDto;
 import org.springframework.data.domain.Page;
@@ -370,5 +371,61 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<UserLongRow> sumSoldGmvBySellerBetween(
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
+    );
+
+
+    @Query(
+            value = """
+        select new com.example.auction.product.dto.ProductListPageRowDto(
+            p.productId,
+            p.productName,
+            p.productContent,
+            p.price,
+            p.status,
+            p.category.categoryId,
+            p.user.email,
+            p.createdAt
+        )
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and (:categoryIds is null or p.category.categoryId in :categoryIds)
+          and (:search is null or :search = '' or lower(p.productName) like lower(concat('%', :search, '%')))
+          and (:minPrice is null or p.price >= :minPrice)
+          and (:maxPrice is null or p.price <= :maxPrice)
+          and (:statuses is null or p.status in :statuses)
+        order by
+          case
+            when :sortBy = 'ENDING_SOON'
+            then case
+                   when p.status = com.example.auction.product.domain.Status.PROCESSING then 0
+                   else 1
+                 end
+          end asc,
+          case
+            when :sortBy = 'ENDING_SOON' then p.createdAt
+          end asc,
+          p.createdAt desc
+        """,
+            countQuery = """
+        select count(p)
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and (:categoryIds is null or p.category.categoryId in :categoryIds)
+          and (:search is null or :search = '' or lower(p.productName) like lower(concat('%', :search, '%')))
+          and (:minPrice is null or p.price >= :minPrice)
+          and (:maxPrice is null or p.price <= :maxPrice)
+          and (:statuses is null or p.status in :statuses)
+        """
+    )
+    Page<ProductListPageRowDto> findActiveProductsLite(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("search") String search,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
+            @Param("sortBy") String sortBy,
+            Pageable pageable
     );
 }

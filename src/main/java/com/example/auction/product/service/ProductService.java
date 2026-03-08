@@ -25,14 +25,12 @@ import com.example.auction.product.repository.ProductImageRepository;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
+import com.example.auction.wishlist.repository.WishlistRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scheduling.TaskScheduler;
@@ -59,12 +57,13 @@ public class ProductService {
     private final RedisTemplate<String, Object> bidRedisTemplate;
     private final RedisTemplate<String, String> bidStringRedisTemplate;
 
-
+    private final WishlistRepository wishlistRepository;
     private final ProductImageRepository productImageRepository;
     private final ProductImageService productImageService;
 
     private final AuctionNotificationService auctionNotificationService;
     private final TaskScheduler taskScheduler;
+
 
     private static final int AUCTION_DURATION_HOURS = 24;
 
@@ -76,7 +75,7 @@ public class ProductService {
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
 
-            ProductImageRepository productImageRepository, ProductImageService productImageService, AuctionNotificationService auctionNotificationService, TaskScheduler taskScheduler
+            WishlistRepository wishlistRepository, ProductImageRepository productImageRepository, ProductImageService productImageService, AuctionNotificationService auctionNotificationService, TaskScheduler taskScheduler
     ) {
 
         this.categoryRepository = categoryRepository;
@@ -86,6 +85,7 @@ public class ProductService {
         this.objectMapper = objectMapper;
         this.bidRedisTemplate = bidRedisTemplate;
         this.bidStringRedisTemplate = bidStringRedisTemplate;
+        this.wishlistRepository = wishlistRepository;
         this.productImageRepository = productImageRepository;
 
         this.productImageService = productImageService;
@@ -558,7 +558,6 @@ public class ProductService {
             String sortBy,
             Pageable pageable
     ) {
-        // 1. 카테고리 ID 리스트 생성 (부모 선택 시 모든 자식 포함)
         List<Long> categoryIds = null;
 
         if (categoryId != null && categoryId != 0) {
@@ -567,53 +566,29 @@ public class ProductService {
             categoryIds = getAllChildCategoryIds(category);
         }
 
-        // 2. 상품 조회
-        Page<ProductListDto> page = productRepository.findActiveProducts(
+        String normalizedSort = normalizePublicSort(sortBy);
+
+        if (isLightweightSort(normalizedSort)) {
+            return getProductsLite(
+                    categoryIds,
+                    search,
+                    minPrice,
+                    maxPrice,
+                    statuses,
+                    normalizedSort,
+                    pageable
+            );
+        }
+
+        return productRepository.findActiveProducts(
                 categoryIds,
                 search,
                 minPrice,
                 maxPrice,
                 statuses,
-                sortBy,
+                normalizedSort,
                 pageable
         );
-
-        // 3. 비어있으면 바로 반환
-        if (page.isEmpty()) {
-            return page;
-        }
-
-        // 4. 카테고리 path 설정
-        List<ProductListDto> dtos = page.getContent();
-
-        // categoryId 추출
-        Set<Long> productCategoryIds = dtos.stream()
-                .map(ProductListDto::getCategoryId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        if (!productCategoryIds.isEmpty()) {
-            // Category 조회 (batch fetch로 parent들도 효율적으로 조회됨)
-            Map<Long, Category> categoryMap = categoryRepository
-                    .findAllById(productCategoryIds)
-                    .stream()
-                    .collect(Collectors.toMap(Category::getCategoryId, c -> c));
-
-            // path 설정
-            dtos.forEach(dto -> {
-                if (dto.getCategoryId() != null) {
-                    Category cat = categoryMap.get(dto.getCategoryId());
-                    if (cat != null) {
-                        List<CategoryBasicDto> path = cat.getPath().stream()
-                                .map(CategoryBasicDto::fromEntity)
-                                .collect(Collectors.toList());
-                        dto.setPath(path);
-                    }
-                }
-            });
-        }
-
-        return page;
     }
 
     // 재귀적으로 모든 하위 카테고리 ID 수집
@@ -772,5 +747,137 @@ public class ProductService {
                 pageable
         );
 
+    }
+
+    private String normalizePublicSort(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return "NEWEST";
+        }
+
+        return switch (sortBy) {
+            case "NEWEST" -> "NEWEST";
+            case "ENDING_SOON" -> "ENDING_SOON";
+            case "MOST_BIDS" -> "MOST_BIDS";
+            case "PRICE_ASC" -> "PRICE_ASC";
+            case "PRICE_DESC" -> "PRICE_DESC";
+            default -> "NEWEST";
+        };
+    }
+
+    private boolean isLightweightSort(String sortBy) {
+        return "NEWEST".equals(sortBy) || "ENDING_SOON".equals(sortBy);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductListDto> getProductsLite(
+            List<Long> categoryIds,
+            String search,
+            Long minPrice,
+            Long maxPrice,
+            List<Status> statuses,
+            String sortBy,
+            Pageable pageable
+    ) {
+        String normalizedSearch = (search == null || search.isBlank()) ? null : search.trim();
+
+        Page<ProductListPageRowDto> page = productRepository.findActiveProductsLite(
+                categoryIds,
+                normalizedSearch,
+                minPrice,
+                maxPrice,
+                statuses,
+                sortBy,
+                pageable
+        );
+
+        if (page.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, page.getTotalElements());
+        }
+
+        List<ProductListDto> dtos = page.getContent().stream()
+                .map(ProductListPageRowDto::toList)
+                .toList();
+
+        List<Long> productIds = dtos.stream()
+                .map(ProductListDto::getProductId)
+                .toList();
+
+        applyCategoryPaths(dtos);
+        applyPreviewImages(dtos, productIds);
+        applyWishlistCounts(dtos, productIds);
+        applyBidSummaries(dtos, productIds);
+
+        return new PageImpl<>(dtos, pageable, page.getTotalElements());
+    }
+
+    private void applyCategoryPaths(List<ProductListDto> dtos) {
+        Set<Long> categoryIdSet = dtos.stream()
+                .map(ProductListDto::getCategoryId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (categoryIdSet.isEmpty()) {
+            return;
+        }
+
+        Map<Long, Category> categoryMap = categoryRepository.findAllById(categoryIdSet).stream()
+                .collect(Collectors.toMap(Category::getCategoryId, c -> c));
+
+        for (ProductListDto dto : dtos) {
+            if (dto.getCategoryId() == null) {
+                continue;
+            }
+
+            Category category = categoryMap.get(dto.getCategoryId());
+            if (category == null) {
+                continue;
+            }
+
+            dto.setPath(category.getPath().stream()
+                    .map(CategoryBasicDto::fromEntity)
+                    .collect(Collectors.toList()));
+        }
+    }
+
+    private void applyPreviewImages(List<ProductListDto> dtos, List<Long> productIds) {
+        Map<Long, String> previewMap = new HashMap<>();
+
+        for (ProductImageRepository.ProductPreviewRow row : productImageRepository.findPreviewRows(productIds)) {
+            previewMap.putIfAbsent(row.getProductId(), row.getUrl());
+        }
+
+        for (ProductListDto dto : dtos) {
+            dto.setPreviewImageUrl(previewMap.get(dto.getProductId()));
+        }
+    }
+
+    private void applyWishlistCounts(List<ProductListDto> dtos, List<Long> productIds) {
+        Map<Long, Long> countMap = new HashMap<>();
+
+        for (WishlistRepository.ProductWishlistCountRow row : wishlistRepository.countByProductIds(productIds)) {
+            countMap.put(row.getProductId(), row.getCnt());
+        }
+
+        for (ProductListDto dto : dtos) {
+            dto.setWishlistCount(countMap.getOrDefault(dto.getProductId(), 0L));
+        }
+    }
+
+    private void applyBidSummaries(List<ProductListDto> dtos, List<Long> productIds) {
+        Map<Long, Long> bidCountMap = new HashMap<>();
+        Map<Long, Long> maxBidMap = new HashMap<>();
+
+        for (BidRepository.BidCountRow row : bidRepository.countByProductIds(productIds)) {
+            bidCountMap.put(row.getProductId(), row.getCnt());
+        }
+
+        for (BidRepository.BidMaxRow row : bidRepository.maxBidAmountByProductIds(productIds)) {
+            maxBidMap.put(row.getProductId(), row.getMaxAmount());
+        }
+
+        for (ProductListDto dto : dtos) {
+            dto.setBidCount(bidCountMap.getOrDefault(dto.getProductId(), 0L));
+            dto.setLatestBidAmount(maxBidMap.getOrDefault(dto.getProductId(), 0L));
+        }
     }
 }
