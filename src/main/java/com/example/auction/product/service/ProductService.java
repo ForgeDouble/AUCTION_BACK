@@ -148,6 +148,7 @@ public class ProductService {
         Product product = dto.toProduct();
         product.setCategory(category);
         product.setUser(user);
+        product.syncSearchName();
         Product savedProduct = productRepository.save(product);
 
         productImageService.uploadInitial(savedProduct.getProductId(), files);
@@ -567,11 +568,23 @@ public class ProductService {
         }
 
         String normalizedSort = normalizePublicSort(sortBy);
+        String normalizedSearch = normalizeSearchKeyword(search);
+
+        if (normalizedSearch != null) {
+            return getProductsSearch(
+                    categoryIds,
+                    normalizedSearch,
+                    minPrice,
+                    maxPrice,
+                    statuses,
+                    normalizedSort,
+                    pageable
+            );
+        }
 
         if (isLightweightSort(normalizedSort)) {
             return getProductsLite(
                     categoryIds,
-                    search,
                     minPrice,
                     maxPrice,
                     statuses,
@@ -582,13 +595,66 @@ public class ProductService {
 
         return productRepository.findActiveProducts(
                 categoryIds,
-                search,
+                null,
                 minPrice,
                 maxPrice,
                 statuses,
                 normalizedSort,
                 pageable
         );
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductListDto> getProductsSearch(
+            List<Long> categoryIds,
+            String searchKeyword,
+            Long minPrice,
+            Long maxPrice,
+            List<Status> statuses,
+            String sortBy,
+            Pageable pageable
+    ) {
+        Page<Long> idPage = productRepository.findSearchProductIds(
+                categoryIds,
+                searchKeyword,
+                minPrice,
+                maxPrice,
+                statuses,
+                sortBy,
+                pageable
+        );
+
+        if (idPage.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, idPage.getTotalElements());
+        }
+
+        List<Long> productIds = idPage.getContent();
+
+        List<ProductListPageRowDto> rows = productRepository.findLiteRowsByProductIds(productIds);
+
+        Map<Long, ProductListPageRowDto> rowMap = rows.stream()
+                .collect(Collectors.toMap(ProductListPageRowDto::getProductId, row -> row));
+
+        List<ProductListDto> dtos = productIds.stream()
+                .map(rowMap::get)
+                .filter(Objects::nonNull)
+                .map(ProductListPageRowDto::toDto)
+                .collect(Collectors.toList());
+
+        applyCategoryPaths(dtos);
+        applyPreviewImages(dtos, productIds);
+        applyWishlistCounts(dtos, productIds);
+        applyBidSummaries(dtos, productIds);
+
+        return new PageImpl<>(dtos, pageable, idPage.getTotalElements());
+    }
+    private String normalizeSearchKeyword(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+        return search.trim()
+                .replaceAll("\\s+", " ")
+                .toLowerCase();
     }
 
     // 재귀적으로 모든 하위 카테고리 ID 수집
@@ -771,18 +837,14 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Page<ProductListDto> getProductsLite(
             List<Long> categoryIds,
-            String search,
             Long minPrice,
             Long maxPrice,
             List<Status> statuses,
             String sortBy,
             Pageable pageable
     ) {
-        String normalizedSearch = (search == null || search.isBlank()) ? null : search.trim();
-
         Page<ProductListPageRowDto> page = productRepository.findActiveProductsLite(
                 categoryIds,
-                normalizedSearch,
                 minPrice,
                 maxPrice,
                 statuses,
@@ -795,7 +857,7 @@ public class ProductService {
         }
 
         List<ProductListDto> dtos = page.getContent().stream()
-                .map(ProductListPageRowDto::toList)
+                .map(ProductListPageRowDto::toDto)
                 .toList();
 
         List<Long> productIds = dtos.stream()

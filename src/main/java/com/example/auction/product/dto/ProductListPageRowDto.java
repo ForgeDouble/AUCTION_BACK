@@ -20,7 +20,7 @@ public class ProductListPageRowDto {
     private String userEmail;
     private LocalDateTime createdAt;
 
-    public ProductListDto toList() {
+    public ProductListDto toDto() {
         ProductListDto dto = ProductListDto.builder()
                 .productId(productId)
                 .productName(productName)

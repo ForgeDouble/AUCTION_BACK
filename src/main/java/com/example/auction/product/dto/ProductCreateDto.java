@@ -34,7 +34,7 @@ public class ProductCreateDto {
     @Min(1000)
     @ThousandUnit
     private Long price;
-    @NotBlank
+    @NotNull
     private Status status;
     
     public Product toProduct() {
