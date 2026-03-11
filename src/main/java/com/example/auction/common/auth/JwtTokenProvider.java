@@ -38,20 +38,26 @@ public class JwtTokenProvider {
 
 
     /* 토큰 생성 */
-    public String createAccessToken(User user) {
+    public String createAccessToken(
+            Long userId,
+            String email,
+            String nickname,
+            String profileImageUrl,
+            Authority authority
+    ) {
         Map<String, Object> claims = new HashMap<>();
 
-        claims.put("email", user.getEmail());
-        claims.put("uid", user.getUserId());
-        claims.put("nick", user.getNickname());
-        claims.put("purl", user.getProfileImageUrl());
-        claims.put("authority", user.getAuthority().name());
+        claims.put("email", email);
+        claims.put("uid", userId);
+        claims.put("nick", nickname);
+        claims.put("purl", profileImageUrl);
+        claims.put("authority", authority.name());
 
         long now = System.currentTimeMillis();
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(user.getEmail())
+                .setSubject(email)
                 .setIssuedAt(new Date(now))
                 .setExpiration(new Date(now + expirationTime))
                 .signWith(signingKey, SignatureAlgorithm.HS512)

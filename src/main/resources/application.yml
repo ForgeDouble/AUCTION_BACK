@@ -2,7 +2,9 @@ server:
   port: 8080
 
 spring:
-
+  # 테스트 환경을 위한 프로필 설정 -> 후 제거
+#  profiles:
+#    active: seed-login-users
   data:
     redis:
       host: localhost
@@ -30,6 +32,13 @@ spring:
     url: jdbc:mariadb://localhost:3306/auction?allowPublicKeyRetrieval=true&useSsl=false
     username: root
     password: 1234
+    hikari:
+      pool-name: AuctionHikariPool
+      maximum-pool-size: 20
+#      minimum-idle: 20
+      connection-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
     open-in-view: false
@@ -39,6 +48,8 @@ spring:
       format_sql: false
       ddl-auto: update
     show-sql: true
+    # 성능테스트 를 위한 sql 보기 끔
+#    show-sql: false
 
   mail:
     host: smtp.gmail.com
@@ -64,7 +75,7 @@ app:
 
 jwt:
   secretKeyRT: mySuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSecretKey
-  expirationRT: 3600000
+  expirationRT: 7200000 # 2시간 설정
 
 logging:
   level:
@@ -99,3 +110,20 @@ storage:
   public-base-url: ""
   # 허용 타입
   allowed-mime: image/jpeg,image/png,image/webp,image/gif
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: auction-back
+    distribution:
+      percentiles-histogram:
+        "http.server.requests": true
+      slo:
+        "http.server.requests": 100ms, 200ms, 500ms, 1s, 3s
