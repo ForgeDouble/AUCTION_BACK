@@ -571,6 +571,17 @@ public class ProductService {
         String normalizedSearch = normalizeSearchKeyword(search);
 
         if (normalizedSearch != null) {
+            if ("NEWEST".equals(normalizedSort)) {
+                return getProductsSearchNewest(
+                        categoryIds,
+                        normalizedSearch,
+                        minPrice,
+                        maxPrice,
+                        statuses,
+                        pageable
+                );
+            }
+
             return getProductsSearch(
                     categoryIds,
                     normalizedSearch,
@@ -648,6 +659,50 @@ public class ProductService {
 
         return new PageImpl<>(dtos, pageable, idPage.getTotalElements());
     }
+
+    @Transactional(readOnly = true)
+    public Page<ProductListDto> getProductsSearchNewest(
+            List<Long> categoryIds,
+            String searchKeyword,
+            Long minPrice,
+            Long maxPrice,
+            List<Status> statuses,
+            Pageable pageable
+    ) {
+        Page<Long> idPage = productRepository.findSearchProductIdsNewest(
+                categoryIds,
+                searchKeyword,
+                minPrice,
+                maxPrice,
+                statuses,
+                pageable
+        );
+
+        if (idPage.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, idPage.getTotalElements());
+        }
+
+        List<Long> productIds = idPage.getContent();
+
+        List<ProductListPageRowDto> rows = productRepository.findLiteRowsByProductIds(productIds);
+
+        Map<Long, ProductListPageRowDto> rowMap = rows.stream()
+                .collect(Collectors.toMap(ProductListPageRowDto::getProductId, row -> row));
+
+        List<ProductListDto> dtos = productIds.stream()
+                .map(rowMap::get)
+                .filter(Objects::nonNull)
+                .map(ProductListPageRowDto::toDto)
+                .collect(Collectors.toList());
+
+        applyCategoryPaths(dtos);
+        applyPreviewImages(dtos, productIds);
+        applyWishlistCounts(dtos, productIds);
+        applyBidSummaries(dtos, productIds);
+
+        return new PageImpl<>(dtos, pageable, idPage.getTotalElements());
+    }
+
     private String normalizeSearchKeyword(String search) {
         if (search == null || search.isBlank()) {
             return null;
@@ -843,14 +898,25 @@ public class ProductService {
             String sortBy,
             Pageable pageable
     ) {
-        Page<ProductListPageRowDto> page = productRepository.findActiveProductsLite(
-                categoryIds,
-                minPrice,
-                maxPrice,
-                statuses,
-                sortBy,
-                pageable
-        );
+        Page<ProductListPageRowDto> page;
+
+        if ("ENDING_SOON".equals(sortBy)) {
+            page = productRepository.findActiveProductsEndingSoonLite(
+                    categoryIds,
+                    minPrice,
+                    maxPrice,
+                    statuses,
+                    pageable
+            );
+        } else {
+            page = productRepository.findActiveProductsNewestLite(
+                    categoryIds,
+                    minPrice,
+                    maxPrice,
+                    statuses,
+                    pageable
+            );
+        }
 
         if (page.isEmpty()) {
             return new PageImpl<>(List.of(), pageable, page.getTotalElements());
