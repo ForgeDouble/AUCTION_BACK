@@ -603,4 +603,54 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("statuses") List<Status> statuses,
             Pageable pageable
     );
+
+
+    interface ProductListSummaryRow {
+        Long getProductId();
+        String getPreviewImageUrl();
+        Long getWishlistCount();
+        Long getBidCount();
+        Long getLatestBidAmount();
+    }
+
+    @Query(value = """
+    select
+        p.product_id as productId,
+        img.url as previewImageUrl,
+        coalesce(wc.wishlist_count, 0) as wishlistCount,
+        coalesce(bs.bid_count, 0) as bidCount,
+        coalesce(bs.max_bid_amount, 0) as latestBidAmount
+    from product p
+    left join (
+        select pi.product_id, pi.url
+        from product_image pi
+        join (
+            select product_id, min(position) as min_position
+            from product_image
+            where product_id in (:productIds)
+            group by product_id
+        ) pim
+          on pim.product_id = pi.product_id
+         and pim.min_position = pi.position
+    ) img
+      on img.product_id = p.product_id
+    left join (
+        select w.product_id, count(*) as wishlist_count
+        from wishlist w
+        where w.product_id in (:productIds)
+        group by w.product_id
+    ) wc
+      on wc.product_id = p.product_id
+    left join (
+        select b.product_id,
+               count(*) as bid_count,
+               max(b.bid_amount) as max_bid_amount
+        from bid b
+        where b.product_id in (:productIds)
+        group by b.product_id
+    ) bs
+      on bs.product_id = p.product_id
+    where p.product_id in (:productIds)
+    """, nativeQuery = true)
+    List<ProductListSummaryRow> findProductListSummaryRows(@Param("productIds") List<Long> productIds);
 }

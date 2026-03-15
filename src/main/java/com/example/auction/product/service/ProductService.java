@@ -652,10 +652,12 @@ public class ProductService {
                 .map(ProductListPageRowDto::toDto)
                 .collect(Collectors.toList());
 
+//        applyCategoryPaths(dtos);
+//        applyPreviewImages(dtos, productIds);
+//        applyWishlistCounts(dtos, productIds);
+//        applyBidSummaries(dtos, productIds);
         applyCategoryPaths(dtos);
-        applyPreviewImages(dtos, productIds);
-        applyWishlistCounts(dtos, productIds);
-        applyBidSummaries(dtos, productIds);
+        applyListSummaries(dtos, productIds);
 
         return new PageImpl<>(dtos, pageable, idPage.getTotalElements());
     }
@@ -695,10 +697,12 @@ public class ProductService {
                 .map(ProductListPageRowDto::toDto)
                 .collect(Collectors.toList());
 
+//        applyCategoryPaths(dtos);
+//        applyPreviewImages(dtos, productIds);
+//        applyWishlistCounts(dtos, productIds);
+//        applyBidSummaries(dtos, productIds);
         applyCategoryPaths(dtos);
-        applyPreviewImages(dtos, productIds);
-        applyWishlistCounts(dtos, productIds);
-        applyBidSummaries(dtos, productIds);
+        applyListSummaries(dtos, productIds);
 
         return new PageImpl<>(dtos, pageable, idPage.getTotalElements());
     }
@@ -930,10 +934,12 @@ public class ProductService {
                 .map(ProductListDto::getProductId)
                 .toList();
 
+//        applyCategoryPaths(dtos);
+//        applyPreviewImages(dtos, productIds);
+//        applyWishlistCounts(dtos, productIds);
+//        applyBidSummaries(dtos, productIds);
         applyCategoryPaths(dtos);
-        applyPreviewImages(dtos, productIds);
-        applyWishlistCounts(dtos, productIds);
-        applyBidSummaries(dtos, productIds);
+        applyListSummaries(dtos, productIds);
 
         return new PageImpl<>(dtos, pageable, page.getTotalElements());
     }
@@ -1006,6 +1012,32 @@ public class ProductService {
         for (ProductListDto dto : dtos) {
             dto.setBidCount(bidCountMap.getOrDefault(dto.getProductId(), 0L));
             dto.setLatestBidAmount(maxBidMap.getOrDefault(dto.getProductId(), 0L));
+        }
+    }
+
+    private void applyListSummaries(List<ProductListDto> dtos, List<Long> productIds) {
+        Map<Long, ProductRepository.ProductListSummaryRow> summaryMap =
+                productRepository.findProductListSummaryRows(productIds).stream()
+                        .collect(Collectors.toMap(
+                                ProductRepository.ProductListSummaryRow::getProductId,
+                                row -> row
+                        ));
+
+        for (ProductListDto dto : dtos) {
+            ProductRepository.ProductListSummaryRow row = summaryMap.get(dto.getProductId());
+
+            if (row == null) {
+                dto.setPreviewImageUrl(null);
+                dto.setWishlistCount(0L);
+                dto.setBidCount(0L);
+                dto.setLatestBidAmount(0L);
+                continue;
+            }
+
+            dto.setPreviewImageUrl(row.getPreviewImageUrl());
+            dto.setWishlistCount(row.getWishlistCount() != null ? row.getWishlistCount() : 0L);
+            dto.setBidCount(row.getBidCount() != null ? row.getBidCount() : 0L);
+            dto.setLatestBidAmount(row.getLatestBidAmount() != null ? row.getLatestBidAmount() : 0L);
         }
     }
 }
