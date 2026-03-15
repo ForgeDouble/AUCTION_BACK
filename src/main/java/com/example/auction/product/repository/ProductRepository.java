@@ -487,4 +487,165 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     where p.productId in :productIds
 """)
     List<ProductListPageRowDto> findLiteRowsByProductIds(@Param("productIds") List<Long> productIds);
+
+
+    @Query(value = """
+    select new com.example.auction.product.dto.ProductListPageRowDto(
+        p.productId,
+        p.productName,
+        p.productContent,
+        p.price,
+        p.status,
+        p.category.categoryId,
+        p.user.email,
+        p.createdAt
+    )
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+    and p.blocked = false
+    and (:categoryIds is null or p.category.categoryId in :categoryIds)
+    and (:minPrice is null or p.price >= :minPrice)
+    and (:maxPrice is null or p.price <= :maxPrice)
+    and (:statuses is null or p.status in :statuses)
+    order by p.createdAt desc
+    """,
+            countQuery = """
+select count(p)
+from Product p
+where p.delYn = com.example.auction.common.domain.DelYN.N
+and p.blocked = false
+and (:categoryIds is null or p.category.categoryId in :categoryIds)
+and (:minPrice is null or p.price >= :minPrice)
+and (:maxPrice is null or p.price <= :maxPrice)
+and (:statuses is null or p.status in :statuses)
+"""
+    )
+    Page<ProductListPageRowDto> findVisibleNewestPage(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
+            Pageable pageable
+    );
+
+
+    // SEARCH
+    @Query(value = """
+    select new com.example.auction.product.dto.ProductListPageRowDto(
+        p.productId,
+        p.productName,
+        p.productContent,
+        p.price,
+        p.status,
+        p.category.categoryId,
+        p.user.email,
+        p.createdAt
+    )
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+    and p.blocked = false
+    and (:categoryIds is null or p.category.categoryId in :categoryIds)
+    and (:minPrice is null or p.price >= :minPrice)
+    and (:maxPrice is null or p.price <= :maxPrice)
+    and (:statuses is null or p.status in :statuses)
+    and p.productNameSearch like concat(:searchKeyword, '%')
+    order by p.createdAt desc
+""",
+            countQuery = """
+select count(p)
+from Product p
+where p.delYn = com.example.auction.common.domain.DelYN.N
+and p.blocked = false
+and (:categoryIds is null or p.category.categoryId in :categoryIds)
+and (:minPrice is null or p.price >= :minPrice)
+and (:maxPrice is null or p.price <= :maxPrice)
+and (:statuses is null or p.status in :statuses)
+and p.productNameSearch like concat(:searchKeyword, '%')
+"""
+    )
+    Page<ProductListPageRowDto> findVisibleSearchPage(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("searchKeyword") String searchKeyword,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
+            Pageable pageable
+    );
+
+    // PROCESSING
+    @Query(value = """
+    select new com.example.auction.product.dto.ProductListPageRowDto(
+        p.productId,
+        p.productName,
+        p.productContent,
+        p.price,
+        p.status,
+        p.category.categoryId,
+        p.user.email,
+        p.createdAt
+    )
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+    and p.blocked = false
+    and p.status = com.example.auction.product.domain.Status.PROCESSING
+    and (:categoryIds is null or p.category.categoryId in :categoryIds)
+    and (:minPrice is null or p.price >= :minPrice)
+    and (:maxPrice is null or p.price <= :maxPrice)
+    order by p.createdAt asc
+    """, countQuery = """
+        select count(p)
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+        and p.blocked = false
+        and p.status = com.example.auction.product.domain.Status.PROCESSING
+        and (:categoryIds is null or p.category.categoryId in :categoryIds)
+        and (:minPrice is null or p.price >= :minPrice)
+        and (:maxPrice is null or p.price <= :maxPrice)
+    """
+    )
+    Page<ProductListPageRowDto> findVisibleEndingSoonProcessingPage(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            Pageable pageable
+    );
+
+    //ENDING_SOON
+    @Query(value = """
+    select new com.example.auction.product.dto.ProductListPageRowDto(
+        p.productId,
+        p.productName,
+        p.productContent,
+        p.price,
+        p.status,
+        p.category.categoryId,
+        p.user.email,
+        p.createdAt
+    )
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+    and p.blocked = false
+    and p.status <> com.example.auction.product.domain.Status.PROCESSING
+    and (:categoryIds is null or p.category.categoryId in :categoryIds)
+    and (:minPrice is null or p.price >= :minPrice)
+    and (:maxPrice is null or p.price <= :maxPrice)
+    order by p.createdAt asc
+    """,
+            countQuery = """
+    select count(p)
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+    and p.blocked = false
+    and p.status <> com.example.auction.product.domain.Status.PROCESSING
+    and (:categoryIds is null or p.category.categoryId in :categoryIds)
+    and (:minPrice is null or p.price >= :minPrice)
+    and (:maxPrice is null or p.price <= :maxPrice)
+    """
+    )
+    Page<ProductListPageRowDto> findVisibleEndingSoonNonProcessingPage(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            Pageable pageable
+    );
 }

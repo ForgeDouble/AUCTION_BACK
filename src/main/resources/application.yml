@@ -3,8 +3,8 @@ server:
 
 spring:
   # 테스트 환경을 위한 프로필 설정 -> 후 제거
-#  profiles:
-#    active: seed-login-users
+  profiles:
+    active: seed-login-users
   data:
     redis:
       host: localhost
