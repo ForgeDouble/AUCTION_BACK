@@ -488,6 +488,35 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 """)
     List<ProductListPageRowDto> findLiteRowsByProductIds(@Param("productIds") List<Long> productIds);
 
+    // NEWEST 캐시 사용을 위한 쿼리 추가
+    @Query("""
+    select new com.example.auction.product.dto.ProductListPageRowDto(
+        p.productId,
+        p.productName,
+        p.productContent,
+        p.price,
+        p.status,
+        p.category.categoryId,
+        p.user.email,
+        p.createdAt
+    )
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+      and (p.blocked = false or p.blocked is null)
+      and (:categoryIds is null or p.category.categoryId in :categoryIds)
+      and (:minPrice is null or p.price >= :minPrice)
+      and (:maxPrice is null or p.price <= :maxPrice)
+      and (:statuses is null or p.status in :statuses)
+    order by p.createdAt desc
+""")
+    List<ProductListPageRowDto> findActiveProductsNewestLiteContent(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
+            Pageable pageable
+    );
+
     // NEWEST
     @Query(
             value = """
@@ -653,4 +682,88 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     where p.product_id in (:productIds)
     """, nativeQuery = true)
     List<ProductListSummaryRow> findProductListSummaryRows(@Param("productIds") List<Long> productIds);
+
+    // ENDING SOON 캐시 사용을 위한 CONTENT 조회 쿼리
+    @Query("""
+    select new com.example.auction.product.dto.ProductListPageRowDto(
+        p.productId,
+        p.productName,
+        p.productContent,
+        p.price,
+        p.status,
+        p.category.categoryId,
+        p.user.email,
+        p.createdAt
+    )
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+      and (p.blocked = false or p.blocked is null)
+      and (:categoryIds is null or p.category.categoryId in :categoryIds)
+      and (:minPrice is null or p.price >= :minPrice)
+      and (:maxPrice is null or p.price <= :maxPrice)
+      and (:statuses is null or p.status in :statuses)
+    order by p.createdAt asc
+""")
+    List<ProductListPageRowDto> findActiveProductsEndingSoonLiteContent(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
+            Pageable pageable
+    );
+    // 목록 조회 캐시 쿼리
+    @Query("""
+    select count(p)
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+      and (p.blocked = false or p.blocked is null)
+      and (:categoryIds is null or p.category.categoryId in :categoryIds)
+      and (:minPrice is null or p.price >= :minPrice)
+      and (:maxPrice is null or p.price <= :maxPrice)
+      and (:statuses is null or p.status in :statuses)
+""")
+    long countActiveProductsLiteFiltered(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses
+    );
+    @Query("""
+    select p.productId
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+      and (p.blocked = false or p.blocked is null)
+      and (:categoryIds is null or p.category.categoryId in :categoryIds)
+      and (:minPrice is null or p.price >= :minPrice)
+      and (:maxPrice is null or p.price <= :maxPrice)
+      and (:statuses is null or p.status in :statuses)
+      and p.productNameSearch like concat(:searchKeyword, '%')
+    order by p.createdAt desc
+""")
+    List<Long> findSearchProductIdsNewestContent(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("searchKeyword") String searchKeyword,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
+            Pageable pageable
+    );
+    @Query("""
+    select count(p)
+    from Product p
+    where p.delYn = com.example.auction.common.domain.DelYN.N
+      and (p.blocked = false or p.blocked is null)
+      and (:categoryIds is null or p.category.categoryId in :categoryIds)
+      and (:minPrice is null or p.price >= :minPrice)
+      and (:maxPrice is null or p.price <= :maxPrice)
+      and (:statuses is null or p.status in :statuses)
+      and p.productNameSearch like concat(:searchKeyword, '%')
+""")
+    long countSearchProductsNewest(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("searchKeyword") String searchKeyword,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses
+    );
 }

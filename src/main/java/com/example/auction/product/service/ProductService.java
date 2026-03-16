@@ -63,7 +63,7 @@ public class ProductService {
 
     private final AuctionNotificationService auctionNotificationService;
     private final TaskScheduler taskScheduler;
-
+    private final ProductCountCacheService productCountCacheService;
 
     private static final int AUCTION_DURATION_HOURS = 24;
 
@@ -75,8 +75,8 @@ public class ProductService {
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
 
-            WishlistRepository wishlistRepository, ProductImageRepository productImageRepository, ProductImageService productImageService, AuctionNotificationService auctionNotificationService, TaskScheduler taskScheduler
-    ) {
+            WishlistRepository wishlistRepository, ProductImageRepository productImageRepository, ProductImageService productImageService, AuctionNotificationService auctionNotificationService, TaskScheduler taskScheduler,
+            ProductCountCacheService productCountCacheService) {
 
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -91,6 +91,7 @@ public class ProductService {
         this.productImageService = productImageService;
         this.auctionNotificationService = auctionNotificationService;
         this.taskScheduler = taskScheduler;
+        this.productCountCacheService = productCountCacheService;
     }
 
     private static final String KEY_AUCTION_START = "auction:start:";
@@ -671,7 +672,7 @@ public class ProductService {
             List<Status> statuses,
             Pageable pageable
     ) {
-        Page<Long> idPage = productRepository.findSearchProductIdsNewest(
+        List<Long> productIds = productRepository.findSearchProductIdsNewestContent(
                 categoryIds,
                 searchKeyword,
                 minPrice,
@@ -680,11 +681,20 @@ public class ProductService {
                 pageable
         );
 
-        if (idPage.isEmpty()) {
-            return new PageImpl<>(List.of(), pageable, idPage.getTotalElements());
-        }
+        long total = productCountCacheService.getOrLoad(
+                buildCountCacheKey("search-newest", categoryIds, searchKeyword, minPrice, maxPrice, statuses),
+                () -> productRepository.countSearchProductsNewest(
+                        categoryIds,
+                        searchKeyword,
+                        minPrice,
+                        maxPrice,
+                        statuses
+                )
+        );
 
-        List<Long> productIds = idPage.getContent();
+        if (productIds.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, total);
+        }
 
         List<ProductListPageRowDto> rows = productRepository.findLiteRowsByProductIds(productIds);
 
@@ -697,14 +707,10 @@ public class ProductService {
                 .map(ProductListPageRowDto::toDto)
                 .collect(Collectors.toList());
 
-//        applyCategoryPaths(dtos);
-//        applyPreviewImages(dtos, productIds);
-//        applyWishlistCounts(dtos, productIds);
-//        applyBidSummaries(dtos, productIds);
         applyCategoryPaths(dtos);
         applyListSummaries(dtos, productIds);
 
-        return new PageImpl<>(dtos, pageable, idPage.getTotalElements());
+        return new PageImpl<>(dtos, pageable, total);
     }
 
     private String normalizeSearchKeyword(String search) {
@@ -902,10 +908,10 @@ public class ProductService {
             String sortBy,
             Pageable pageable
     ) {
-        Page<ProductListPageRowDto> page;
+        List<ProductListPageRowDto> rows;
 
         if ("ENDING_SOON".equals(sortBy)) {
-            page = productRepository.findActiveProductsEndingSoonLite(
+            rows = productRepository.findActiveProductsEndingSoonLiteContent(
                     categoryIds,
                     minPrice,
                     maxPrice,
@@ -913,7 +919,7 @@ public class ProductService {
                     pageable
             );
         } else {
-            page = productRepository.findActiveProductsNewestLite(
+            rows = productRepository.findActiveProductsNewestLiteContent(
                     categoryIds,
                     minPrice,
                     maxPrice,
@@ -922,11 +928,21 @@ public class ProductService {
             );
         }
 
-        if (page.isEmpty()) {
-            return new PageImpl<>(List.of(), pageable, page.getTotalElements());
+        long total = productCountCacheService.getOrLoad(
+                buildCountCacheKey("list", categoryIds, null, minPrice, maxPrice, statuses),
+                () -> productRepository.countActiveProductsLiteFiltered(
+                        categoryIds,
+                        minPrice,
+                        maxPrice,
+                        statuses
+                )
+        );
+
+        if (rows.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, total);
         }
 
-        List<ProductListDto> dtos = page.getContent().stream()
+        List<ProductListDto> dtos = rows.stream()
                 .map(ProductListPageRowDto::toDto)
                 .toList();
 
@@ -934,14 +950,10 @@ public class ProductService {
                 .map(ProductListDto::getProductId)
                 .toList();
 
-//        applyCategoryPaths(dtos);
-//        applyPreviewImages(dtos, productIds);
-//        applyWishlistCounts(dtos, productIds);
-//        applyBidSummaries(dtos, productIds);
         applyCategoryPaths(dtos);
         applyListSummaries(dtos, productIds);
 
-        return new PageImpl<>(dtos, pageable, page.getTotalElements());
+        return new PageImpl<>(dtos, pageable, total);
     }
 
     private void applyCategoryPaths(List<ProductListDto> dtos) {
@@ -1039,5 +1051,41 @@ public class ProductService {
             dto.setBidCount(row.getBidCount() != null ? row.getBidCount() : 0L);
             dto.setLatestBidAmount(row.getLatestBidAmount() != null ? row.getLatestBidAmount() : 0L);
         }
+    }
+
+    // CACHE 사용을 위한 유틸 메서드
+    private String buildCountCacheKey(
+            String prefix,
+            List<Long> categoryIds,
+            String searchKeyword,
+            Long minPrice,
+            Long maxPrice,
+            List<Status> statuses
+    ) {
+        String categoryPart = (categoryIds == null || categoryIds.isEmpty())
+                ? "-"
+                : categoryIds.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+
+        String statusPart = (statuses == null || statuses.isEmpty())
+                ? "-"
+                : statuses.stream()
+                .map(Enum::name)
+                .sorted()
+                .collect(Collectors.joining(","));
+
+        String searchPart = (searchKeyword == null || searchKeyword.isBlank())
+                ? "-"
+                : searchKeyword;
+
+        return "product:count:"
+                + prefix
+                + ":c=" + categoryPart
+                + ":s=" + searchPart
+                + ":min=" + (minPrice == null ? "-" : minPrice)
+                + ":max=" + (maxPrice == null ? "-" : maxPrice)
+                + ":st=" + statusPart;
     }
 }
