@@ -4,7 +4,6 @@ import com.example.auction.product.domain.Status;
 import com.example.auction.product.search.document.ProductSearchDocument;
 import com.example.auction.product.search.dto.ProductSearchIdsPageDto;
 import com.example.auction.product.search.dto.ProductSearchRequest;
-import lombok.RequiredArgsConstructor;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.opensearch.client.opensearch._types.FieldValue;
@@ -19,13 +18,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
+
 public class ProductSearchService {
 
     private final OpenSearchClient openSearchClient;
 
     @Value("${opensearch.index.product}")
     private String productIndex;
+
+    public ProductSearchService(OpenSearchClient openSearchClient) {
+        this.openSearchClient = openSearchClient;
+    }
 
     public ProductSearchIdsPageDto searchProductIds(ProductSearchRequest req) {
         try {

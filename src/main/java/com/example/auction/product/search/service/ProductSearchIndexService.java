@@ -3,14 +3,12 @@ package com.example.auction.product.search.service;
 import com.example.auction.product.domain.Product;
 import com.example.auction.product.repository.ProductRepository;
 import com.example.auction.product.search.document.ProductSearchDocument;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.opensearch.client.opensearch.OpenSearchClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class ProductSearchIndexService {
 
@@ -20,6 +18,12 @@ public class ProductSearchIndexService {
 
     @Value("${opensearch.index.product}")
     private String productIndex;
+
+    public ProductSearchIndexService(OpenSearchClient openSearchClient, ProductRepository productRepository, ProductSearchDocumentMapper productSearchDocumentMapper) {
+        this.openSearchClient = openSearchClient;
+        this.productRepository = productRepository;
+        this.productSearchDocumentMapper = productSearchDocumentMapper;
+    }
 
     public void upsertByProductId(Long productId) {
         try {
