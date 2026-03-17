@@ -127,3 +127,12 @@ management:
         "http.server.requests": true
       slo:
         "http.server.requests": 100ms, 200ms, 500ms, 1s, 3s
+
+opensearch:
+  host: localhost
+  port: 9200
+  scheme: http
+  username: admin
+  password: admin
+  index:
+    product: auction_product
