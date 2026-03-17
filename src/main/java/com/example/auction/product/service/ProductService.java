@@ -22,6 +22,10 @@ import com.example.auction.notification.service.AuctionNotificationService;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.*;
 import com.example.auction.product.repository.ProductImageRepository;
+import com.example.auction.product.search.ProductIndexEvent;
+import com.example.auction.product.search.dto.ProductSearchIdsPageDto;
+import com.example.auction.product.search.dto.ProductSearchRequest;
+import com.example.auction.product.search.service.ProductSearchService;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
@@ -30,6 +34,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -65,6 +70,9 @@ public class ProductService {
     private final TaskScheduler taskScheduler;
     private final ProductCountCacheService productCountCacheService;
 
+    private final ProductSearchService productSearchService;
+    private final ApplicationEventPublisher eventPublisher;
+
     private static final int AUCTION_DURATION_HOURS = 24;
 
     public ProductService(
@@ -76,7 +84,7 @@ public class ProductService {
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
 
             WishlistRepository wishlistRepository, ProductImageRepository productImageRepository, ProductImageService productImageService, AuctionNotificationService auctionNotificationService, TaskScheduler taskScheduler,
-            ProductCountCacheService productCountCacheService) {
+            ProductCountCacheService productCountCacheService, ProductSearchService productSearchService, ApplicationEventPublisher eventPublisher) {
 
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -92,6 +100,8 @@ public class ProductService {
         this.auctionNotificationService = auctionNotificationService;
         this.taskScheduler = taskScheduler;
         this.productCountCacheService = productCountCacheService;
+        this.productSearchService = productSearchService;
+        this.eventPublisher = eventPublisher;
     }
 
     private static final String KEY_AUCTION_START = "auction:start:";
@@ -195,7 +205,18 @@ public class ProductService {
             log.info("[ProductCreate] 시작 5분 전 알림 타이머 등록 pid={}", product.getProductId());
         }
 
+        // 오픈서치 인덱스 관련 코드 추가(생성)
+        publishProductIndex(savedProduct.getProductId());
         return savedProduct;
+    }
+
+    // opensearch 관련 코드 추가 구문
+    private void publishProductIndex(Long productId) {
+        eventPublisher.publishEvent(new ProductIndexEvent(productId));
+    }
+
+    private boolean supportsOpenSearchSort(String sortBy) {
+        return "NEWEST".equals(sortBy) || "ENDING_SOON".equals(sortBy);
     }
 
     @Transactional
@@ -317,6 +338,10 @@ public class ProductService {
         product.updateStatus(Status.PROCESSING);
         productRepository.save(product);
 
+
+        // 오픈서치 인덱스 관련 코드 추가
+        publishProductIndex(product.getProductId());
+
         // 알림(시작알림)
         auctionNotificationService.notifyAuctionStarted(productId);
 
@@ -427,6 +452,10 @@ public class ProductService {
                 // 1. 상품 상태를 Status.SELLED 변경
                 currentProduct.updateStatus(Status.SELLED);
                 productRepository.save(currentProduct);
+
+                // 오픈서치 인덱스 관련 코드 추가
+                publishProductIndex(product.getProductId());
+
                 log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
                         pid, winnerBid.getUserNickName(), winnerBid.getBidAmount());
                 try {
@@ -456,6 +485,10 @@ public class ProductService {
             } else {
                 currentProduct.updateStatus(Status.NOTSELLED);
                 productRepository.save(currentProduct);
+
+                // 오픈서치 인덱스 관련 코드 추가
+                publishProductIndex(product.getProductId());
+
                 log.info("경매 종료 - ProductId: {}, 입찰자 없음(또는 기본가만 존재)", pid);
                 try {
                     auctionNotificationService.notifyAuctionEndedNoWinner(
@@ -571,21 +604,10 @@ public class ProductService {
         String normalizedSort = normalizePublicSort(sortBy);
         String normalizedSearch = normalizeSearchKeyword(search);
 
-        if (normalizedSearch != null) {
-            if ("NEWEST".equals(normalizedSort)) {
-                return getProductsSearchNewest(
-                        categoryIds,
-                        normalizedSearch,
-                        minPrice,
-                        maxPrice,
-                        statuses,
-                        pageable
-                );
-            }
-
-            return getProductsSearch(
+        if (!supportsOpenSearchSort(normalizedSort)) {
+            return productRepository.findActiveProducts(
                     categoryIds,
-                    normalizedSearch,
+                    search,
                     minPrice,
                     maxPrice,
                     statuses,
@@ -594,26 +616,84 @@ public class ProductService {
             );
         }
 
-        if (isLightweightSort(normalizedSort)) {
-            return getProductsLite(
-                    categoryIds,
-                    minPrice,
-                    maxPrice,
-                    statuses,
-                    normalizedSort,
-                    pageable
-            );
+        ProductSearchRequest request = ProductSearchRequest.builder()
+                .categoryIds(categoryIds)
+                .searchKeyword(normalizedSearch)
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .statuses(statuses)
+                .sortBy(normalizedSort)
+                .page(pageable.getPageNumber())
+                .size(pageable.getPageSize())
+                .build();
+
+        ProductSearchIdsPageDto idPage = productSearchService.searchProductIds(request);
+
+        if (idPage.getProductIds().isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, idPage.getTotal());
         }
 
-        return productRepository.findActiveProducts(
-                categoryIds,
-                null,
-                minPrice,
-                maxPrice,
-                statuses,
-                normalizedSort,
-                pageable
-        );
+        List<Long> productIds = idPage.getProductIds();
+
+        List<ProductListPageRowDto> rows = productRepository.findLiteRowsByProductIds(productIds);
+
+        Map<Long, ProductListPageRowDto> rowMap = rows.stream()
+                .collect(Collectors.toMap(ProductListPageRowDto::getProductId, row -> row));
+
+        List<ProductListDto> dtos = productIds.stream()
+                .map(rowMap::get)
+                .filter(Objects::nonNull)
+                .map(ProductListPageRowDto::toDto)
+                .collect(Collectors.toList());
+
+        applyCategoryPaths(dtos);
+        applyListSummaries(dtos, productIds);
+
+        return new PageImpl<>(dtos, pageable, idPage.getTotal());
+
+//        if (normalizedSearch != null) {
+//            if ("NEWEST".equals(normalizedSort)) {
+//                return getProductsSearchNewest(
+//                        categoryIds,
+//                        normalizedSearch,
+//                        minPrice,
+//                        maxPrice,
+//                        statuses,
+//                        pageable
+//                );
+//            }
+//
+//            return getProductsSearch(
+//                    categoryIds,
+//                    normalizedSearch,
+//                    minPrice,
+//                    maxPrice,
+//                    statuses,
+//                    normalizedSort,
+//                    pageable
+//            );
+//        }
+//
+//        if (isLightweightSort(normalizedSort)) {
+//            return getProductsLite(
+//                    categoryIds,
+//                    minPrice,
+//                    maxPrice,
+//                    statuses,
+//                    normalizedSort,
+//                    pageable
+//            );
+//        }
+//
+//        return productRepository.findActiveProducts(
+//                categoryIds,
+//                null,
+//                minPrice,
+//                maxPrice,
+//                statuses,
+//                normalizedSort,
+//                pageable
+//        );
     }
 
     @Transactional(readOnly = true)
@@ -818,6 +898,8 @@ public class ProductService {
                 deleteIds,
                 orderIds
         );
+        // 오픈서치 인덱스 관련 코드 추가
+        publishProductIndex(product.getProductId());
     }
 	
 	
@@ -840,6 +922,9 @@ public class ProductService {
 
 		product.softDelete();
 		productRepository.save(product);
+
+        // 오픈서치 인덱스 관련 코드 추가
+        publishProductIndex(product.getProductId());
 	}
 
     /* 마이페이지 - 찜한 목록들 조회 */
