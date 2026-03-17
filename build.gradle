@@ -76,6 +76,10 @@ dependencies {
     // 테스트
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
+    // OPENSEARCH
+    implementation 'org.opensearch.client:opensearch-java:3.0.0'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
 }
 
 tasks.named('test') {
