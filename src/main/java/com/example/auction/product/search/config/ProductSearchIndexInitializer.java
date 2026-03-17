@@ -21,30 +21,38 @@ public class ProductSearchIndexInitializer {
     @Bean
     public ApplicationRunner productIndexRunner() {
         return args -> {
-            boolean exists = openSearchClient.indices()
-                    .exists(e -> e.index(productIndex))
-                    .value();
+            try {
+                boolean exists = openSearchClient.indices()
+                        .exists(e -> e.index(productIndex))
+                        .value();
 
-            if (exists) return;
+                if (exists) {
+                    log.info("[OpenSearch] product index already exists: {}", productIndex);
+                    return;
+                }
 
-            openSearchClient.indices().create(c -> c
-                    .index(productIndex)
-                    .mappings(m -> m
-                            .properties("productId", p -> p.long_(l -> l))
-                            .properties("categoryId", p -> p.long_(l -> l))
-                            .properties("productName", p -> p.text(t -> t))
-                            .properties("productNameSearch", p -> p.keyword(k -> k.ignoreAbove(256)))
-                            .properties("productContent", p -> p.text(t -> t))
-                            .properties("price", p -> p.long_(l -> l))
-                            .properties("status", p -> p.keyword(k -> k))
-                            .properties("blocked", p -> p.boolean_(b -> b))
-                            .properties("delYn", p -> p.boolean_(b -> b))
-                            .properties("createdAtEpochMilli", p -> p.long_(l -> l))
-                            .properties("auctionEndAtEpochMilli", p -> p.long_(l -> l))
-                    )
-            );
+                openSearchClient.indices().create(c -> c
+                        .index(productIndex)
+                        .mappings(m -> m
+                                .properties("productId", p -> p.long_(l -> l))
+                                .properties("categoryId", p -> p.long_(l -> l))
+                                .properties("productName", p -> p.text(t -> t))
+                                .properties("productNameSearch", p -> p.keyword(k -> k.ignoreAbove(256)))
+                                .properties("productContent", p -> p.text(t -> t))
+                                .properties("price", p -> p.long_(l -> l))
+                                .properties("status", p -> p.keyword(k -> k))
+                                .properties("blocked", p -> p.boolean_(b -> b))
+                                .properties("delYn", p -> p.boolean_(b -> b))
+                                .properties("createdAtEpochMilli", p -> p.long_(l -> l))
+                                .properties("auctionEndAtEpochMilli", p -> p.long_(l -> l))
+                        )
+                );
 
-            log.info("[OpenSearch] index created: {}", productIndex);
+                log.info("[OpenSearch] index created: {}", productIndex);
+
+            } catch (Exception e) {
+                log.warn("[OpenSearch] 서버 연결 실패로 인덱스 초기화를 건너뜁니다. host/port 확인 필요", e);
+            }
         };
     }
 }
