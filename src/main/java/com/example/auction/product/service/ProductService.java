@@ -206,7 +206,7 @@ public class ProductService {
         }
 
         // 오픈서치 인덱스 관련 코드 추가(생성)
-        publishProductIndex(savedProduct.getProductId());
+//        publishProductIndex(savedProduct.getProductId());
         return savedProduct;
     }
 
@@ -340,7 +340,7 @@ public class ProductService {
 
 
         // 오픈서치 인덱스 관련 코드 추가
-        publishProductIndex(product.getProductId());
+//        publishProductIndex(product.getProductId());
 
         // 알림(시작알림)
         auctionNotificationService.notifyAuctionStarted(productId);
@@ -454,7 +454,7 @@ public class ProductService {
                 productRepository.save(currentProduct);
 
                 // 오픈서치 인덱스 관련 코드 추가
-                publishProductIndex(product.getProductId());
+//                publishProductIndex(product.getProductId());
 
                 log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
                         pid, winnerBid.getUserNickName(), winnerBid.getBidAmount());
@@ -487,7 +487,7 @@ public class ProductService {
                 productRepository.save(currentProduct);
 
                 // 오픈서치 인덱스 관련 코드 추가
-                publishProductIndex(product.getProductId());
+//                publishProductIndex(product.getProductId());
 
                 log.info("경매 종료 - ProductId: {}, 입찰자 없음(또는 기본가만 존재)", pid);
                 try {
@@ -604,10 +604,69 @@ public class ProductService {
         String normalizedSort = normalizePublicSort(sortBy);
         String normalizedSearch = normalizeSearchKeyword(search);
 
-        if (!supportsOpenSearchSort(normalizedSort)) {
-            return productRepository.findActiveProducts(
+        // opensearch 조홰ㅣ
+//        if (!supportsOpenSearchSort(normalizedSort)) {
+//            return productRepository.findActiveProducts(
+//                    categoryIds,
+//                    search,
+//                    minPrice,
+//                    maxPrice,
+//                    statuses,
+//                    normalizedSort,
+//                    pageable
+//            );
+//        }
+//
+//        ProductSearchRequest request = ProductSearchRequest.builder()
+//                .categoryIds(categoryIds)
+//                .searchKeyword(normalizedSearch)
+//                .minPrice(minPrice)
+//                .maxPrice(maxPrice)
+//                .statuses(statuses)
+//                .sortBy(normalizedSort)
+//                .page(pageable.getPageNumber())
+//                .size(pageable.getPageSize())
+//                .build();
+//
+//        ProductSearchIdsPageDto idPage = productSearchService.searchProductIds(request);
+//
+//        if (idPage.getProductIds().isEmpty()) {
+//            return new PageImpl<>(List.of(), pageable, idPage.getTotal());
+//        }
+//
+//        List<Long> productIds = idPage.getProductIds();
+//
+//        List<ProductListPageRowDto> rows = productRepository.findLiteRowsByProductIds(productIds);
+//
+//        Map<Long, ProductListPageRowDto> rowMap = rows.stream()
+//                .collect(Collectors.toMap(ProductListPageRowDto::getProductId, row -> row));
+//
+//        List<ProductListDto> dtos = productIds.stream()
+//                .map(rowMap::get)
+//                .filter(Objects::nonNull)
+//                .map(ProductListPageRowDto::toDto)
+//                .collect(Collectors.toList());
+//
+//        applyCategoryPaths(dtos);
+//        applyListSummaries(dtos, productIds);
+//
+//        return new PageImpl<>(dtos, pageable, idPage.getTotal());
+
+        if (normalizedSearch != null) {
+            if ("NEWEST".equals(normalizedSort)) {
+                return getProductsSearchNewest(
+                        categoryIds,
+                        normalizedSearch,
+                        minPrice,
+                        maxPrice,
+                        statuses,
+                        pageable
+                );
+            }
+
+            return getProductsSearch(
                     categoryIds,
-                    search,
+                    normalizedSearch,
                     minPrice,
                     maxPrice,
                     statuses,
@@ -616,84 +675,26 @@ public class ProductService {
             );
         }
 
-        ProductSearchRequest request = ProductSearchRequest.builder()
-                .categoryIds(categoryIds)
-                .searchKeyword(normalizedSearch)
-                .minPrice(minPrice)
-                .maxPrice(maxPrice)
-                .statuses(statuses)
-                .sortBy(normalizedSort)
-                .page(pageable.getPageNumber())
-                .size(pageable.getPageSize())
-                .build();
-
-        ProductSearchIdsPageDto idPage = productSearchService.searchProductIds(request);
-
-        if (idPage.getProductIds().isEmpty()) {
-            return new PageImpl<>(List.of(), pageable, idPage.getTotal());
+        if (isLightweightSort(normalizedSort)) {
+            return getProductsLite(
+                    categoryIds,
+                    minPrice,
+                    maxPrice,
+                    statuses,
+                    normalizedSort,
+                    pageable
+            );
         }
 
-        List<Long> productIds = idPage.getProductIds();
-
-        List<ProductListPageRowDto> rows = productRepository.findLiteRowsByProductIds(productIds);
-
-        Map<Long, ProductListPageRowDto> rowMap = rows.stream()
-                .collect(Collectors.toMap(ProductListPageRowDto::getProductId, row -> row));
-
-        List<ProductListDto> dtos = productIds.stream()
-                .map(rowMap::get)
-                .filter(Objects::nonNull)
-                .map(ProductListPageRowDto::toDto)
-                .collect(Collectors.toList());
-
-        applyCategoryPaths(dtos);
-        applyListSummaries(dtos, productIds);
-
-        return new PageImpl<>(dtos, pageable, idPage.getTotal());
-
-//        if (normalizedSearch != null) {
-//            if ("NEWEST".equals(normalizedSort)) {
-//                return getProductsSearchNewest(
-//                        categoryIds,
-//                        normalizedSearch,
-//                        minPrice,
-//                        maxPrice,
-//                        statuses,
-//                        pageable
-//                );
-//            }
-//
-//            return getProductsSearch(
-//                    categoryIds,
-//                    normalizedSearch,
-//                    minPrice,
-//                    maxPrice,
-//                    statuses,
-//                    normalizedSort,
-//                    pageable
-//            );
-//        }
-//
-//        if (isLightweightSort(normalizedSort)) {
-//            return getProductsLite(
-//                    categoryIds,
-//                    minPrice,
-//                    maxPrice,
-//                    statuses,
-//                    normalizedSort,
-//                    pageable
-//            );
-//        }
-//
-//        return productRepository.findActiveProducts(
-//                categoryIds,
-//                null,
-//                minPrice,
-//                maxPrice,
-//                statuses,
-//                normalizedSort,
-//                pageable
-//        );
+        return productRepository.findActiveProducts(
+                categoryIds,
+                null,
+                minPrice,
+                maxPrice,
+                statuses,
+                normalizedSort,
+                pageable
+        );
     }
 
     @Transactional(readOnly = true)
@@ -899,7 +900,7 @@ public class ProductService {
                 orderIds
         );
         // 오픈서치 인덱스 관련 코드 추가
-        publishProductIndex(product.getProductId());
+//        publishProductIndex(product.getProductId());
     }
 	
 	
@@ -924,7 +925,7 @@ public class ProductService {
 		productRepository.save(product);
 
         // 오픈서치 인덱스 관련 코드 추가
-        publishProductIndex(product.getProductId());
+//        publishProductIndex(product.getProductId());
 	}
 
     /* 마이페이지 - 찜한 목록들 조회 */
