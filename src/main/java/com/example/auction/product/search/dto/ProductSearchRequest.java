@@ -6,6 +6,8 @@ import lombok.Getter;
 
 import java.util.List;
 
+// 검색 요청 dto
+
 @Getter
 @Builder
 public class ProductSearchRequest {

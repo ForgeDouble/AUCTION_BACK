@@ -5,6 +5,7 @@ import lombok.Getter;
 
 import java.util.List;
 
+// 검색 결과
 @Getter
 @AllArgsConstructor
 public class ProductSearchIdsPageDto {
