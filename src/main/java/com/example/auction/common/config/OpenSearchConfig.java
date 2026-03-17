@@ -1,6 +1,5 @@
 package com.example.auction.common.config;
 
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import org.apache.hc.client5.http.auth.AuthScope;
