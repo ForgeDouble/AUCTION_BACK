@@ -5,6 +5,7 @@ spring:
   # 테스트 환경을 위한 프로필 설정 -> 후 제거
 #  profiles:
 #    active: seed-login-users
+#    active: seed-test-product
   data:
     redis:
       host: localhost
@@ -120,6 +121,8 @@ management:
     health:
       show-details: when_authorized
   metrics:
+    export:
+      enabled: true
     tags:
       application: auction-back
     distribution:
