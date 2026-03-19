@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -135,6 +136,15 @@ public class ProductReportService {
                             "대상 상품이 존재하지 않거나 비활성화 상태입니다."
                     );
                 });
+
+        // 본인 상품 신고 방지
+        if (product.getUser() != null && Objects.equals(product.getUser().getUserId(), reporter.getUserId())) {
+            log.warn("[SELF_REPORT_FORBIDDEN] reporterId={}, productId={}", reporter.getUserId(), productId);
+            throw new UnauthorizedAccessException(
+                    "SELF_REPORT_FORBIDDEN",
+                    "본인 상품은 신고할 수 없습니다."
+            );
+        }
 
         boolean dup;
         try {
