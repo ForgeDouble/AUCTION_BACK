@@ -51,9 +51,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
-    //test
+    // test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // await
+    testImplementation 'org.awaitility:awaitility:4.2.0'
 
     // Mockito
     testImplementation 'org.mockito:mockito-core:5.17.0'
@@ -76,11 +78,14 @@ dependencies {
     // 테스트
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
     systemProperty 'file.encoding', 'UTF-8'
+
 
     testLogging {
         events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
