@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   mongo_auction:
     image: mongo:7
@@ -51,8 +52,26 @@ services:
       - prometheus_auction
     networks:
       - auction-net
+
+#  opensearch_auction:
+#    image: opensearchproject/opensearch:2.11.1
+#    container_name: opensearch_auction
+#    restart: unless-stopped
+#    environment:
+#      discovery.type: single-node
+#      DISABLE_SECURITY_PLUGIN: "true"
+#      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+#    ports:
+#      - "9200:9200"
+#      - "9600:9600"
+#    volumes:
+#      - opensearch_auction_data:/usr/share/opensearch/data
+#    networks:
+#      - auction-net
+
 volumes:
   mongo_auction_data:
+#  opensearch_auction_data:
 
 networks:
   auction-net:

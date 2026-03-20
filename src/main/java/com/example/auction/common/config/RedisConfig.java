@@ -281,4 +281,20 @@ public class RedisConfig {
         stringRedisTemplate.setConnectionFactory(metricsConnectionFactory);
         return stringRedisTemplate;
     }
+
+    @Bean
+    @Qualifier("productCache")
+    LettuceConnectionFactory productCacheConnectionFactory() {
+        return redisConnectionFactory(8);
+    }
+
+    @Bean
+    @Qualifier("productCache")
+    public StringRedisTemplate productCacheStringRedisTemplate(
+            @Qualifier("productCache") LettuceConnectionFactory productCacheConnectionFactory
+    ) {
+        StringRedisTemplate stringRedisTemplate = new StringRedisTemplate();
+        stringRedisTemplate.setConnectionFactory(productCacheConnectionFactory);
+        return stringRedisTemplate;
+    }
 }

@@ -22,6 +22,10 @@ import com.example.auction.notification.service.AuctionNotificationService;
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.*;
 import com.example.auction.product.repository.ProductImageRepository;
+import com.example.auction.product.search.ProductIndexEvent;
+import com.example.auction.product.search.dto.ProductSearchIdsPageDto;
+import com.example.auction.product.search.dto.ProductSearchRequest;
+import com.example.auction.product.search.service.ProductSearchService;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
@@ -30,6 +34,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.*;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -63,7 +68,10 @@ public class ProductService {
 
     private final AuctionNotificationService auctionNotificationService;
     private final TaskScheduler taskScheduler;
+    private final ProductCountCacheService productCountCacheService;
 
+    private final ProductSearchService productSearchService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final int AUCTION_DURATION_HOURS = 24;
 
@@ -75,8 +83,8 @@ public class ProductService {
             @Qualifier("bid") RedisTemplate<String, Object> bidRedisTemplate,
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
 
-            WishlistRepository wishlistRepository, ProductImageRepository productImageRepository, ProductImageService productImageService, AuctionNotificationService auctionNotificationService, TaskScheduler taskScheduler
-    ) {
+            WishlistRepository wishlistRepository, ProductImageRepository productImageRepository, ProductImageService productImageService, AuctionNotificationService auctionNotificationService, TaskScheduler taskScheduler,
+            ProductCountCacheService productCountCacheService, ProductSearchService productSearchService, ApplicationEventPublisher eventPublisher) {
 
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -91,6 +99,9 @@ public class ProductService {
         this.productImageService = productImageService;
         this.auctionNotificationService = auctionNotificationService;
         this.taskScheduler = taskScheduler;
+        this.productCountCacheService = productCountCacheService;
+        this.productSearchService = productSearchService;
+        this.eventPublisher = eventPublisher;
     }
 
     private static final String KEY_AUCTION_START = "auction:start:";
@@ -194,7 +205,18 @@ public class ProductService {
             log.info("[ProductCreate] 시작 5분 전 알림 타이머 등록 pid={}", product.getProductId());
         }
 
+        // 오픈서치 인덱스 관련 코드 추가(생성)
+//        publishProductIndex(savedProduct.getProductId());
         return savedProduct;
+    }
+
+    // opensearch 관련 코드 추가 구문
+    private void publishProductIndex(Long productId) {
+        eventPublisher.publishEvent(new ProductIndexEvent(productId));
+    }
+
+    private boolean supportsOpenSearchSort(String sortBy) {
+        return "NEWEST".equals(sortBy) || "ENDING_SOON".equals(sortBy);
     }
 
     @Transactional
@@ -316,6 +338,10 @@ public class ProductService {
         product.updateStatus(Status.PROCESSING);
         productRepository.save(product);
 
+
+        // 오픈서치 인덱스 관련 코드 추가
+//        publishProductIndex(product.getProductId());
+
         // 알림(시작알림)
         auctionNotificationService.notifyAuctionStarted(productId);
 
@@ -426,6 +452,10 @@ public class ProductService {
                 // 1. 상품 상태를 Status.SELLED 변경
                 currentProduct.updateStatus(Status.SELLED);
                 productRepository.save(currentProduct);
+
+                // 오픈서치 인덱스 관련 코드 추가
+//                publishProductIndex(product.getProductId());
+
                 log.info("경매 종료 - ProductId: {}, 낙찰자: {}, 낙찰가: {}",
                         pid, winnerBid.getUserNickName(), winnerBid.getBidAmount());
                 try {
@@ -455,6 +485,10 @@ public class ProductService {
             } else {
                 currentProduct.updateStatus(Status.NOTSELLED);
                 productRepository.save(currentProduct);
+
+                // 오픈서치 인덱스 관련 코드 추가
+//                publishProductIndex(product.getProductId());
+
                 log.info("경매 종료 - ProductId: {}, 입찰자 없음(또는 기본가만 존재)", pid);
                 try {
                     auctionNotificationService.notifyAuctionEndedNoWinner(
@@ -570,7 +604,66 @@ public class ProductService {
         String normalizedSort = normalizePublicSort(sortBy);
         String normalizedSearch = normalizeSearchKeyword(search);
 
+        // opensearch 조홰ㅣ
+//        if (!supportsOpenSearchSort(normalizedSort)) {
+//            return productRepository.findActiveProducts(
+//                    categoryIds,
+//                    search,
+//                    minPrice,
+//                    maxPrice,
+//                    statuses,
+//                    normalizedSort,
+//                    pageable
+//            );
+//        }
+//
+//        ProductSearchRequest request = ProductSearchRequest.builder()
+//                .categoryIds(categoryIds)
+//                .searchKeyword(normalizedSearch)
+//                .minPrice(minPrice)
+//                .maxPrice(maxPrice)
+//                .statuses(statuses)
+//                .sortBy(normalizedSort)
+//                .page(pageable.getPageNumber())
+//                .size(pageable.getPageSize())
+//                .build();
+//
+//        ProductSearchIdsPageDto idPage = productSearchService.searchProductIds(request);
+//
+//        if (idPage.getProductIds().isEmpty()) {
+//            return new PageImpl<>(List.of(), pageable, idPage.getTotal());
+//        }
+//
+//        List<Long> productIds = idPage.getProductIds();
+//
+//        List<ProductListPageRowDto> rows = productRepository.findLiteRowsByProductIds(productIds);
+//
+//        Map<Long, ProductListPageRowDto> rowMap = rows.stream()
+//                .collect(Collectors.toMap(ProductListPageRowDto::getProductId, row -> row));
+//
+//        List<ProductListDto> dtos = productIds.stream()
+//                .map(rowMap::get)
+//                .filter(Objects::nonNull)
+//                .map(ProductListPageRowDto::toDto)
+//                .collect(Collectors.toList());
+//
+//        applyCategoryPaths(dtos);
+//        applyListSummaries(dtos, productIds);
+//
+//        return new PageImpl<>(dtos, pageable, idPage.getTotal());
+
         if (normalizedSearch != null) {
+            if ("NEWEST".equals(normalizedSort)) {
+                return getProductsSearchNewest(
+                        categoryIds,
+                        normalizedSearch,
+                        minPrice,
+                        maxPrice,
+                        statuses,
+                        pageable
+                );
+            }
+
             return getProductsSearch(
                     categoryIds,
                     normalizedSearch,
@@ -641,13 +734,66 @@ public class ProductService {
                 .map(ProductListPageRowDto::toDto)
                 .collect(Collectors.toList());
 
+//        applyCategoryPaths(dtos);
+//        applyPreviewImages(dtos, productIds);
+//        applyWishlistCounts(dtos, productIds);
+//        applyBidSummaries(dtos, productIds);
         applyCategoryPaths(dtos);
-        applyPreviewImages(dtos, productIds);
-        applyWishlistCounts(dtos, productIds);
-        applyBidSummaries(dtos, productIds);
+        applyListSummaries(dtos, productIds);
 
         return new PageImpl<>(dtos, pageable, idPage.getTotalElements());
     }
+
+    @Transactional(readOnly = true)
+    public Page<ProductListDto> getProductsSearchNewest(
+            List<Long> categoryIds,
+            String searchKeyword,
+            Long minPrice,
+            Long maxPrice,
+            List<Status> statuses,
+            Pageable pageable
+    ) {
+        List<Long> productIds = productRepository.findSearchProductIdsNewestContent(
+                categoryIds,
+                searchKeyword,
+                minPrice,
+                maxPrice,
+                statuses,
+                pageable
+        );
+
+        long total = productCountCacheService.getOrLoad(
+                buildCountCacheKey("search-newest", categoryIds, searchKeyword, minPrice, maxPrice, statuses),
+                () -> productRepository.countSearchProductsNewest(
+                        categoryIds,
+                        searchKeyword,
+                        minPrice,
+                        maxPrice,
+                        statuses
+                )
+        );
+
+        if (productIds.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, total);
+        }
+
+        List<ProductListPageRowDto> rows = productRepository.findLiteRowsByProductIds(productIds);
+
+        Map<Long, ProductListPageRowDto> rowMap = rows.stream()
+                .collect(Collectors.toMap(ProductListPageRowDto::getProductId, row -> row));
+
+        List<ProductListDto> dtos = productIds.stream()
+                .map(rowMap::get)
+                .filter(Objects::nonNull)
+                .map(ProductListPageRowDto::toDto)
+                .collect(Collectors.toList());
+
+        applyCategoryPaths(dtos);
+        applyListSummaries(dtos, productIds);
+
+        return new PageImpl<>(dtos, pageable, total);
+    }
+
     private String normalizeSearchKeyword(String search) {
         if (search == null || search.isBlank()) {
             return null;
@@ -753,6 +899,8 @@ public class ProductService {
                 deleteIds,
                 orderIds
         );
+        // 오픈서치 인덱스 관련 코드 추가
+//        publishProductIndex(product.getProductId());
     }
 	
 	
@@ -775,6 +923,9 @@ public class ProductService {
 
 		product.softDelete();
 		productRepository.save(product);
+
+        // 오픈서치 인덱스 관련 코드 추가
+//        publishProductIndex(product.getProductId());
 	}
 
     /* 마이페이지 - 찜한 목록들 조회 */
@@ -843,20 +994,41 @@ public class ProductService {
             String sortBy,
             Pageable pageable
     ) {
-        Page<ProductListPageRowDto> page = productRepository.findActiveProductsLite(
-                categoryIds,
-                minPrice,
-                maxPrice,
-                statuses,
-                sortBy,
-                pageable
-        );
+        List<ProductListPageRowDto> rows;
 
-        if (page.isEmpty()) {
-            return new PageImpl<>(List.of(), pageable, page.getTotalElements());
+        if ("ENDING_SOON".equals(sortBy)) {
+            rows = productRepository.findActiveProductsEndingSoonLiteContent(
+                    categoryIds,
+                    minPrice,
+                    maxPrice,
+                    statuses,
+                    pageable
+            );
+        } else {
+            rows = productRepository.findActiveProductsNewestLiteContent(
+                    categoryIds,
+                    minPrice,
+                    maxPrice,
+                    statuses,
+                    pageable
+            );
         }
 
-        List<ProductListDto> dtos = page.getContent().stream()
+        long total = productCountCacheService.getOrLoad(
+                buildCountCacheKey("list", categoryIds, null, minPrice, maxPrice, statuses),
+                () -> productRepository.countActiveProductsLiteFiltered(
+                        categoryIds,
+                        minPrice,
+                        maxPrice,
+                        statuses
+                )
+        );
+
+        if (rows.isEmpty()) {
+            return new PageImpl<>(List.of(), pageable, total);
+        }
+
+        List<ProductListDto> dtos = rows.stream()
                 .map(ProductListPageRowDto::toDto)
                 .toList();
 
@@ -865,11 +1037,9 @@ public class ProductService {
                 .toList();
 
         applyCategoryPaths(dtos);
-        applyPreviewImages(dtos, productIds);
-        applyWishlistCounts(dtos, productIds);
-        applyBidSummaries(dtos, productIds);
+        applyListSummaries(dtos, productIds);
 
-        return new PageImpl<>(dtos, pageable, page.getTotalElements());
+        return new PageImpl<>(dtos, pageable, total);
     }
 
     private void applyCategoryPaths(List<ProductListDto> dtos) {
@@ -941,5 +1111,67 @@ public class ProductService {
             dto.setBidCount(bidCountMap.getOrDefault(dto.getProductId(), 0L));
             dto.setLatestBidAmount(maxBidMap.getOrDefault(dto.getProductId(), 0L));
         }
+    }
+
+    private void applyListSummaries(List<ProductListDto> dtos, List<Long> productIds) {
+        Map<Long, ProductRepository.ProductListSummaryRow> summaryMap =
+                productRepository.findProductListSummaryRows(productIds).stream()
+                        .collect(Collectors.toMap(
+                                ProductRepository.ProductListSummaryRow::getProductId,
+                                row -> row
+                        ));
+
+        for (ProductListDto dto : dtos) {
+            ProductRepository.ProductListSummaryRow row = summaryMap.get(dto.getProductId());
+
+            if (row == null) {
+                dto.setPreviewImageUrl(null);
+                dto.setWishlistCount(0L);
+                dto.setBidCount(0L);
+                dto.setLatestBidAmount(0L);
+                continue;
+            }
+
+            dto.setPreviewImageUrl(row.getPreviewImageUrl());
+            dto.setWishlistCount(row.getWishlistCount() != null ? row.getWishlistCount() : 0L);
+            dto.setBidCount(row.getBidCount() != null ? row.getBidCount() : 0L);
+            dto.setLatestBidAmount(row.getLatestBidAmount() != null ? row.getLatestBidAmount() : 0L);
+        }
+    }
+
+    // CACHE 사용을 위한 유틸 메서드
+    private String buildCountCacheKey(
+            String prefix,
+            List<Long> categoryIds,
+            String searchKeyword,
+            Long minPrice,
+            Long maxPrice,
+            List<Status> statuses
+    ) {
+        String categoryPart = (categoryIds == null || categoryIds.isEmpty())
+                ? "-"
+                : categoryIds.stream()
+                .sorted()
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+
+        String statusPart = (statuses == null || statuses.isEmpty())
+                ? "-"
+                : statuses.stream()
+                .map(Enum::name)
+                .sorted()
+                .collect(Collectors.joining(","));
+
+        String searchPart = (searchKeyword == null || searchKeyword.isBlank())
+                ? "-"
+                : searchKeyword;
+
+        return "product:count:"
+                + prefix
+                + ":c=" + categoryPart
+                + ":s=" + searchPart
+                + ":min=" + (minPrice == null ? "-" : minPrice)
+                + ":max=" + (maxPrice == null ? "-" : maxPrice)
+                + ":st=" + statusPart;
     }
 }
