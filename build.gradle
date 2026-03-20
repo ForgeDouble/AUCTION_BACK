@@ -51,9 +51,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
-    //test
+    // test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // await
+    testImplementation 'org.awaitility:awaitility:4.2.0'
 
     // Mockito
     testImplementation 'org.mockito:mockito-core:5.17.0'
@@ -72,8 +74,52 @@ dependencies {
 
     // mail
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    
+
+    testLogging {
+        events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
+        exceptionFormat 'full'
+        showExceptions true
+        showCauses true
+        showStackTraces true
+    }
+
+    afterTest { descriptor, result ->
+        def status
+        switch (result.resultType) {
+            case org.gradle.api.tasks.testing.TestResult.ResultType.SUCCESS:
+                status = 'PASS'
+                break
+            case org.gradle.api.tasks.testing.TestResult.ResultType.FAILURE:
+                status = 'FAIL'
+                break
+            case org.gradle.api.tasks.testing.TestResult.ResultType.SKIPPED:
+                status = 'SKIP'
+                break
+            default:
+                status = result.resultType.toString()
+        }
+
+        println "[${status}] ${descriptor.className} > ${descriptor.name}"
+    }
+
+    afterSuite { descriptor, result ->
+        if (descriptor.parent == null) {
+            println ''
+            println '==================== TEST SUMMARY ===================='
+            println "ALL TEST     : ${result.testCount}"
+            println "SUCCESS      : ${result.successfulTestCount}"
+            println "FAILURE      : ${result.failedTestCount}"
+            println "SKIP         : ${result.skippedTestCount}"
+            println "RESULT       : ${result.resultType}"
+            println '======================================================'
+        }
+    }
 }
