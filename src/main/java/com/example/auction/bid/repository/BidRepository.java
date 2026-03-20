@@ -18,6 +18,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     List<Bid> findAllByProduct_ProductIdOrderByCreatedAtDesc(Long productId);
     Optional<Bid> findByProduct_ProductIdAndIsWinned(Long productId, IsWinned isWinned);
     Optional<Bid> findTopByProduct_ProductIdOrderByCreatedAtDesc(Long productId);
+    List<Bid> findAllByOrderByBidIdAsc();
 
     @Query("""
     SELECT new com.example.auction.bid.dto.BidAllByUserDto(

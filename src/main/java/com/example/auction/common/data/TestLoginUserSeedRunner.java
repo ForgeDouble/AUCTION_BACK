@@ -1,3 +1,4 @@
+
 ///* 로그인 테스트를 위한 유저 500 명 생성 및 추가 를 위한 코드 */
 //package com.example.auction.common.data;
 //
