@@ -22,6 +22,7 @@ import lombok.Setter;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 
 @Getter
@@ -63,11 +64,16 @@ public class Product extends BaseTimeEntity{
     private LocalDateTime blockedAt; // 차단 일 시
     @Column(length = 300)
     private String blockedReason; // 차단 사유
-    
+
+    @Column(length = 100)
+    private String productNameSearch;
+
+
     public void update(ProductUpdateDto dto, Category category) {
         if (category != null) this.category = category;
         if (dto.getProductName() != null && !dto.getProductName().isBlank()) {
             this.productName = dto.getProductName().trim();
+            this.productNameSearch = normalizeSearchText(this.productName);
         }
         if (dto.getProductContent() != null && !dto.getProductContent().isBlank()) {
             this.productContent = dto.getProductContent().trim();
@@ -75,6 +81,20 @@ public class Product extends BaseTimeEntity{
         if (dto.getPrice() != null) {
             this.price = dto.getPrice();
         }
+    }
+
+    public void syncSearchName() {
+        this.productNameSearch = normalizeSearchText(this.productName);
+    }
+
+    private String normalizeSearchText(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value
+                .trim()
+                .replaceAll("\\s+"," ")
+                .toLowerCase(Locale.ROOT);
     }
 
     public void block(String reason) {

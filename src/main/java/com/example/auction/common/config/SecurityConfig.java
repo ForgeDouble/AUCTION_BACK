@@ -30,7 +30,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(10);
     }
 
     @Bean
@@ -65,7 +65,12 @@ public class SecurityConfig {
                                 "/ws/**",
                                 "/ws-public/**",
                                 "/ws-admin/**",
-                                "/season/**"
+                                "/season/**",
+
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/actuator/metrics",
+                                "/actuator/prometheus"
 
                         ).permitAll()  // 로그인, 회원가입 경로는 인증x
                         .anyRequest().authenticated() // 나머지 토큰값 필요

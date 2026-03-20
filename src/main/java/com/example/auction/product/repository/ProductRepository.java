@@ -8,6 +8,7 @@ import java.util.Optional;
 
 import com.example.auction.product.domain.Status;
 import com.example.auction.product.dto.ProductListDto;
+import com.example.auction.product.dto.ProductListPageRowDto;
 import com.example.auction.product.dto.ProductWithBidDto;
 import com.example.auction.product.dto.Top3ProductDto;
 import org.springframework.data.domain.Page;
@@ -371,4 +372,119 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end
     );
+
+
+    @Query(
+            value = """
+        select new com.example.auction.product.dto.ProductListPageRowDto(
+            p.productId,
+            p.productName,
+            p.productContent,
+            p.price,
+            p.status,
+            p.category.categoryId,
+            p.user.email,
+            p.createdAt
+        )
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and (:categoryIds is null or p.category.categoryId in :categoryIds)
+          and (:minPrice is null or p.price >= :minPrice)
+          and (:maxPrice is null or p.price <= :maxPrice)
+          and (:statuses is null or p.status in :statuses)
+        order by
+          case
+            when :sortBy = 'ENDING_SOON'
+            then case
+                   when p.status = com.example.auction.product.domain.Status.PROCESSING then 0
+                   else 1
+                 end
+          end asc,
+          case
+            when :sortBy = 'ENDING_SOON' then p.createdAt
+          end asc,
+          p.createdAt desc
+        """,
+            countQuery = """
+        select count(p)
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and (:categoryIds is null or p.category.categoryId in :categoryIds)
+          and (:minPrice is null or p.price >= :minPrice)
+          and (:maxPrice is null or p.price <= :maxPrice)
+          and (:statuses is null or p.status in :statuses)
+        """
+    )
+    Page<ProductListPageRowDto> findActiveProductsLite(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
+            @Param("sortBy") String sortBy,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+        select p.productId
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and (:categoryIds is null or p.category.categoryId in :categoryIds)
+          and (:minPrice is null or p.price >= :minPrice)
+          and (:maxPrice is null or p.price <= :maxPrice)
+          and (:statuses is null or p.status in :statuses)
+          and p.productNameSearch like concat(:searchKeyword, '%')
+        order by
+          case
+            when :sortBy = 'ENDING_SOON'
+            then case
+                   when p.status = com.example.auction.product.domain.Status.PROCESSING then 0
+                   else 1
+                 end
+          end asc,
+          case
+            when :sortBy = 'ENDING_SOON' then p.createdAt
+          end asc,
+          p.createdAt desc
+        """,
+            countQuery = """
+        select count(p)
+        from Product p
+        where p.delYn = com.example.auction.common.domain.DelYN.N
+          and (p.blocked = false or p.blocked is null)
+          and (:categoryIds is null or p.category.categoryId in :categoryIds)
+          and (:minPrice is null or p.price >= :minPrice)
+          and (:maxPrice is null or p.price <= :maxPrice)
+          and (:statuses is null or p.status in :statuses)
+          and p.productNameSearch like concat(:searchKeyword, '%')
+        """
+    )
+    Page<Long> findSearchProductIds(
+            @Param("categoryIds") List<Long> categoryIds,
+            @Param("searchKeyword") String searchKeyword,
+            @Param("minPrice") Long minPrice,
+            @Param("maxPrice") Long maxPrice,
+            @Param("statuses") List<Status> statuses,
+            @Param("sortBy") String sortBy,
+            Pageable pageable
+    );
+
+    @Query("""
+    select new com.example.auction.product.dto.ProductListPageRowDto(
+        p.productId,
+        p.productName,
+        p.productContent,
+        p.price,
+        p.status,
+        p.category.categoryId,
+        p.user.email,
+        p.createdAt
+    )
+    from Product p
+    where p.productId in :productIds
+""")
+    List<ProductListPageRowDto> findLiteRowsByProductIds(@Param("productIds") List<Long> productIds);
 }

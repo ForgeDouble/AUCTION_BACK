@@ -36,7 +36,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // 인증 필요한 비공개 엔드포인트
+        // 인증 필요한 비공개 엔드포인트 (TEST 시 withSockJS 주석 처리 필요)
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
                 .addInterceptors(new HttpSessionHandshakeInterceptor() {
@@ -52,7 +52,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 })
                 .withSockJS();
 
-        // 인증 불필요한 공개 경매용 엔드포인트
+        // 인증 불필요한 공개 경매용 엔드포인트 (TEST 시 withSockJS 주석 처리 필요)
         registry.addEndpoint("/ws-public")
                 .setAllowedOriginPatterns("*")
                 .addInterceptors(new HttpSessionHandshakeInterceptor() {
@@ -68,7 +68,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 })
                 .withSockJS();
 
-        // 관리자 전용
+        // 관리자 전용 (TEST 시 withSockJS 주석 처리 필요)
         registry.addEndpoint("/ws-admin")
                 .setAllowedOriginPatterns("*")
                 .addInterceptors(new HttpSessionHandshakeInterceptor() {

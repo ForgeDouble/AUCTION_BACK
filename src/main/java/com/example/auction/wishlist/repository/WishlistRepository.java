@@ -37,4 +37,18 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
             "product.user"
     })
     Page<Wishlist> findAllByUser(User user, Pageable pageable);
+
+
+    interface ProductWishlistCountRow {
+        Long getProductId();
+        Long getCnt();
+    }
+
+    @Query("""
+        select w.product.productId as productId, count(w) as cnt
+        from Wishlist w
+        where w.product.productId in :productIds
+        group by w.product.productId
+    """)
+    List<ProductWishlistCountRow> countByProductIds(@Param("productIds") List<Long> productIds);
 }

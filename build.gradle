@@ -75,13 +75,17 @@ dependencies {
     // mail
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+    // 테스트
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
 }
 
 tasks.named('test') {
     useJUnitPlatform()
 
-    
+    systemProperty 'file.encoding', 'UTF-8'
+
 
     testLogging {
         events 'passed', 'skipped', 'failed', 'standardOut', 'standardError'
