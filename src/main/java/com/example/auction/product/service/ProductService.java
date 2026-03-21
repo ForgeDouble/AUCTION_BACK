@@ -309,13 +309,13 @@ public class ProductService {
 //        auctionNotificationService.notifyAuctionStarted(productId);
 
         // 실제 보관용 bid 데이터
-//        함수 반복 scheduler 수정되면 주석 푸시오
         Bid bid = new Bid();
         bid.setProduct(product);
         bid.setUser(product.getUser());
         bid.setBidAmount(product.getPrice());
         bid.setCreatedAt(product.getAuctionStartTime());
         bid.setIsWinned(IsWinned.N);
+        bid.setIsFirst(true);
 
         bidRepository.save(bid);
     }
@@ -888,7 +888,14 @@ public class ProductService {
         if (user.getAuthority() != Authority.ADMIN && !user.getUserId().equals(product.getUser().getUserId())) {
             throw new UnauthorizedAccessException("NOT_ALLOWED", "해당 상품을 수정할 권한이 없습니다.");
         }
+
+        Bid bid = bidRepository.findByProduct_ProductIdAndIsFirstTrue(dto.getProductId())
+                .orElseThrow(() -> new InternalErrorException("BID_NOT_FOUND", "첫번째 입찰(세팅값)을 조회하지 못했습니다. productId:" + dto.getProductId()));
+
         ensureCanMutateProducts(user, "상품 수정");
+
+        bid.updateBidAmount(dto.getPrice());
+        bidRepository.save(bid);
 
         product.update(dto, category);
         productRepository.save(product);
