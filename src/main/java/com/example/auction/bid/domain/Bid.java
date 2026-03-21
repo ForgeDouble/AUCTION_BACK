@@ -34,4 +34,13 @@ public class Bid extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private IsWinned isWinned;
+
+    @Column
+    private Boolean isFirst = false;
+
+    public void updateBidAmount(Long bidAmount) {
+        if (bidAmount != null) {
+            this.bidAmount = bidAmount;
+        }
+    }
 }
