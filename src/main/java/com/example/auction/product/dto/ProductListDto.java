@@ -58,7 +58,7 @@ public class ProductListDto {
                 .build();
 
         if (dto.getCreatedAt() != null) {
-            dto.setAuctionEndTime(dto.getCreatedAt().plusMinutes(30));
+            dto.setAuctionEndTime(dto.getCreatedAt().plusMinutes(1440));
         }
         return dto;
     }
@@ -78,6 +78,6 @@ public class ProductListDto {
         this.bidCount = bidCount;
         this.wishlistCount = wishlistCount;
         this.createdAt = createdAt;
-        this.auctionEndTime = createdAt != null ? createdAt.plusMinutes(30) : null;
+        this.auctionEndTime = createdAt != null ? createdAt.plusMinutes(1440) : null;
     }
 }

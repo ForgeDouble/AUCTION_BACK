@@ -107,14 +107,14 @@ public class Product extends BaseTimeEntity{
         this.blockedAt = null;
         this.blockedReason = null;
     }
-    // 경매 시작 시간( 상품 등록으로부터 30 분 후 자동 시작)
+    // 경매 시작 시간( 상품 등록으로부터 10 분 후 자동 시작)
     public LocalDateTime getAuctionStartTime() {
-        return this.getCreatedAt().plusMinutes(2);
+        return this.getCreatedAt().plusMinutes(10);
     }
     // 경매 종료 시간 계산 (24시간 고정)
-    // 상품 등록으로부터 24시간 30분 후
+    // 상품 등록으로부터 24시간 10분 후
     public LocalDateTime getAuctionEndTime() {
-        return this.getCreatedAt().plusMinutes(30);
+        return this.getCreatedAt().plusMinutes(1440);
     }
 
     // 경매 상태 체크
