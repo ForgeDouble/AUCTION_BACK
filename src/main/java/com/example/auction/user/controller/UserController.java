@@ -56,6 +56,7 @@ public class UserController {
     }
 
     /* 로그인 연장 - 새 토큰 덮어쓰기 */
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/extend")
     public ResponseEntity<?> extend() {
         var res = userService.extendLogin();
