@@ -2,124 +2,32 @@ server:
   port: 8080
 
 spring:
-  # 테스트 환경을 위한 프로필 설정 -> 후 제거
-#  profiles:
-#    active: seed-login-users
-#    active: seed-test-product
-  data:
-    redis:
-      host: localhost
-      port: 6379
-    mongodb:
-      # docker으로 mongodb 생성 root 이용으로 인해 authSource => admin 적합
-      # username : auction_user , password : auction_pass
-      # docker 명 : mongo_auction / 스키마 명 : auction
-      # mongodb://아이디:비번@호스트:포트/DB?authSource=인증DB
-      uri: mongodb://auction_user:auction_pass@localhost:27017/auction?authSource=auction
-      auto-index-creation: true
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: auction_user
-    password: auction_pass
   servlet:
     multipart:
       enabled: true
       max-file-size: 10MB
       max-request-size: 10MB
 
-  datasource:
-    driver-class-name: org.mariadb.jdbc.Driver
-    url: jdbc:mariadb://localhost:3306/auction?allowPublicKeyRetrieval=true&useSsl=false
-    username: root
-    password: 1234
-    hikari:
-      pool-name: AuctionHikariPool
-      maximum-pool-size: 20
-#      minimum-idle: 20
-      connection-timeout: 5000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-
   jpa:
     open-in-view: false
     database-platform: org.hibernate.dialect.MariaDBDialect
-    generate-ddl: true
-    hibernate:
-      format_sql: false
-      ddl-auto: update
-    show-sql: true
-    # 성능테스트 를 위한 sql 보기 끔
-#    show-sql: false
-
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
-          connectiontimeout: 5000
-          timeout: 5000
-          writetimeout: 5000
-
-
-
-app:
-  frontend:
-    url: http://localhost:5173
-
-jwt:
-  secretKeyRT: mySuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSuperSecretKey
-  expirationRT: 7200000 # 2시간 설정
 
 logging:
   level:
     root: INFO
     org.springframework: WARN
 
-firebase:
-  service-account-B64: ${FIREBASE_SERVICE_ACCOUNT_B64:}
-  service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
-  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
-crypto:
-  aes-gcm-key-b64: ${AES_GCM_KEY_B64:}
-  aes-gcm-key-file: ${AES_GCM_KEY_FILE:}
-  token-hash-secret: ${TOKEN_HASH_SECRET:local-dev-token-hash-secret-32bytes-long}
-
-cloud:
-  aws:
-    region:
-      static: ap-northeast-2
-    s3:
-      # 후 추가 예정
-      bucket: ${AWS_BUCKET_NAME:}
-    credentials:
-      access-key: ${AWS_ACCESS_KEY_ID:}
-      secret-key: ${AWS_SECRET_ACCESS_KEY:}
-
 storage:
-  # 이미지 최대 크기 (MB)
   max-image-mb: 10
-  # 공개 URL 베이스 -> 입력 안하는 경우 S3 기본 URL 셋팅
-  # 후 클라우드 프론트 배포 후 설정
-  public-base-url: ""
-  # 허용 타입
+  max-images-per-product: 10
   allowed-mime: image/jpeg,image/png,image/webp,image/gif
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health, info, metrics, prometheus
   endpoint:
     health:
       show-details: when_authorized
+      probes:
+        enabled: true
   metrics:
     export:
       enabled: true
@@ -127,13 +35,6 @@ management:
       application: auction-back
     distribution:
       percentiles-histogram:
-        "http.server.requests": true
+        http.server.requests: true
       slo:
-        "http.server.requests": 100ms, 200ms, 500ms, 1s, 3s
-
-opensearch:
-  host: localhost
-  port: 9200
-  scheme: http
-  index:
-    product: auction_product
+        http.server.requests: 100ms,200ms,500ms,1s,3s

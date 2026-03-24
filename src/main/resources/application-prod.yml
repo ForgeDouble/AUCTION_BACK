@@ -1,5 +1,4 @@
 server:
-  port: 8080
   forward-headers-strategy: framework
   shutdown: graceful
 
@@ -30,12 +29,6 @@ spring:
       simple:
         default-requeue-rejected: false
 
-  servlet:
-    multipart:
-      enabled: true
-      max-file-size: 10MB
-      max-request-size: 10MB
-
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
     url: ${SPRING_DATASOURCE_URL}
@@ -49,8 +42,6 @@ spring:
       max-lifetime: 1800000
 
   jpa:
-    open-in-view: false
-    database-platform: org.hibernate.dialect.MariaDBDialect
     hibernate:
       ddl-auto: update
     show-sql: false
@@ -87,22 +78,10 @@ jwt:
   secretKeyRT: ${JWT_SECRET_KEY_RT}
   expirationRT: ${JWT_EXPIRATION_RT:7200000}
 
-logging:
-  level:
-    root: INFO
-    org.springframework: WARN
-    com.example.auction: INFO
-
 firebase:
   service-account-b64: ${FIREBASE_SERVICE_ACCOUNT_B64:}
   service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
   service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
-
-# 참고:
-# 아래 두 값은 현재 코드에서 Spring property가 아니라 실제 환경변수로 직접 읽음
-# 반드시 Kubernetes Secret -> env 로 직접 주입 필요
-# AES_GCM_KEY_B64
-# TOKEN_HASH_KEY_B64
 
 cloud:
   aws:
@@ -115,38 +94,20 @@ cloud:
       secret-key: ${AWS_SECRET_ACCESS_KEY:}
 
 storage:
-  max-image-mb: 10
-  max-images-per-product: 10
   public-base-url: ${STORAGE_PUBLIC_BASE_URL:}
-  allowed-mime: image/jpeg,image/png,image/webp,image/gif
 
-#management:
-#  endpoints:
-#    web:
-#      exposure:
-#        include: health,info,prometheus
-#  endpoint:
-#    health:
-#      show-details: when_authorized
-#      probes:
-#        enabled: true
-#  metrics:
-#    export:
-#      enabled: true
-#    tags:
-#      application: auction-back
-#    distribution:
-#      percentiles-histogram:
-#        http.server.requests: true
-#      slo:
-#        http.server.requests: 100ms,200ms,500ms,1s,3s
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
 
-#opensearch:
-#  host: ${OPENSEARCH_HOST}
-#  port: ${OPENSEARCH_PORT:9200}
-#  scheme: ${OPENSEARCH_SCHEME:http}
-#  index:
-#    product: ${OPENSEARCH_PRODUCT_INDEX:auction_product}
+opensearch:
+  host: ${OPENSEARCH_HOST}
+  port: ${OPENSEARCH_PORT:9200}
+  scheme: ${OPENSEARCH_SCHEME:http}
+  index:
+    product: ${OPENSEARCH_PRODUCT_INDEX:auction_product}
 
 cache:
   product-count-ttl-seconds: ${CACHE_PRODUCT_COUNT_TTL_SECONDS:10}
