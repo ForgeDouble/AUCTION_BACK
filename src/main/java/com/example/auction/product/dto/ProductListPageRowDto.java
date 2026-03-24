@@ -37,8 +37,8 @@ public class ProductListPageRowDto {
                 .build();
 
         if (createdAt != null) {
-            dto.setAuctionStartTime(createdAt.plusMinutes(2));
-            dto.setAuctionEndTime(createdAt.plusMinutes(30));
+            dto.setAuctionStartTime(createdAt.plusMinutes(10));
+            dto.setAuctionEndTime(createdAt.plusMinutes(1440));
         }
 
         return dto;

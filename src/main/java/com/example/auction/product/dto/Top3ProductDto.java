@@ -32,6 +32,6 @@ public class Top3ProductDto {
         this.bidCount = bidCount;
         this.latestBidAmount = latestBidAmount;
         this.previewImageUrl = previewImageUrl;
-        this.auctionEndTime = createdAt != null ? createdAt.plusMinutes(30) : null;
+        this.auctionEndTime = createdAt != null ? createdAt.plusMinutes(1440) : null;
     }
 }

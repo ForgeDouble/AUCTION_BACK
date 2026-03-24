@@ -39,18 +39,16 @@ public class PasswordResetService {
      */
     public void requestPasswordReset(String email) {
         // 사용자 조회
-//        Optional<User> userOpt = userRepository.findByEmailAndDelYn(email, DelYN.N);
+        Optional<User> userOpt = userRepository.findByEmailAndDelYn(email, DelYN.N);
 
-        User user = userRepository.findByEmail("user1@auction.test")
-                .orElseThrow(() ->  new RuntimeException("User not found"));
-//        if (userOpt.isEmpty()) {
-//            // 보안을 위해 사용자 존재 여부를 노출하지 않음
-//            // 하지만 이메일은 보내지 않음
-//            log.warn("[USER_NOT_FOUND] 존재하지 않거나 만료된 계정 email={}", email);
-//            return;
-//        }
+        if (userOpt.isEmpty()) {
+            // 보안을 위해 사용자 존재 여부를 노출하지 않음
+            // 하지만 이메일은 보내지 않음
+            log.warn("[USER_NOT_FOUND] 존재하지 않거나 만료된 계정 email={}", email);
+            return;
+        }
 
-//        User user = userOpt.get();
+        User user = userOpt.get();
 
         // 기존 미사용 토큰 무효화
         tokenRepository.invalidateUserTokens(user.getUserId());
