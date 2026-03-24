@@ -20,6 +20,10 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     Optional<Bid> findTopByProduct_ProductIdOrderByCreatedAtDesc(Long productId);
     List<Bid> findAllByOrderByBidIdAsc();
 
+    /* 첫번째값(세팅값)인 bid를 찾음 */
+    Optional<Bid> findByProduct_ProductIdAndIsFirstTrue(Long productId);
+
+
     @Query("""
     SELECT new com.example.auction.bid.dto.BidAllByUserDto(
         b.bidId,
@@ -45,6 +49,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     WHERE b.user.email = :email
     AND (:statuses IS NULL OR p.status IN :statuses)
     AND (:isWinned IS NULL OR b.isWinned = :isWinned)
+    AND (b.isFirst IS NULL OR b.isFirst = false)
     ORDER BY b.createdAt DESC
 """)
     Page<BidAllByUserDto> findBidAllByUser(@Param("email") String email,
