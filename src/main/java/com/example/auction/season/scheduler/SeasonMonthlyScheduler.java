@@ -18,9 +18,9 @@ public class SeasonMonthlyScheduler {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     // 매월 1일 00:10
-//    @Scheduled(cron = "0 10 0 1 * *", zone = "Asia/Seoul")
+    @Scheduled(cron = "0 10 0 1 * *", zone = "Asia/Seoul")
     //테스트 환경 조성을 위한 15분 설정
-    @Scheduled(cron = "0 */15 * * * *", zone = "Asia/Seoul")
+//    @Scheduled(cron = "0 */15 * * * *", zone = "Asia/Seoul")
     public void run() {
         // 데이터가 이번달 밖에 없기 때문에 이번달 셋팅
 //        YearMonth target = YearMonth.now(KST).minusMonths(1);

@@ -14,6 +14,7 @@ spring:
     redis:
       host: ${SPRING_DATA_REDIS_HOST}
       port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
       timeout: 3s
 
     mongodb:
@@ -21,10 +22,13 @@ spring:
       auto-index-creation: true
 
   rabbitmq:
-    host: ${SPRING_RABBITMQ_HOST}
-    port: ${SPRING_RABBITMQ_PORT:5672}
+    addresses: ${SPRING_RABBITMQ_ADDRESSES}
+#    port: ${SPRING_RABBITMQ_PORT:5671}
     username: ${SPRING_RABBITMQ_USERNAME}
     password: ${SPRING_RABBITMQ_PASSWORD}
+    ssl:
+      enabled: true
+      algorithm: TLSv1.2
     listener:
       simple:
         default-requeue-rejected: false
@@ -36,7 +40,7 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       pool-name: AuctionHikariPool
-      maximum-pool-size: ${DB_POOL_MAX_SIZE:20}
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:5}
       connection-timeout: 5000
       idle-timeout: 600000
       max-lifetime: 1800000
@@ -79,9 +83,9 @@ jwt:
   expirationRT: ${JWT_EXPIRATION_RT:7200000}
 
 firebase:
-  service-account-b64: ${FIREBASE_SERVICE_ACCOUNT_B64:}
+#  service-account-b64: ${FIREBASE_SERVICE_ACCOUNT_B64:}
   service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
-  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
+#  service-account-path: ${FIREBASE_SERVICE_ACCOUNT_PATH:}
 
 cloud:
   aws:
@@ -102,12 +106,13 @@ management:
       exposure:
         include: health,info,prometheus
 
-opensearch:
-  host: ${OPENSEARCH_HOST}
-  port: ${OPENSEARCH_PORT:9200}
-  scheme: ${OPENSEARCH_SCHEME:http}
-  index:
-    product: ${OPENSEARCH_PRODUCT_INDEX:auction_product}
+#opensearch:
+#  enabled: false
+#  host: ${OPENSEARCH_HOST}
+#  port: ${OPENSEARCH_PORT:9200}
+#  scheme: ${OPENSEARCH_SCHEME:http}
+#  index:
+#    product: ${OPENSEARCH_PRODUCT_INDEX:auction_product}
 
 cache:
   product-count-ttl-seconds: ${CACHE_PRODUCT_COUNT_TTL_SECONDS:10}

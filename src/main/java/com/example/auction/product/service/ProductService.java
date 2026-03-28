@@ -25,7 +25,7 @@ import com.example.auction.product.repository.ProductImageRepository;
 import com.example.auction.product.search.ProductIndexEvent;
 import com.example.auction.product.search.dto.ProductSearchIdsPageDto;
 import com.example.auction.product.search.dto.ProductSearchRequest;
-import com.example.auction.product.search.service.ProductSearchService;
+//import com.example.auction.product.search.service.ProductSearchService;
 import com.example.auction.user.domain.Authority;
 import com.example.auction.user.domain.User;
 import com.example.auction.user.repository.UserRepository;
@@ -70,7 +70,7 @@ public class ProductService {
     private final TaskScheduler taskScheduler;
     private final ProductCountCacheService productCountCacheService;
 
-    private final ProductSearchService productSearchService;
+//    private final ProductSearchService productSearchService;
     private final ApplicationEventPublisher eventPublisher;
 
     private static final int AUCTION_DURATION_HOURS = 24;
@@ -84,7 +84,7 @@ public class ProductService {
             @Qualifier("bidPrice") RedisTemplate<String, String> bidStringRedisTemplate,
 
             WishlistRepository wishlistRepository, ProductImageRepository productImageRepository, ProductImageService productImageService, AuctionNotificationService auctionNotificationService, TaskScheduler taskScheduler,
-            ProductCountCacheService productCountCacheService, ProductSearchService productSearchService, ApplicationEventPublisher eventPublisher) {
+            ProductCountCacheService productCountCacheService, ApplicationEventPublisher eventPublisher) {
 
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
@@ -100,7 +100,6 @@ public class ProductService {
         this.auctionNotificationService = auctionNotificationService;
         this.taskScheduler = taskScheduler;
         this.productCountCacheService = productCountCacheService;
-        this.productSearchService = productSearchService;
         this.eventPublisher = eventPublisher;
     }
 

@@ -16,7 +16,7 @@ public class AdminRealtimePublisher {
     private final SimpMessagingTemplate messagingTemplate;
     private final AdminOverviewService adminOverviewService;
 
-    @Scheduled(fixedDelay = 10000)
+    @Scheduled(fixedDelay = 15000)
     public void pushOverview() {
         try {
             AdminOverviewResponse dto = adminOverviewService.getOverview();

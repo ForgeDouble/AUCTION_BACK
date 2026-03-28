@@ -1,0 +1,22 @@
+#민감하지 않은 값 ( 2번)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auction-back-config
+  namespace: auction
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  SERVER_PORT: "8080"
+  TZ: "Asia/Seoul"
+  AWS_REGION: "ap-northeast-2"
+  AWS_BUCKET_NAME: "auction-dding"
+  APP_FRONTEND_URL: "https://auctionbid.shop"
+  SPRING_DATA_REDIS_PORT: "6379"
+#  SPRING_RABBITMQ_PORT: "5671"
+
+
+
+
+
+
+

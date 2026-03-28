@@ -19,6 +19,10 @@ import java.util.Map;
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final StompHandler stompHandler;
+    private static final String[] ALLOWED_ORIGINS = {
+            "https://auctionbid.shop",
+            "https://www.auctionbid.shop"
+    };
 
     public WebSocketConfig(StompHandler stompHandler) {
         this.stompHandler = stompHandler;

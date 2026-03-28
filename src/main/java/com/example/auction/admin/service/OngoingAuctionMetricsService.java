@@ -35,8 +35,8 @@ public class OngoingAuctionMetricsService {
         return fresh;
     }
 
-    // 5초마다 1번만 갱신
-    @Scheduled(fixedDelay = 5000)
+    // 10초마다 1번만 갱신
+    @Scheduled(fixedDelay = 10000)
     public void refreshOngoingAuctionsCache() {
 
         Boolean locked = presenceRedis.opsForValue().setIfAbsent(LOCK_KEY, "1", Duration.ofSeconds(8));

@@ -1,0 +1,198 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-back
+  namespace: auction
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auction-back
+  template:
+    metadata:
+      labels:
+        app: auction-back
+    spec:
+      containers:
+        - name: auction-back
+          image: "965838107338.dkr.ecr.ap-northeast-2.amazonaws.com/auction-backend:20260327-9"
+#          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: auction-back-config
+                  key: SPRING_PROFILES_ACTIVE
+
+            - name: SERVER_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: auction-back-config
+                  key: SERVER_PORT
+
+            - name: TZ
+              valueFrom:
+                configMapKeyRef:
+                  name: auction-back-config
+                  key: TZ
+
+            - name: AWS_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: auction-back-config
+                  key: AWS_REGION
+
+            - name: AWS_BUCKET_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: auction-back-config
+                  key: AWS_BUCKET_NAME
+
+            - name: APP_FRONTEND_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: auction-back-config
+                  key: APP_FRONTEND_URL
+
+#            - name: BACK_BASE_URL
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: auction-back-config
+#                  key: BACK_BASE_URL
+
+            - name: SPRING_DATA_REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: auction-back-config
+                  key: SPRING_DATA_REDIS_PORT
+
+
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_DATASOURCE_URL
+
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_DATASOURCE_USERNAME
+
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_DATASOURCE_PASSWORD
+
+            - name: SPRING_DATA_MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_DATA_MONGODB_URI
+
+            - name: SPRING_DATA_REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_DATA_REDIS_HOST
+
+            - name: SPRING_DATA_REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_DATA_REDIS_PASSWORD
+
+#            - name: SPRING_RABBITMQ_HOST
+#              valueFrom:
+#                secretKeyRef:
+#                  name: auction-back-secret
+#                  key: SPRING_RABBITMQ_HOST
+            - name: SPRING_RABBITMQ_ADDRESSES
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_RABBITMQ_ADDRESSES
+
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_RABBITMQ_USERNAME
+
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: SPRING_RABBITMQ_PASSWORD
+
+            - name: MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: MAIL_USERNAME
+
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: MAIL_PASSWORD
+
+            - name: FIREBASE_SERVICE_ACCOUNT_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: FIREBASE_SERVICE_ACCOUNT_JSON
+
+            - name: AES_GCM_KEY_B64
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: AES_GCM_KEY_B64
+
+            - name: TOKEN_HASH_KEY_B64
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: TOKEN_HASH_KEY_B64
+
+            - name: TOKEN_HASH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: TOKEN_HASH_SECRET
+
+            - name: JWT_SECRET_KEY_RT
+              valueFrom:
+                secretKeyRef:
+                  name: auction-back-secret
+                  key: JWT_SECRET_KEY_RT
+
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 5
+
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1024Mi"

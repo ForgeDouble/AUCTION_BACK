@@ -1,0 +1,5 @@
+#1번
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: auction

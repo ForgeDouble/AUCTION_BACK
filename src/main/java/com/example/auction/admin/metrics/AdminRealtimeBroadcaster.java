@@ -22,7 +22,7 @@ public class AdminRealtimeBroadcaster {
     private final UserStatusService userStatusService;
     private final OngoingAuctionMetricsService ongoingAuctionMetricsService;
 
-    @Scheduled(fixedDelay = 2000)
+    @Scheduled(fixedDelay = 5000)
     public void pushRealtime() {
 
         long realtimeUsers = userStatusService.getRealtimeUsersCount();
