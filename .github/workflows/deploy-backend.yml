@@ -59,13 +59,13 @@ jobs:
         run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
 
       - name: Ensure namespace exists
-        run: kubectl apply -f k8s/auction/namespace.yml
+        run: kubectl apply -f k8s/auction/namespace.yaml
 
       - name: Apply service
-        run: kubectl apply -f k8s/auction/service.yml
+        run: kubectl apply -f k8s/auction/service.yaml
 
       - name: Apply configmap
-        run: kubectl apply -f k8s/auction/configmap.yml
+        run: kubectl apply -f k8s/auction/configmap.yaml
 
       - name: Create or update secret
         env:
