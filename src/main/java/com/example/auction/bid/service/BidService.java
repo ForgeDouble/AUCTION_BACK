@@ -292,6 +292,7 @@ public class BidService {
         return bidEvents;
     }
 
+
     @Transactional(readOnly = true)
     public List<BidAllDto> readAllBidsByProductId(Long productId) {
         List<BidAllDto> bidAllDtos = bidRepository.findAllByProduct_ProductIdOrderByCreatedAtDesc(productId).stream()
