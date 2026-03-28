@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: auction-back
-          image: "965838107338.dkr.ecr.ap-northeast-2.amazonaws.com/auction-backend:20260327-9"
+          image: "965838107338.dkr.ecr.ap-northeast-2.amazonaws.com/auction-backend:20260327-11"
 #          imagePullPolicy: Always
           imagePullPolicy: IfNotPresent
           ports:

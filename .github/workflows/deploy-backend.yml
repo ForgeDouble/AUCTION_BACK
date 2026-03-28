@@ -1,0 +1,136 @@
+name: Deploy Auction Backend
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  K8S_NAMESPACE: ${{ vars.K8S_NAMESPACE }}
+  IMAGE_TAG: ${{ github.sha }}
+  IMAGE_URI: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build jar
+        run: ./gradlew clean bootJar -x test
+
+      - name: Build Docker image
+        run: docker build -t "$IMAGE_URI" .
+
+      - name: Push Docker image
+        run: docker push "$IMAGE_URI"
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --region "$AWS_REGION" --name "$EKS_CLUSTER_NAME"
+
+      - name: Ensure namespace exists
+        run: kubectl apply -f k8s/auction/namespace.yml
+
+      - name: Apply service
+        run: kubectl apply -f k8s/auction/service.yml
+
+      - name: Apply configmap
+        run: kubectl apply -f k8s/auction/configmap.yml
+
+      - name: Create or update secret
+        env:
+          SPRING_DATASOURCE_URL: ${{ secrets.SPRING_DATASOURCE_URL }}
+          SPRING_DATASOURCE_USERNAME: ${{ secrets.SPRING_DATASOURCE_USERNAME }}
+          SPRING_DATASOURCE_PASSWORD: ${{ secrets.SPRING_DATASOURCE_PASSWORD }}
+          SPRING_DATA_MONGODB_URI: ${{ secrets.SPRING_DATA_MONGODB_URI }}
+          SPRING_DATA_REDIS_HOST: ${{ secrets.SPRING_DATA_REDIS_HOST }}
+          SPRING_DATA_REDIS_PASSWORD: ${{ secrets.SPRING_DATA_REDIS_PASSWORD }}
+          SPRING_RABBITMQ_ADDRESSES: ${{ secrets.SPRING_RABBITMQ_ADDRESSES }}
+          SPRING_RABBITMQ_USERNAME: ${{ secrets.SPRING_RABBITMQ_USERNAME }}
+          SPRING_RABBITMQ_PASSWORD: ${{ secrets.SPRING_RABBITMQ_PASSWORD }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          AES_GCM_KEY_B64: ${{ secrets.AES_GCM_KEY_B64 }}
+          TOKEN_HASH_KEY_B64: ${{ secrets.TOKEN_HASH_KEY_B64 }}
+          TOKEN_HASH_SECRET: ${{ secrets.TOKEN_HASH_SECRET }}
+          JWT_SECRET_KEY_RT: ${{ secrets.JWT_SECRET_KEY_RT }}
+        run: |
+          kubectl create secret generic auction-back-secret \
+            --namespace="$K8S_NAMESPACE" \
+            --from-literal=SPRING_DATASOURCE_URL="$SPRING_DATASOURCE_URL" \
+            --from-literal=SPRING_DATASOURCE_USERNAME="$SPRING_DATASOURCE_USERNAME" \
+            --from-literal=SPRING_DATASOURCE_PASSWORD="$SPRING_DATASOURCE_PASSWORD" \
+            --from-literal=SPRING_DATA_MONGODB_URI="$SPRING_DATA_MONGODB_URI" \
+            --from-literal=SPRING_DATA_REDIS_HOST="$SPRING_DATA_REDIS_HOST" \
+            --from-literal=SPRING_DATA_REDIS_PASSWORD="$SPRING_DATA_REDIS_PASSWORD" \
+            --from-literal=SPRING_RABBITMQ_ADDRESSES="$SPRING_RABBITMQ_ADDRESSES" \
+            --from-literal=SPRING_RABBITMQ_USERNAME="$SPRING_RABBITMQ_USERNAME" \
+            --from-literal=SPRING_RABBITMQ_PASSWORD="$SPRING_RABBITMQ_PASSWORD" \
+            --from-literal=MAIL_USERNAME="$MAIL_USERNAME" \
+            --from-literal=MAIL_PASSWORD="$MAIL_PASSWORD" \
+            --from-literal=FIREBASE_SERVICE_ACCOUNT_JSON="$FIREBASE_SERVICE_ACCOUNT_JSON" \
+            --from-literal=AES_GCM_KEY_B64="$AES_GCM_KEY_B64" \
+            --from-literal=TOKEN_HASH_KEY_B64="$TOKEN_HASH_KEY_B64" \
+            --from-literal=TOKEN_HASH_SECRET="$TOKEN_HASH_SECRET" \
+            --from-literal=JWT_SECRET_KEY_RT="$JWT_SECRET_KEY_RT" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Apply deployment
+        run: kubectl apply -f k8s/auction/deployment.yml
+
+      - name: Set deployment image
+        run: kubectl set image deployment/auction-back auction-back="$IMAGE_URI" -n "$K8S_NAMESPACE"
+
+      - name: Apply ingress
+        run: kubectl apply -f k8s/auction/ingress.yml
+
+      - name: Patch ingress certificate arn
+        run: |
+          kubectl annotate ingress auction-back-ingress \
+            -n "$K8S_NAMESPACE" \
+            alb.ingress.kubernetes.io/certificate-arn='${{ vars.ACM_CERTIFICATE_ARN }}' \
+            --overwrite
+
+      - name: Restart deployment
+        run: kubectl rollout restart deployment/auction-back -n "$K8S_NAMESPACE"
+
+      - name: Wait for rollout
+        run: kubectl rollout status deployment/auction-back -n "$K8S_NAMESPACE" --timeout=300s
+
+      - name: Show resource status
+        if: always()
+        run: |
+          kubectl get pods -n "$K8S_NAMESPACE"
+          kubectl get svc -n "$K8S_NAMESPACE"
+          kubectl get ingress -n "$K8S_NAMESPACE"
