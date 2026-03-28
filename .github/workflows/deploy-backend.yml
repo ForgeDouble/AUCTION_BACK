@@ -107,13 +107,13 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Apply deployment
-        run: kubectl apply -f k8s/auction/deployment.yml
+        run: kubectl apply -f k8s/auction/deployment.yaml
 
       - name: Set deployment image
         run: kubectl set image deployment/auction-back auction-back="$IMAGE_URI" -n "$K8S_NAMESPACE"
 
       - name: Apply ingress
-        run: kubectl apply -f k8s/auction/ingress.yml
+        run: kubectl apply -f k8s/auction/ingress.yaml
 
       - name: Patch ingress certificate arn
         run: |
