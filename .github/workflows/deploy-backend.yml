@@ -61,6 +61,9 @@ jobs:
       - name: Ensure namespace exists
         run: kubectl apply -f k8s/auction/namespace.yaml
 
+      - name: Apply serviceaccount
+        run: kubectl apply -f k8s/auction/serviceaccount.yaml
+
       - name: Apply service
         run: kubectl apply -f k8s/auction/service.yaml
 

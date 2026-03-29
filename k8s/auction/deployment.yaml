@@ -13,6 +13,7 @@ spec:
       labels:
         app: auction-back
     spec:
+      serviceAccountName: auction-back-sa
       containers:
         - name: auction-back
           image: "965838107338.dkr.ecr.ap-northeast-2.amazonaws.com/auction-backend:20260327-11"
