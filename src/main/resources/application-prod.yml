@@ -101,10 +101,17 @@ storage:
   public-base-url: ${STORAGE_PUBLIC_BASE_URL:}
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  health:
+    mail:
+      enabled: false
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
 
 #opensearch:
 #  enabled: false

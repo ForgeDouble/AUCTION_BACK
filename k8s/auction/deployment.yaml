@@ -171,21 +171,28 @@ spec:
                 secretKeyRef:
                   name: auction-back-secret
                   key: JWT_SECRET_KEY_RT
+          startupProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            failureThreshold: 24
+            periodSeconds: 10
+            timeoutSeconds: 3
 
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/readiness
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 6
 
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8080
-            initialDelaySeconds: 60
+            initialDelaySeconds: 120
             periodSeconds: 20
             timeoutSeconds: 3
             failureThreshold: 5
