@@ -38,17 +38,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if ("OPTIONS".equalsIgnoreCase(method)
                 || "/user/login".equals(path)
                 || "/user/register".equals(path)
-//                || "/user/verify-token".equals(path)
                 || "/actuator/health".equals(path)
-                || path.startsWith("/product")
                 || path.startsWith("/category")
-                || path.startsWith("/bid")
-                || path.startsWith("/auth")
-                || path.startsWith("/season")
-                || path.startsWith("/ws")) {
+                || path.equals("/product/all")
+                || path.equals("/product/top3")
+                || path.matches("^/product/\\d+$")
+                || path.matches("^/product/update/\\d+$")
+        ) {
             chain.doFilter(request, response);
             return;
         }
+
 
         String authorizationHeader = request.getHeader("Authorization");
 

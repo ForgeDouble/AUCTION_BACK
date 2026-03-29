@@ -119,10 +119,17 @@ public class ProductService {
 		}
 	}
 
+    private String getCurrentUserEmail() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            throw new UnauthorizedAccessException("AUTH_REQUIRED", "로그인이 필요합니다.");
+        }
+        return auth.getName();
+    }
 
     @Transactional
     public void controllAuction(ProductCreateDto dto, List<MultipartFile> files) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = getCurrentUserEmail();
 
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
@@ -819,7 +826,7 @@ public class ProductService {
     // 마이페이지 아이템 목록 조회
     @Transactional(readOnly = true)
     public Page<ProductWithBidDto> readAllProductsByUser(int page, int size) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = getCurrentUserEmail();
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
@@ -834,7 +841,7 @@ public class ProductService {
             List<Status> statuses,
             String sortBy
     ) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = getCurrentUserEmail();
 
         Pageable pageable = PageRequest.of(page, size);
 
@@ -873,7 +880,7 @@ public class ProductService {
                                        List<Long> deleteIds,
                                        List<Long> orderIds) {
 
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = getCurrentUserEmail();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
@@ -914,7 +921,7 @@ public class ProductService {
     // 권한 - 해당 유저, 관리자
 	@Transactional
 	public void deleteProduct(Long productId) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = getCurrentUserEmail();
         User user = userRepository.findByEmailAndDelYn(email, DelYN.N)
                 .orElseThrow(() -> new UnauthorizedAccessException("INVALID_USER", "유효하지 않은 유저입니다. email:" + email));
 
@@ -937,7 +944,7 @@ public class ProductService {
     /* 마이페이지 - 찜한 목록들 조회 */
     @Transactional(readOnly = true)
     public Page<ProductWithBidDto> readProductsByWishlist(int page, int size) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        String email = getCurrentUserEmail();
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
