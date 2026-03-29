@@ -28,6 +28,13 @@ management:
       show-details: when_authorized
       probes:
         enabled: true
+  health:
+    mail:
+      enabled: false
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
   metrics:
     export:
       enabled: true

@@ -93,25 +93,13 @@ cloud:
       static: ${AWS_REGION:ap-northeast-2}
     s3:
       bucket: ${AWS_BUCKET_NAME}
-    credentials:
-      access-key: ${AWS_ACCESS_KEY_ID:}
-      secret-key: ${AWS_SECRET_ACCESS_KEY:}
+#    credentials:
+#      access-key: ${AWS_ACCESS_KEY_ID:}
+#      secret-key: ${AWS_SECRET_ACCESS_KEY:}
 
 storage:
   public-base-url: ${STORAGE_PUBLIC_BASE_URL:}
 
-management:
-  endpoint:
-    health:
-      probes:
-        enabled: true
-  health:
-    mail:
-      enabled: false
-    livenessstate:
-      enabled: true
-    readinessstate:
-      enabled: true
 
 #opensearch:
 #  enabled: false
