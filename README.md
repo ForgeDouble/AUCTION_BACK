@@ -1,4 +1,4 @@
-<div align="center">
+<img width="1651" height="475" alt="image" src="https://github.com/user-attachments/assets/0881a885-5ae7-4343-9e0d-a89855b4a61d" /><div align="center">
     <img width="500" alt="bid-logo" src="https://github.com/user-attachments/assets/647f0fe3-5af4-4e41-97e8-30c70725b711" />
 </div>
 
@@ -99,12 +99,13 @@ api 명세 관련 docs
 <summary>사용자 로그인</summary>
    
 ### 회원 가입
-<img width="1645" height="749" alt="image" src="https://github.com/user-attachments/assets/916af85e-51b6-466b-8884-cb2e49eeba8b" />
-
-
+<img width="1600" height="800" alt="image" src="https://github.com/user-attachments/assets/916af85e-51b6-466b-8884-cb2e49eeba8b" />
 
 ### 사용자 로그인
-<img width="1624" height="827" alt="image" src="https://github.com/user-attachments/assets/4aa08b5a-d7b0-4faa-a234-bf8347074162" />
+<img width="1600" height="800" alt="image" src="https://github.com/user-attachments/assets/4aa08b5a-d7b0-4faa-a234-bf8347074162" />
+
+### 사용자 로그아웃
+<img width="1600" height="800" alt="image" src="https://github.com/user-attachments/assets/e59608f8-50ab-4b9f-9548-7b1beab020b7" />
 
 
 </details>
@@ -113,32 +114,25 @@ api 명세 관련 docs
 <summary>유저 관리</summary>
 
 ### 내 정보 조회
-
-<img src="./img/api테스트/직원등록.png"/>
+<img width="1669" height="834" alt="image" src="https://github.com/user-attachments/assets/83d890aa-617a-41b0-ac84-423f18f4d45e" />
 
 ### 내 상태 조회
-
-<img src="./img/api테스트/직원상세조회.png"/>
+<img width="1682" height="545" alt="image" src="https://github.com/user-attachments/assets/d40eccf5-a313-4afe-bc46-46621df86f85" />
 
 ### 타겟유저 상태 조회
-
-<img src="./img/api테스트/직원정보수정.png"/>
+<img width="1670" height="551" alt="image" src="https://github.com/user-attachments/assets/478c2311-5099-4eec-b61f-f0ea2520ba90" />
 
 ### 프로필 조회
-
-<img src="./img/api테스트/직원정보조회.png"/>
+<img width="1667" height="462" alt="image" src="https://github.com/user-attachments/assets/4d42710b-3ec4-4985-8ba4-56e8588dc6bf" />
 
 ### 내 정보 수정
-
-<img src="./img/api테스트/직원정보조회.png"/>
+<img width="1666" height="814" alt="image" src="https://github.com/user-attachments/assets/e279d123-c3b2-40ce-ad6c-94c0f63df907" />
 
 ### 내 닉네임 수정
-
-<img src="./img/api테스트/직원정보조회.png"/>
+<img width="1670" height="712" alt="image" src="https://github.com/user-attachments/assets/7e08fde1-5a5f-4e68-8914-8e1de06fdaa2" />
 
 ### 프로필 이미지 저장
-
-<img src="./img/api테스트/직원정보조회.png"/>
+<img width="1681" height="539" alt="image" src="https://github.com/user-attachments/assets/7314e055-0a9b-4aa2-bba7-8b2dcdc90425" />
 
 
 </details>
@@ -148,35 +142,31 @@ api 명세 관련 docs
 <summary>관리자 관리</summary>
 
 ### 관리자 계정 생성
-
-<img src="./img/api테스트/직원등록.png"/>
+<img width="1669" height="802" alt="image" src="https://github.com/user-attachments/assets/385ef861-019c-4af7-8356-15982a7fd626" />
 
 ### 문의직원 계정 생성
-
-<img src="./img/api테스트/직원상세조회.png"/>
+<img width="1667" height="808" alt="image" src="https://github.com/user-attachments/assets/3f0c0156-7255-4b12-86b0-e1750e0d5361" />
 
 ### 전체 유저 조회
-
-<img src="./img/api테스트/직원정보수정.png"/>
+<img width="1675" height="483" alt="image" src="https://github.com/user-attachments/assets/c3afb830-d44e-4bb0-907f-1d4496dfa1ff" />
 
 
 </details>
+
 
 
 <details>
 <summary>계정 검증</summary>
 
 ### 비밀번호 변경 이메일 전송
-
-<img src="./img/api테스트/출근.png"/>
+<img width="1672" height="504" alt="image" src="https://github.com/user-attachments/assets/a6de0ca1-8f9c-45e4-a1a8-8459165cd2d3" />
 
 ### 비밀번호 변경
-
-<img src="./img/api테스트/퇴근.png"/>
+<img width="1668" height="713" alt="image" src="https://github.com/user-attachments/assets/3dd7e9e0-c7f7-4f91-976a-6f5ba92f6807" />
 
 ### 비밀번호 토큰 검증
+<img width="1660" height="549" alt="image" src="https://github.com/user-attachments/assets/cbc2f5d1-cb79-4fa8-b49e-cfb5f7c39482" />
 
-<img src="./img/api테스트/퇴근.png"/>
 
 </details>
 
@@ -186,28 +176,22 @@ api 명세 관련 docs
 <summary>상품 관리</summary>
 
 ### 상품 등록
-
-<img src="./img/api테스트/게시물작성.png"/>
+<img width="1688" height="661" alt="image" src="https://github.com/user-attachments/assets/1a1e0322-506d-44b2-b9bf-06c4e0ea53c2" />
 
 ### 상품 수정
-
-<img src="./img/api테스트/게시판상단고정.png"/>
+<img width="1666" height="709" alt="image" src="https://github.com/user-attachments/assets/b4100ea5-f575-40f8-a1e3-329ed5074ed7" />
 
 ### 상품 삭제
-
-<img src="./img/api테스트/게시판세부조회.png"/>
+<img width="1669" height="619" alt="image" src="https://github.com/user-attachments/assets/284e9d5f-a8e5-4f2e-83f3-94929b98b5e4" />
 
 ### 상품 목록 조회
-
-<img src="./img/api테스트/게시판세부조회.png"/>
+<img width="1674" height="526" alt="image" src="https://github.com/user-attachments/assets/ddf63e3e-8e81-4045-ab4d-ae7c5e64af99" />
 
 ### 상품 상세 조회
-
-<img src="./img/api테스트/게시판조회.png"/>
+<img width="1676" height="642" alt="image" src="https://github.com/user-attachments/assets/335a1cca-8819-4b2b-b3cb-bff9efab1139" />
 
 ### 카테고리 조회
-
-<img src="./img/api테스트/게시판세부조회.png"/>
+<img width="1670" height="709" alt="image" src="https://github.com/user-attachments/assets/00cc501c-1c2b-4b0f-813f-3b6b9b37cfa5" />
 
 </details>
 
@@ -221,8 +205,7 @@ api 명세 관련 docs
 <img src="./img/api테스트/댓글생성.png"/>
 
 ### 입찰 조회
-
-<img src="./img/api테스트/댓글수정.png"/>
+<img width="1666" height="696" alt="image" src="https://github.com/user-attachments/assets/a0e876b0-eeb9-424e-813b-fb16e6e337da" />
 
 </details>
 
@@ -232,20 +215,17 @@ api 명세 관련 docs
 <summary>위시리스트 관리</summary>
 
 ### 위시리스트 생성
-
-<img src="./img/api테스트/문서등록.png"/>
+<img width="1670" height="807" alt="image" src="https://github.com/user-attachments/assets/7e364070-3ed0-473d-a640-765eb65fec0f" />
 
 ### 위시리스트 조회
-
-<img src="./img/api테스트/문서업데이트.png"/>
+<img width="1662" height="543" alt="image" src="https://github.com/user-attachments/assets/ff605635-cb4f-4010-91b9-b69e3e02e054" />
 
 ### 위시리스트 삭제
-
-<img src="./img/api테스트/문서히스토리.png"/>
+<img width="1667" height="560" alt="image" src="https://github.com/user-attachments/assets/733491a8-8f36-4411-a290-2e62d01ce7ba" />
 
 ### 내 위시리스트 목록 조회
+<img width="1667" height="823" alt="image" src="https://github.com/user-attachments/assets/32bd22c2-bd3a-4702-b1a9-8f523ce10608" />
 
-<img src="./img/api테스트/전체문서조회.png"/>
 
 </details>
 
@@ -253,20 +233,17 @@ api 명세 관련 docs
 <summary>리뷰 관리</summary>
 
 ### 리뷰 생성
-
-<img src="./img/api테스트/결재생성.png"/>
+<img width="1670" height="850" alt="image" src="https://github.com/user-attachments/assets/795842d9-1dc6-4f7d-9c4b-82908baf2b31" />
 
 ### 작성 전 리뷰 조회
-
-<img src="./img/api테스트/결재승인거절.png"/>
+<img width="1671" height="463" alt="image" src="https://github.com/user-attachments/assets/88e28631-a48f-4b15-acd4-2ba34e3db08f" />
 
 ### 작성 후 리뷰 조회
-
-<img src="./img/api테스트/결재승인거절.png"/>
+<img width="1672" height="466" alt="image" src="https://github.com/user-attachments/assets/98749cf8-3456-46c6-a262-468cc4913277" />
 
 ### 리뷰 상세 조회
+<img width="1679" height="464" alt="image" src="https://github.com/user-attachments/assets/af686b94-6500-4cb9-babf-d1ceef5ee95d" />
 
-<img src="./img/api테스트/결재승인거절.png"/>
 
 </details>
 
@@ -274,8 +251,7 @@ api 명세 관련 docs
 <summary>알림 관리</summary>
 
 ### 알림 조회
-
-<img src="./img/api테스트/부서목록조회.png"/>
+<img width="1656" height="468" alt="image" src="https://github.com/user-attachments/assets/04dda12d-39e7-421f-8120-95d88b3a5a5d" />
 
 ### 알림 읽음 처리
 이거 추가
@@ -287,32 +263,25 @@ api 명세 관련 docs
 <summary>신고 관리</summary>
 
 ### 상품 신고
-
-<img src="./img/api테스트/es문서검색.png"/>
+<img width="1656" height="775" alt="image" src="https://github.com/user-attachments/assets/aa30f0c4-d7da-441c-9deb-9fc68052f3d9" />
 
 ### 상품 차단 목록
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1657" height="613" alt="image" src="https://github.com/user-attachments/assets/a6133a97-f2ab-4295-b72a-4a8065e15eee" />
 
 ### 상품 차단 해제
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1670" height="678" alt="image" src="https://github.com/user-attachments/assets/03ea534e-97cc-407c-bd46-56466dd4edb8" />
 
 ### 유저 신고
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1664" height="671" alt="image" src="https://github.com/user-attachments/assets/823fd3c0-3206-4427-a4f5-0ef2d8d11d57" />
 
 ### 유저 차단
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1654" height="788" alt="image" src="https://github.com/user-attachments/assets/5972b555-43b9-4a3e-8e47-a94bb5b1eb7c" />
 
 ### 유저 차단 해제
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1660" height="725" alt="image" src="https://github.com/user-attachments/assets/37c57ebc-61bc-4e32-b760-02202a3779c8" />
 
 ### 신고 조회
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1660" height="834" alt="image" src="https://github.com/user-attachments/assets/98efa396-6424-4ee8-af72-087757462670" />
 
 </details>
 
@@ -320,40 +289,34 @@ api 명세 관련 docs
 <summary>MOS</summary>
 
 ### 관리자 대시보드
-
-<img src="./img/api테스트/es문서검색.png"/>
+<img width="1667" height="476" alt="image" src="https://github.com/user-attachments/assets/7606ed7b-12dd-4646-a871-162bc8bb7818" />
 
 ### 카테고리 분포 조회
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
-
-### 상품 차단 해제
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1667" height="467" alt="image" src="https://github.com/user-attachments/assets/d3cb1eb7-17fa-494c-a056-cae03eb7284b" />
 
 ### 금일 사용자 조회
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1653" height="575" alt="image" src="https://github.com/user-attachments/assets/5af687c0-adc1-48bb-b69d-3d7ff80df382" />
 
 ### 최근 N일 경매 추이조회
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1658" height="494" alt="image" src="https://github.com/user-attachments/assets/66222451-7074-4085-9aa0-1c52569fb5fb" />
 
 ### 달별 금액 추이 조회
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1658" height="494" alt="image" src="https://github.com/user-attachments/assets/2e262756-e762-4f64-8f2d-f74d6d209f5e" />
 
 ### 경매 모니터링 조회
-
-<img src="./img/api테스트/es인덱싱생성.png"/>
+<img width="1646" height="528" alt="image" src="https://github.com/user-attachments/assets/d277cf2f-21cf-4f28-ac37-40e0b399a6ce" />
 
 ### 관리자 일정 생성
+<img width="1646" height="528" alt="image" src="https://github.com/user-attachments/assets/c54bec12-5c38-4468-98ae-343abb6fa6d8" />
 
 ### 관리자 일정 수정
+<img width="1665" height="693" alt="image" src="https://github.com/user-attachments/assets/86ebf799-e02c-4142-9284-028ddbafa5eb" />
 
 ### 관리자 일정 조회
+<img width="1651" height="475" alt="image" src="https://github.com/user-attachments/assets/2647545d-5e83-410e-b00c-d21c90bbbb12" />
 
 ### 인수인계 게시글 생성
+<img width="1651" height="475" alt="image" src="https://github.com/user-attachments/assets/03078069-41c7-406f-ae0f-19e7c92584f1" />
 
 ### 인수인계 게시글 수정
 <img width="1655" height="642" alt="image" src="https://github.com/user-attachments/assets/acfc2347-e026-4976-8110-c8b9d660d91a" />
