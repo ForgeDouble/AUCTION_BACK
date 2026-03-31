@@ -1,7 +1,3 @@
-<img width="1651" height="475" alt="image" src="https://github.com/user-attachments/assets/0881a885-5ae7-4343-9e0d-a89855b4a61d" /><div align="center">
-    <img width="500" alt="bid-logo" src="https://github.com/user-attachments/assets/647f0fe3-5af4-4e41-97e8-30c70725b711" />
-</div>
-
 
 <br/>
 
