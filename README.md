@@ -1,3 +1,4 @@
+<img width="1024" height="261" alt="bid-logo" src="https://github.com/user-attachments/assets/13a3b6d7-c5fe-44f3-aad3-eea92a859552" />
 
 <br/>
 
@@ -488,10 +489,13 @@ api 명세 관련 docs
 <summary>실시간 채팅</summary>
 
 ### 유저
-
+![유저 간 채팅](https://github.com/user-attachments/assets/c278bc42-6278-47f7-9b66-91f134d29152)
 
 ### 관리자
+![관리자 간 채팅](https://github.com/user-attachments/assets/92012305-9f8c-48bb-b7ed-e7721a0d0eb8)
 
+### 문의
+![문의 채팅](https://github.com/user-attachments/assets/49afb5e2-689b-492f-a0ba-ee10edcc1fc0)
 
 </details>
 
