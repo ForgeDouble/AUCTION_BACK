@@ -1,4 +1,4 @@
-
+![상품신고처리](https://github.com/user-attachments/assets/f5d58069-1eb9-4ab7-9f1a-4907c05e4194)
 <div align="center">
     <img width="500" alt="bid-logo" src="https://github.com/user-attachments/assets/647f0fe3-5af4-4e41-97e8-30c70725b711" />
 </div>
@@ -375,141 +375,150 @@ api 명세 관련 docs
 
 <details>
   
-<summary>로그인</summary>
+<summary>회원가입&로그인</summary>
+
+### 회원가입
+![회원가입](https://github.com/user-attachments/assets/c14efc9b-5329-4e13-a0dc-35d93e9b93f3)
 
 ### 로그인
-
-<img src="./img/ui테스트/로그인.gif"/>
+![로그인](https://github.com/user-attachments/assets/9435d624-ace9-42f2-be4e-78ef5b94e9eb)
 
 </details>
+
+
 
 <details>
   
 <summary>마이페이지</summary>
 
-### 근태 관리
+### 프로필 수정
+![프로필수정](https://github.com/user-attachments/assets/6c7b0a3f-9e4f-4709-97c9-b84bfc25947e)
 
-<img src="./img/ui테스트/근태관리.gif"/>
+### 내상품 & 위시리스트
 
-### 인사 평가
 
-<img src="./img/ui테스트/인사평가.gif"/>
+### 입찰내역
+![입찰내역](https://github.com/user-attachments/assets/ebd62128-cd1f-4aee-94c1-b260d663aa21)
+
+### 리뷰 작성 & 조회
+![리뷰작성확인](https://github.com/user-attachments/assets/7770f67b-ff90-4a2f-a31c-fb530e57bd4e)
 
 </details>
+
+
+
+<details>
+<summary>상품 & 입찰</summary>
+
+### 상품 등록
+![상품생성](https://github.com/user-attachments/assets/b8995958-8e1a-4590-8a55-693b133d4f5a)
+
+### 상품 리스트 & 상세
+
+
+### 상품 필터링
+
+
+### 상품 수정
+![상품수정](https://github.com/user-attachments/assets/dedcb5af-9b83-4cf5-b963-d44e1f72844e)
+
+### 판매자 프로필
+
+
+### 입찰하기
+
+
+### 입찰 종료
+![입찰종료](https://github.com/user-attachments/assets/6d19b3fc-494a-468d-ac05-e3b9c50fb7b6)
+
+</details>
+
+
+
+<details>
+<summary>신고 처리</summary>
+
+### 상품 신고
+![상품신고](https://github.com/user-attachments/assets/a9c3520d-dcd3-4022-b6dd-9a51027064fa)
+
+### 유저 신고
+
+
+### 신고 처리 결과
+![상품신고처리](https://github.com/user-attachments/assets/6e43ad89-0dbc-483f-883c-902821709735)
+
+</details>
+
+
+
+
+<details>
+<summary>알림</summary>
+
+### 알림
+![알림](https://github.com/user-attachments/assets/2a435349-8a55-4ab9-93cb-f202f288c1e7)
+
+### 알림 타입 별 이동
+
+
+</details>
+
+
+<details>  
+<summary>리뷰</summary>
+
+### 리뷰 작성
+![리뷰작성확인](https://github.com/user-attachments/assets/2879a1a0-c504-40c2-bc53-a5a8ee69aff9)
+
+### 리뷰 확인
+
+
+</details>
+
+
+
+<details>
+<summary>채팅</summary>
+    
+### 문의 방 생성 및 문의하기
+![문의채팅](https://github.com/user-attachments/assets/6e3ace32-18f0-4e9f-8046-6f8436144468)
+
+
+### 유저 간 채팅
+![유저채팅](https://github.com/user-attachments/assets/28d873c2-6143-47c2-99e3-5787c253d559)
+
+
+### 관리자 채팅방 생성 및 채팅
+![관리자채팅](https://github.com/user-attachments/assets/48e6ad72-6177-4d02-a381-926f993b7350)
+
+</details>
+
+
 
 <details>
   
-<summary>파일 관리</summary>
+<summary>MOS</summary>
 
-### 파일 등록
+### 지표 확인
+![관리자개요](https://github.com/user-attachments/assets/81904c9f-a8f0-4359-b624-5e97bf44f658)
 
-<img src="./img/ui테스트/파일등록.gif"/>
+### 관리자 경매 모니터링
+![관리자경매모니터링](https://github.com/user-attachments/assets/c8f4834a-cea3-4e6f-be35-0584282cbaa3)
 
-### 댓글 작성
+### 관리자 신고 확인
 
-<img src="./img/ui테스트/파일댓글작성.gif"/>
 
-### 파일 버전 관리
+### 관리자 인수인계
+![관리자인수인계](https://github.com/user-attachments/assets/2a41889f-550f-483f-bb45-d8acb234fb82)
 
-<img src="./img/ui테스트/파일업데이트.gif"/>
+### 관리자 일정관리
+![관리자캘린더](https://github.com/user-attachments/assets/51fdb799-88d6-4a17-9a0b-4e1df0bdd2c2)
 
-<img src="./img/ui테스트/파일롤백.gif"/>
-
-</details>
-
-<details>
-  
-<summary>전자 결재</summary>
-
-### 결재 요청
-
-<img src="./img/ui테스트/결재등록.gif"/>
-
-### 결재 승인/반려
-
-<img src="./img/ui테스트/결재승인.gif"/>
+### 관리자 유저관리
+![관리자유저권한관리](https://github.com/user-attachments/assets/23a869c7-f31f-4da6-b3ad-45540e1a6220)
 
 </details>
 
-<details>
-  
-<summary>예약</summary>
-
-### 회의실 예약
-
-<img src="./img/ui테스트/회의실예약.gif"/>
-
-### 법인 차량 예약
-
-<img src="./img/ui테스트/법인차량예약.gif"/>
-
-</details>
-
-<details>
-  
-<summary>게시판</summary>
-
-### 공지사항
-
-<img src="./img/ui테스트/공지사항.gif"/>
-
-### 질의 응답(Q&A)
-
-<img src="./img/ui테스트/"/>
-
-### 강의 리스트
-
-<img src="./img/ui테스트/강좌생성.gif"/>
-
-</details>
-
-<details>
-  
-<summary>화상 회의</summary>
-  
-### TDB
-
-<img src="./img/ui테스트/"/>
-
-</details>
-
-<details>
-  
-<summary>직원 관리</summary>
-
-### 직원 생성
-
-<img src="./img/ui테스트/직원생성.gif"/>
-
-### 직원 정보 수정
-
-<img src="./img/ui테스트/직원수정.gif"/>
-
-</details>
-
-<details>
-  
-<summary>급여 관리</summary>
-  
-### 급여 명세서 조회(세금)
-
-<img src="./img/ui테스트/급여명세서조회.gif"/>
-
-### 급여일 설정
-
-<img src="./img/ui테스트/급여일관리.gif"/>
-
-</details>
-
-<details>
-  
-<summary>일정 관리</summary>
-
-### 일정 생성
-
-<img src="./img/ui테스트/일정생성.gif"/>
-
-</details>
 
 <details>
   
@@ -561,54 +570,29 @@ api 명세 관련 docs
 
 <details>
   
-<summary>파일 등록</summary>
+<summary>실시간 채팅</summary>
 
-### 파일 버전 업데이트 및 해당 파일에 대한 댓글 작성
-<img src="./img/Deployment Test/file_registration.gif"/>
+### 유저
 
-### 파일 버전 되돌리기
-<img src="./img/Deployment Test/file_registration_1.gif"/>
+
+### 관리자
+
 
 </details>
+
 
 <details>
   
-<summary>일정 등록</summary>
+<summary>입찰</summary>
 
-### 급여일, 인사평가에 대한 일정 공용 캘린더에 등록
-<img src="./img/Deployment Test/schedule_registration.gif"/>
+### 입찰 경쟁
 
-</details>
 
-<details>
-  
-<summary>채팅</summary>
+### 입찰 상세 
 
-### 실시간 채팅
-<img src="./img/Deployment Test/chat.gif"/>
-
-<img src="./img/Deployment Test/chat_1.gif"/>
 
 </details>
 
-<details>
-  
-<summary>화상 회의</summary>
 
-<br/>
 
-<img src="./img/Deployment Test/video_conference.gif"/>
 
-</details>
-
-<details>
-  
-<summary>결재 + 게시판</summary>
-
-### 결재 승인 후 게시판 업로드 및 문자 전송
-<img src="./img/Deployment Test/approval_and_board.gif"/>
-
-### 결재문자
-<img src="./img/Deployment Test/approval_sms.png"/>
-
-</details>
