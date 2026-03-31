@@ -520,56 +520,13 @@ api 명세 관련 docs
 </details>
 
 
-<details>
-  
-<summary>부서 관리</summary>
 
-### 부서 계층 조회
 
-<img src="./img/ui테스트/부서조회.gif"/>
-
-### 부서 추가
-
-<img src="./img/ui테스트/부서추가.gif"/>
-
-### 부서 이동
-
-<img src="./img/ui테스트/부서이동.gif"/>
-
-</details>
-
-<details>
-  
-<summary>채팅</summary>
-
-### 채팅방 생성
-
-<img src="./img/ui테스트/.gif"/>
-
-### 실시간 채팅
-<img src="./img/ui테스트/실시간채팅.gif"/>
-
-### 참여자 초대/나가기
-
-<img src="./img/ui테스트/.gif"/>
-
-</details>
-
-<details>
-
-<summary>달력</summary>
-
-### 권한 별 일정 등록
-
-<img src="./img/ui테스트/달력등록.gif"/>
-
-</details>
 
 
 ## 💡 배포 결과서
 
 <details>
-  
 <summary>실시간 채팅</summary>
 
 ### 유저
@@ -582,7 +539,6 @@ api 명세 관련 docs
 
 
 <details>
-  
 <summary>입찰</summary>
 
 ### 입찰 경쟁
