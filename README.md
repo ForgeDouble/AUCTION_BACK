@@ -317,6 +317,7 @@ api 명세 관련 docs
 
 </details>
 
+<details>
 <summary>MOS</summary>
 
 ### 관리자 대시보드
