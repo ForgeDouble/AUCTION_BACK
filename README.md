@@ -376,7 +376,8 @@ api 명세 관련 docs
 ![상품 리스트 상세](https://github.com/user-attachments/assets/dce4062c-b351-4039-83eb-7c8383ca5e5a)
 
 ### 상품 필터링
-![필터링](https://github.com/user-attachments/assets/343ba8e2-7277-43ae-aa96-924f4acd8ae4)
+![ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/22928eea-57e9-4240-9e92-a29be565a9cd)
+
 
 ### 상품 수정
 ![상품수정](https://github.com/user-attachments/assets/dedcb5af-9b83-4cf5-b963-d44e1f72844e)
@@ -500,7 +501,7 @@ api 명세 관련 docs
 <summary>입찰</summary>
 
 ### 입찰 경쟁 & 입찰 상세
-![입찰경쟁](https://github.com/user-attachments/assets/9a80ed90-fee3-4583-b11f-cb05dcd155d2)
+![화면 녹화 중 2026-03-29 234455](https://github.com/user-attachments/assets/71abb009-c2cc-4dc5-ad0d-88b4d9a487aa)
 
 
 
