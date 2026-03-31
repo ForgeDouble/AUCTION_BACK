@@ -1,4 +1,3 @@
-![상품신고처리](https://github.com/user-attachments/assets/f5d58069-1eb9-4ab7-9f1a-4907c05e4194)
 <div align="center">
     <img width="500" alt="bid-logo" src="https://github.com/user-attachments/assets/647f0fe3-5af4-4e41-97e8-30c70725b711" />
 </div>
