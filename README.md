@@ -353,8 +353,8 @@ api 명세 관련 docs
 ### 프로필 수정
 ![프로필수정](https://github.com/user-attachments/assets/6c7b0a3f-9e4f-4709-97c9-b84bfc25947e)
 
-### 내상품 & 위시리스트
-
+### 내상품
+![마이페이지](https://github.com/user-attachments/assets/f29f49fd-d0e8-4481-9765-8d08f6d4b683)
 
 ### 입찰내역
 ![입찰내역](https://github.com/user-attachments/assets/ebd62128-cd1f-4aee-94c1-b260d663aa21)
@@ -373,10 +373,10 @@ api 명세 관련 docs
 ![상품생성](https://github.com/user-attachments/assets/b8995958-8e1a-4590-8a55-693b133d4f5a)
 
 ### 상품 리스트 & 상세
-
+![상품 리스트 상세](https://github.com/user-attachments/assets/dce4062c-b351-4039-83eb-7c8383ca5e5a)
 
 ### 상품 필터링
-
+![필터링](https://github.com/user-attachments/assets/343ba8e2-7277-43ae-aa96-924f4acd8ae4)
 
 ### 상품 수정
 ![상품수정](https://github.com/user-attachments/assets/dedcb5af-9b83-4cf5-b963-d44e1f72844e)
@@ -400,9 +400,6 @@ api 명세 관련 docs
 ### 상품 신고
 ![상품신고](https://github.com/user-attachments/assets/a9c3520d-dcd3-4022-b6dd-9a51027064fa)
 
-### 유저 신고
-
-
 ### 신고 처리 결과
 ![상품신고처리](https://github.com/user-attachments/assets/6e43ad89-0dbc-483f-883c-902821709735)
 
@@ -418,7 +415,6 @@ api 명세 관련 docs
 ![알림](https://github.com/user-attachments/assets/2a435349-8a55-4ab9-93cb-f202f288c1e7)
 
 ### 알림 타입 별 이동
-
 
 </details>
 
@@ -465,7 +461,7 @@ api 명세 관련 docs
 ![관리자경매모니터링](https://github.com/user-attachments/assets/c8f4834a-cea3-4e6f-be35-0584282cbaa3)
 
 ### 관리자 신고 확인
-
+![관리자 페이지](https://github.com/user-attachments/assets/9f6014b0-dec1-464a-87cd-4ae9bd3a38e8)
 
 ### 관리자 인수인계
 ![관리자인수인계](https://github.com/user-attachments/assets/2a41889f-550f-483f-bb45-d8acb234fb82)
@@ -503,10 +499,9 @@ api 명세 관련 docs
 <details>
 <summary>입찰</summary>
 
-### 입찰 경쟁
+### 입찰 경쟁 & 입찰 상세
+![입찰경쟁](https://github.com/user-attachments/assets/9a80ed90-fee3-4583-b11f-cb05dcd155d2)
 
-
-### 입찰 상세 
 
 
 </details>
