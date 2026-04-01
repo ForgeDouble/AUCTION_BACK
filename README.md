@@ -41,8 +41,10 @@ wbs 관련 gif 위치
 <br/>
 
 <div align="center">
+   
+[AUCTION WBS](https://docs.google.com/spreadsheets/d/1eO23tOmGRAMwCeJHKosba6GOGP8qGommXA0Ui_QJl7I/edit?gid=1744083232#gid=1744083232)
 
-wbs 관련 img 위치
+
 </div>
 
 
