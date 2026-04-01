@@ -353,8 +353,8 @@ api 명세 관련 docs
 ### 프로필 수정
 ![프로필수정](https://github.com/user-attachments/assets/6c7b0a3f-9e4f-4709-97c9-b84bfc25947e)
 
-### 내상품
-![마이페이지](https://github.com/user-attachments/assets/f29f49fd-d0e8-4481-9765-8d08f6d4b683)
+### 내상품)
+![내상점](https://github.com/user-attachments/assets/61a3dca4-3a33-4bdd-9ff9-bfc039d9dbdf)
 
 ### 입찰내역
 ![입찰내역](https://github.com/user-attachments/assets/ebd62128-cd1f-4aee-94c1-b260d663aa21)
@@ -384,6 +384,7 @@ api 명세 관련 docs
 ![상품수정](https://github.com/user-attachments/assets/dedcb5af-9b83-4cf5-b963-d44e1f72844e)
 
 ### 판매자 프로필
+![판매자상점 (1)](https://github.com/user-attachments/assets/3919164b-a755-4dc6-8083-ddf1a29dcc39)
 
 
 ### 입찰하기
