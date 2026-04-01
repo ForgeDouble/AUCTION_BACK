@@ -376,7 +376,8 @@ api 명세 관련 docs
 ![상품 리스트 상세](https://github.com/user-attachments/assets/dce4062c-b351-4039-83eb-7c8383ca5e5a)
 
 ### 상품 필터링
-![ezgif com-video-to-gif-converter](https://github.com/user-attachments/assets/22928eea-57e9-4240-9e92-a29be565a9cd)
+![상품필터링1-1](https://github.com/user-attachments/assets/565be046-0783-4d69-826a-b89a4e4054ed)
+![상품필터링1-2](https://github.com/user-attachments/assets/abc1d42e-9105-4241-876a-9795b1453a83)
 
 
 ### 상품 수정
@@ -489,7 +490,7 @@ api 명세 관련 docs
 ![유저 간 채팅](https://github.com/user-attachments/assets/c278bc42-6278-47f7-9b66-91f134d29152)
 
 ### 관리자
-![관리자 간 채팅](https://github.com/user-attachments/assets/92012305-9f8c-48bb-b7ed-e7721a0d0eb8)
+![관리자채팅(채팅만)](https://github.com/user-attachments/assets/d143cefd-9be7-49dc-adba-ee4aa499483f)
 
 ### 문의
 ![문의 채팅](https://github.com/user-attachments/assets/49afb5e2-689b-492f-a0ba-ee10edcc1fc0)
