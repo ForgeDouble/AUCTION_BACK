@@ -47,14 +47,14 @@ wbs 관련 img 위치
 
 
 ## 🧱 ERD
-erd 관련 img 위치
+<img width="1367" height="856" alt="image" src="https://github.com/user-attachments/assets/f9283a20-a672-4823-af5f-474f344824c8" />
 
 <br/>
 
 
 <div align="center">
 
-erd 관련 url 위치
+[AUCTIONBID ERD](https://www.erdcloud.com/d/kzffjuJXm36RhjbyK)
 
 </div>
 <br>
