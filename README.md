@@ -384,6 +384,7 @@ api 명세 관련 docs
 ![상품수정](https://github.com/user-attachments/assets/dedcb5af-9b83-4cf5-b963-d44e1f72844e)
 
 ### 판매자 프로필
+![판매자상점2](https://github.com/user-attachments/assets/d15636fe-83d6-4199-a0f6-1b247803cb8e)
 
 ### 입찰하기
 
@@ -414,8 +415,6 @@ api 명세 관련 docs
 
 ### 알림
 ![알림](https://github.com/user-attachments/assets/2a435349-8a55-4ab9-93cb-f202f288c1e7)
-
-### 알림 타입 별 이동
 
 </details>
 
@@ -462,7 +461,8 @@ api 명세 관련 docs
 ![관리자경매모니터링](https://github.com/user-attachments/assets/c8f4834a-cea3-4e6f-be35-0584282cbaa3)
 
 ### 관리자 신고 확인
-![관리자 페이지](https://github.com/user-attachments/assets/9f6014b0-dec1-464a-87cd-4ae9bd3a38e8)
+![관리자신고상세화면2](https://github.com/user-attachments/assets/0da6a29d-11ac-443f-af40-fcc260229990)
+
 
 ### 관리자 인수인계
 ![관리자인수인계](https://github.com/user-attachments/assets/2a41889f-550f-483f-bb45-d8acb234fb82)
@@ -486,13 +486,13 @@ api 명세 관련 docs
 <summary>실시간 채팅</summary>
 
 ### 유저
-![유저 간 채팅](https://github.com/user-attachments/assets/c278bc42-6278-47f7-9b66-91f134d29152)
+![유저채팅2](https://github.com/user-attachments/assets/c6608285-d43f-432a-af76-70ef745f113b)
 
 ### 관리자
 ![관리자채팅(채팅만)](https://github.com/user-attachments/assets/d143cefd-9be7-49dc-adba-ee4aa499483f)
 
 ### 문의
-![문의 채팅](https://github.com/user-attachments/assets/49afb5e2-689b-492f-a0ba-ee10edcc1fc0)
+![문의채팅2](https://github.com/user-attachments/assets/9d9b88d4-e5fb-40b1-b6c8-ffd3d4a3e40b)
 
 </details>
 
