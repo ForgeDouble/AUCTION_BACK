@@ -384,8 +384,6 @@ api 명세 관련 docs
 ![상품수정](https://github.com/user-attachments/assets/dedcb5af-9b83-4cf5-b963-d44e1f72844e)
 
 ### 판매자 프로필
-![판매자상점 (1)](https://github.com/user-attachments/assets/3919164b-a755-4dc6-8083-ddf1a29dcc39)
-
 
 ### 입찰하기
 
