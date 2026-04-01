@@ -36,12 +36,12 @@
 
 ## 📝 WBS
 
-wbs 관련 gif 위치
-
-<br/>
-
 <div align="center">
    
+![wbs (2)](https://github.com/user-attachments/assets/93af1a65-52e7-45c9-8e8b-18b9379bded5)
+
+<br>
+
 [AUCTION WBS](https://docs.google.com/spreadsheets/d/1eO23tOmGRAMwCeJHKosba6GOGP8qGommXA0Ui_QJl7I/edit?gid=1744083232#gid=1744083232)
 
 
@@ -55,8 +55,9 @@ wbs 관련 gif 위치
 
 
 <div align="center">
-
-[AUCTIONBID ERD](https://www.erdcloud.com/d/kzffjuJXm36RhjbyK)
+<br>
+   
+[AUCTIONBID ERD 보기](https://www.erdcloud.com/d/kzffjuJXm36RhjbyK)
 
 </div>
 <br>
@@ -67,12 +68,12 @@ wbs 관련 gif 위치
 
 <div align="center">
 
+![api 명세](https://github.com/user-attachments/assets/cd0e342d-2830-496e-b780-9462c48ed919)
 
-api 명세서 관련 이미지
 
 <br/>
 
-api 명세 관련 docs
+[API 명세서 보기](https://docs.google.com/spreadsheets/d/1eO23tOmGRAMwCeJHKosba6GOGP8qGommXA0Ui_QJl7I/edit?gid=423570499#gid=423570499)
 
 </div>
 
