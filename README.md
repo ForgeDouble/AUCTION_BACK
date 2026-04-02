@@ -28,6 +28,8 @@
    
 ![요구사항정의서 (1)](https://github.com/user-attachments/assets/53b9ead8-e24a-4fa9-8922-a330d75ab45e)
 
+
+
 <br/>
 
 [요구사항 명세 docs 위치](https://docs.google.com/spreadsheets/d/1eO23tOmGRAMwCeJHKosba6GOGP8qGommXA0Ui_QJl7I/edit?gid=665771069#gid=665771069)
