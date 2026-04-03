@@ -26,7 +26,7 @@
 
 <div align="center">
    
-![요구사항정의서 (1)](https://github.com/user-attachments/assets/53b9ead8-e24a-4fa9-8922-a330d75ab45e)
+![요구사항 명세서](https://github.com/user-attachments/assets/1f3b6bac-04a7-48b0-840c-e7687d438ae0)
 
 
 
