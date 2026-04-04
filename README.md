@@ -90,7 +90,7 @@
 
 ## ⚙️ CI/CD 시스템 아키텍쳐
 
-배포 관련 아키텍처 img or gif 위치
+<img width="1488" height="848" alt="Section 2" src="https://github.com/user-attachments/assets/4a724249-6ce5-46d6-bb67-923d2574d2e1" />
 
 <br>
 
