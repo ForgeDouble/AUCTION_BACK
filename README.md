@@ -90,7 +90,7 @@
 
 ## ⚙️ CI/CD 시스템 아키텍쳐
 
-<img width="1488" height="848" alt="Section 2" src="https://github.com/user-attachments/assets/4a724249-6ce5-46d6-bb67-923d2574d2e1" />
+<img width="1488" height="848" alt="Image" src="https://github.com/user-attachments/assets/d538902a-7a31-40cb-bf18-2ee0f6a2d003" />
 
 <br>
 
